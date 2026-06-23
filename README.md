@@ -1,3 +1,7 @@
+[![CI](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml/badge.svg)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
+[![Bundle JS](https://img.shields.io/badge/JS-%3C200%20kB-44cc11?logo=javascript&labelColor=1a1a2e)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
+[![Bundle CSS](https://img.shields.io/badge/CSS-%3C50%20kB-44cc11?logo=css3&labelColor=1a1a2e)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
+
 # Stellar Unified Price Oracle — Frontend
 
 **Developer Portal & Oracle Analytics Dashboard**
@@ -45,9 +49,20 @@ Copy `.env.example` to `.env` to override defaults:
 ## Build
 
 ```bash
-npm run build    # outputs to dist/
-npm run preview  # preview production build locally
+npm run build          # outputs to dist/
+npm run build:analyze  # build + generate bundle analysis report (reports/bundle-stats.html)
+npm run size-limit     # check bundle size against configured budgets
+npm run preview        # preview production build locally
 ```
+
+### Bundle Size Budgets
+
+| Asset | Limit | Status |
+|---|---|---|
+| JavaScript | 200 kB | Enforced in CI |
+| CSS | 50 kB | Enforced in CI |
+
+The CI pipeline generates a [bundle-stats.html](./reports/bundle-stats.html) report using `rollup-plugin-visualizer` — an interactive treemap of the production bundle. This report is uploaded as a CI artifact on every build.
 
 ## API Endpoints Consumed
 
