@@ -85,7 +85,7 @@ export function FilterBar() {
             type="text"
             value={search}
             onChange={handleSearchChange}
-            placeholder="e.g. XLM"
+            placeholder="Search by asset pair..."
             className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors pl-10"
           />
           <svg

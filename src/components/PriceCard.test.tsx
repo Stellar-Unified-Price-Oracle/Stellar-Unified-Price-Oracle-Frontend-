@@ -124,15 +124,7 @@ describe('PriceCard', () => {
 })
 
 describe('snapshots', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(1700000000000 + 1000 * 60 * 5)) // 5 minutes later
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
+  const FIXED_NOW = 1700100000000
   const fixedPrice = {
     assetPair: 'BTC/USD',
     price: 50000.1234,
@@ -140,6 +132,14 @@ describe('snapshots', () => {
     confidence: 0.9876,
     sources: ['chainlink', 'redstone'],
   }
+
+  beforeEach(() => {
+    vi.spyOn(Date, 'now').mockReturnValue(FIXED_NOW)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
   it('default', () => {
     const { container } = render(<PriceCard price={fixedPrice} />)

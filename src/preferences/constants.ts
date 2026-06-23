@@ -4,6 +4,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   refreshInterval: 10000,
   chartTimeRange: '24h',
   staleThresholdMinutes: 5,
+  dashboardView: 'card',
+  cardOrder: [],
 } as const
 
 export const MAX_UNDO_DEPTH = 20

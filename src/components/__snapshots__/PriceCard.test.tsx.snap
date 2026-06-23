@@ -3,18 +3,22 @@
 exports[`snapshots > default 1`] = `
 <div
   aria-label="View details for BTC/USD"
-  class="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer "
+  class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
   role="button"
   tabindex="0"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
-    <h3
-      class="text-lg font-semibold text-gray-100"
+    <div
+      class="flex items-center gap-2"
     >
-      BTC/USD
-    </h3>
+      <h3
+        class="text-lg font-semibold text-gray-100"
+      >
+        BTC/USD
+      </h3>
+    </div>
     <div
       class="flex items-center gap-2"
     />
@@ -30,7 +34,7 @@ exports[`snapshots > default 1`] = `
   >
     <span>
       Updated 
-      5m ago
+      27h ago
     </span>
     <span
       class="text-cyan-600 dark:text-cyan-400"
@@ -84,18 +88,22 @@ exports[`snapshots > default 1`] = `
 exports[`snapshots > hasAlert 1`] = `
 <div
   aria-label="View details for BTC/USD"
-  class="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer "
+  class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
   role="button"
   tabindex="0"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
-    <h3
-      class="text-lg font-semibold text-gray-100"
+    <div
+      class="flex items-center gap-2"
     >
-      BTC/USD
-    </h3>
+      <h3
+        class="text-lg font-semibold text-gray-100"
+      >
+        BTC/USD
+      </h3>
+    </div>
     <div
       class="flex items-center gap-2"
     >
@@ -117,7 +125,7 @@ exports[`snapshots > hasAlert 1`] = `
   >
     <span>
       Updated 
-      5m ago
+      27h ago
     </span>
     <span
       class="text-cyan-600 dark:text-cyan-400"
@@ -171,18 +179,22 @@ exports[`snapshots > hasAlert 1`] = `
 exports[`snapshots > isLive 1`] = `
 <div
   aria-label="View details for BTC/USD"
-  class="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer "
+  class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
   role="button"
   tabindex="0"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
-    <h3
-      class="text-lg font-semibold text-gray-100"
+    <div
+      class="flex items-center gap-2"
     >
-      BTC/USD
-    </h3>
+      <h3
+        class="text-lg font-semibold text-gray-100"
+      >
+        BTC/USD
+      </h3>
+    </div>
     <div
       class="flex items-center gap-2"
     >
@@ -204,7 +216,7 @@ exports[`snapshots > isLive 1`] = `
   >
     <span>
       Updated 
-      5m ago
+      27h ago
     </span>
     <span
       class="text-cyan-600 dark:text-cyan-400"
@@ -258,18 +270,22 @@ exports[`snapshots > isLive 1`] = `
 exports[`snapshots > isStale 1`] = `
 <div
   aria-label="View details for BTC/USD"
-  class="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer opacity-60"
+  class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer opacity-60 border-gray-800"
   role="button"
   tabindex="0"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
-    <h3
-      class="text-lg font-semibold text-gray-100"
+    <div
+      class="flex items-center gap-2"
     >
-      BTC/USD
-    </h3>
+      <h3
+        class="text-lg font-semibold text-gray-100"
+      >
+        BTC/USD
+      </h3>
+    </div>
     <div
       class="flex items-center gap-2"
     />
@@ -285,7 +301,7 @@ exports[`snapshots > isStale 1`] = `
   >
     <span>
       Updated 
-      5m ago
+      27h ago
     </span>
     <span
       class="text-cyan-600 dark:text-cyan-400"

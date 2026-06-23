@@ -12,6 +12,10 @@ const PriceDetail = lazy(() =>
   import('./pages/PriceDetail').then((m) => ({ default: m.PriceDetail })),
 )
 
+const SourceHealth = lazy(() =>
+  import('./pages/SourceHealth').then((m) => ({ default: m.SourceHealth })),
+)
+
 function PriceDetailLoader() {
   return (
     <div className="flex items-center justify-center py-32" role="status" aria-label="Loading page">
@@ -27,17 +31,16 @@ function AppContent() {
   return (
     <ErrorBoundary key={location.key}>
       <PreferencesProvider>
-        <AlertsProvider>
-          <Layout>
-            <Suspense fallback={<PriceDetailLoader />}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/price/:pair" element={<PriceDetail />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </Layout>
-        </AlertsProvider>
+        <Layout>
+          <Suspense fallback={<PriceDetailLoader />}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/price/:pair" element={<PriceDetail />} />
+              <Route path="/sources" element={<SourceHealth />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </Layout>
       </PreferencesProvider>
     </ErrorBoundary>
   )

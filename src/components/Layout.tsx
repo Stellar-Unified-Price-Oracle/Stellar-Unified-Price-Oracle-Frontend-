@@ -5,7 +5,10 @@ import { AlertPanel } from './AlertPanel'
 import { useTheme } from '../hooks/useTheme'
 import { SettingsPanel } from './SettingsPanel'
 
-const NAV_ITEMS = [{ path: '/', label: 'Dashboard' }]
+const NAV_ITEMS = [
+  { path: '/', label: 'Dashboard' },
+  { path: '/sources', label: 'Source Health' },
+]
 
 function SunIcon() {
   return (

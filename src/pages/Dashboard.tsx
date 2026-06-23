@@ -4,8 +4,11 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { usePriceContext } from '../context/PriceContext'
 import { useAlerts } from '../hooks/useAlerts'
 import { useColumnCount } from '../hooks/useColumnCount'
+import { useDragOrder } from '../hooks/useDragOrder'
+import { usePreferences } from '../preferences/PreferencesContext'
 import { PriceCard } from '../components/PriceCard'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
+import { PriceTableView } from '../components/PriceTableView'
 import { AlertModal } from '../components/AlertModal'
 import { AlertBadge } from '../components/AlertBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
@@ -34,6 +37,7 @@ export function Dashboard() {
   const navigate = useNavigate()
   const { alerts, addAlert, removeAlert, hasAlertsForPair, activeCount } = useAlerts()
   const [searchParams] = useSearchParams()
+  const { preferences, updatePreference } = usePreferences()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPair, setModalPair] = useState('')
@@ -47,27 +51,33 @@ export function Dashboard() {
   const columns = useColumnCount(containerRef)
 
   const merged = mergePrices(prices, livePrices)
-  const filtered = useMemo(() => {
-    let result = merged
 
-    // Search filter
+  // Apply saved card order (card view only)
+  const orderedMerged = useMemo(() => {
+    const order = preferences.cardOrder
+    if (!order || order.length === 0) return merged
+    const orderMap = new Map(order.map((pair, i) => [pair, i]))
+    return [...merged].sort((a, b) => {
+      const ia = orderMap.get(a.assetPair) ?? Number.MAX_SAFE_INTEGER
+      const ib = orderMap.get(b.assetPair) ?? Number.MAX_SAFE_INTEGER
+      return ia - ib
+    })
+  }, [merged, preferences.cardOrder])
+
+  const filtered = useMemo(() => {
+    let result = orderedMerged
+
     if (search) {
       result = result.filter((p) => p.assetPair.toLowerCase().includes(search.toLowerCase()))
     }
-
-    // Confidence filter
     if (confidence === 'high') {
       result = result.filter((p) => p.confidence > 80)
     } else if (confidence === 'medium') {
       result = result.filter((p) => p.confidence > 50)
     }
-
-    // Source filter
     if (source !== 'all') {
       result = result.filter((p) => p.sources.some((s) => s.toLowerCase() === source.toLowerCase()))
     }
-
-    // Sort
     if (sort === 'price-high') {
       result = [...result].sort((a, b) => b.price - a.price)
     } else if (sort === 'price-low') {
@@ -79,7 +89,23 @@ export function Dashboard() {
     }
 
     return result
-  }, [merged, search, confidence, source, sort])
+  }, [orderedMerged, search, confidence, source, sort])
+
+  // Drag-and-drop for card order
+  const filteredPairs = useMemo(() => filtered.map((p) => p.assetPair), [filtered])
+  const handleOrderChange = useCallback(
+    (newPairs: string[]) => {
+      // Rebuild full order: new filtered order + unchanged unfiltered pairs appended
+      const filteredSet = new Set(newPairs)
+      const unfiltered = (preferences.cardOrder.length > 0 ? preferences.cardOrder : orderedMerged.map((p) => p.assetPair)).filter(
+        (pair) => !filteredSet.has(pair),
+      )
+      updatePreference('cardOrder', [...newPairs, ...unfiltered])
+    },
+    [preferences.cardOrder, orderedMerged, updatePreference],
+  )
+
+  const { getHandleProps, dragOverIndex } = useDragOrder(filteredPairs, handleOrderChange)
 
   const rowCount = Math.ceil(filtered.length / columns)
   const virtualizer = useVirtualizer({
@@ -114,6 +140,8 @@ export function Dashboard() {
     [addAlert],
   )
 
+  const dashboardView = preferences.dashboardView ?? 'card'
+
   return (
     <div>
       <NetworkStatusBanner />
@@ -125,6 +153,37 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {!pricesLoading && prices.length > 0 && (
+            <div className="flex items-center rounded-lg border border-gray-700 overflow-hidden" role="group" aria-label="View toggle">
+              <button
+                type="button"
+                onClick={() => updatePreference('dashboardView', 'card')}
+                className={`px-3 py-1.5 text-sm transition-colors ${dashboardView === 'card' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                aria-pressed={dashboardView === 'card'}
+                aria-label="Card view"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <rect x="1" y="1" width="6" height="6" rx="1" />
+                  <rect x="9" y="1" width="6" height="6" rx="1" />
+                  <rect x="1" y="9" width="6" height="6" rx="1" />
+                  <rect x="9" y="9" width="6" height="6" rx="1" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => updatePreference('dashboardView', 'table')}
+                className={`px-3 py-1.5 text-sm transition-colors ${dashboardView === 'table' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                aria-pressed={dashboardView === 'table'}
+                aria-label="Table view"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <rect x="1" y="1" width="14" height="3" rx="0.5" />
+                  <rect x="1" y="6" width="14" height="3" rx="0.5" />
+                  <rect x="1" y="11" width="14" height="3" rx="0.5" />
+                </svg>
+              </button>
+            </div>
+          )}
           <AlertBadge count={activeCount} alerts={alerts} />
           <ConnectionBadge status={wsStatus} />
         </div>
@@ -144,6 +203,15 @@ export function Dashboard() {
             <PriceCardSkeleton key={i} />
           ))}
         </div>
+      ) : dashboardView === 'table' ? (
+        <PriceTableView
+          items={filtered}
+          livePairs={new Set(livePrices.keys())}
+          isStale={pricesValidating}
+          onRowClick={handleCardClick}
+          onAlertClick={handleAlertClick}
+          hasAlertFn={hasAlertsForPair}
+        />
       ) : (
         <div
           ref={containerRef}
@@ -172,17 +240,22 @@ export function Dashboard() {
                   }}
                   role="list"
                 >
-                  {rowItems.map((p) => (
-                    <PriceCard
-                      key={p.assetPair}
-                      price={p}
-                      isLive={livePrices.has(p.assetPair)}
-                      isStale={pricesValidating}
-                      hasAlert={hasAlertsForPair(p.assetPair)}
-                      onClick={() => handleCardClick(p.assetPair)}
-                      onAlertClick={(e) => handleAlertClick(e, p.assetPair)}
-                    />
-                  ))}
+                  {rowItems.map((p, colIdx) => {
+                    const globalIdx = startIdx + colIdx
+                    return (
+                      <PriceCard
+                        key={p.assetPair}
+                        price={p}
+                        isLive={livePrices.has(p.assetPair)}
+                        isStale={pricesValidating}
+                        hasAlert={hasAlertsForPair(p.assetPair)}
+                        onClick={() => handleCardClick(p.assetPair)}
+                        onAlertClick={(e) => handleAlertClick(e, p.assetPair)}
+                        dragHandleProps={getHandleProps(globalIdx)}
+                        isDragOver={dragOverIndex === globalIdx}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             )

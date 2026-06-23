@@ -20,6 +20,18 @@ vi.mock('@tanstack/react-virtual', () => ({
   },
 }))
 
+vi.mock('../preferences/PreferencesContext', () => ({
+  usePreferences: vi.fn(() => ({
+    preferences: { refreshInterval: 10000, chartTimeRange: '24h', staleThresholdMinutes: 5, dashboardView: 'card', cardOrder: [] },
+    updatePreference: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
+    canUndo: false,
+    canRedo: false,
+    clearHistory: vi.fn(),
+  })),
+}))
+
 afterEach(cleanup)
 
 vi.mock('../context/PriceContext', () => ({
@@ -36,10 +48,10 @@ vi.mock('../context/PriceContext', () => ({
   })),
 }))
 
-const TEST_TIMESTAMP = new Date('2024-01-01T12:00:00Z').getTime()
+const FIXED_NOW = 1700100000000
 const mockPrices = [
-  { assetPair: 'BTC/USD', price: 50000, timestamp: TEST_TIMESTAMP, confidence: 0.99, sources: ['chainlink'] },
-  { assetPair: 'ETH/USD', price: 3000, timestamp: TEST_TIMESTAMP, confidence: 0.95, sources: ['redstone'] },
+  { assetPair: 'BTC/USD', price: 50000, timestamp: FIXED_NOW - 60000, confidence: 0.99, sources: ['chainlink'] },
+  { assetPair: 'ETH/USD', price: 3000, timestamp: FIXED_NOW - 120000, confidence: 0.95, sources: ['redstone'] },
 ]
 
 describe('Dashboard', () => {
@@ -216,7 +228,7 @@ describe('Dashboard', () => {
         </AlertsProvider>
       </MemoryRouter>,
     )
-    expect(screen.getByPlaceholderText('e.g. XLM')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Search by asset pair...')).toBeInTheDocument()
   })
 
   it('filters price cards by search query', async () => {
@@ -241,7 +253,7 @@ describe('Dashboard', () => {
       </MemoryRouter>,
     )
 
-    const searchInput = screen.getByPlaceholderText('e.g. XLM')
+    const searchInput = screen.getByPlaceholderText('Search by asset pair...')
     await user.type(searchInput, 'btc')
 
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -270,7 +282,7 @@ describe('Dashboard', () => {
       </MemoryRouter>,
     )
 
-    const searchInput = screen.getByPlaceholderText('e.g. XLM')
+    const searchInput = screen.getByPlaceholderText('Search by asset pair...')
     await user.type(searchInput, 'zzz')
 
     expect(screen.queryByText('BTC/USD')).not.toBeInTheDocument()
@@ -298,7 +310,7 @@ describe('Dashboard', () => {
         </AlertsProvider>
       </MemoryRouter>,
     )
-    expect(screen.queryByPlaceholderText('e.g. XLM')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Search by asset pair...')).not.toBeInTheDocument()
   })
 
   it('shows AlertBadge with active count', async () => {
@@ -469,15 +481,24 @@ describe('Dashboard', () => {
 })
 
 describe('snapshots', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2024-01-01T12:00:03Z'))
+  beforeEach(async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1700100000000)
+    const { usePriceContext } = await import('../context/PriceContext')
+    vi.mocked(usePriceContext).mockReturnValue({
+      prices: [],
+      pricesLoading: true,
+      pricesError: null,
+      pricesValidating: false,
+      livePrices: new Map(),
+      wsStatus: 'disconnected',
+      refetchPrices: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })
   })
-  
   afterEach(() => {
-    vi.useRealTimers()
+    vi.restoreAllMocks()
   })
-
   it('loading', () => {
     const { container } = render(
       <MemoryRouter>
