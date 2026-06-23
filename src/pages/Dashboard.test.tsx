@@ -432,6 +432,186 @@ describe('Dashboard', () => {
   })
 })
 
+describe('view toggle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
+  it('shows view toggle buttons when prices are loaded', async () => {
+    const { usePriceContext } = await import('../context/PriceContext')
+    vi.mocked(usePriceContext).mockReturnValue({
+      prices: mockPrices,
+      pricesLoading: false,
+      pricesError: null,
+      pricesValidating: false,
+      livePrices: new Map(),
+      wsStatus: 'disconnected',
+      refetchPrices: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    )
+    expect(screen.getByLabelText('Card view')).toBeInTheDocument()
+    expect(screen.getByLabelText('Table view')).toBeInTheDocument()
+  })
+
+  it('switches to table view when table button is clicked', async () => {
+    const { usePriceContext } = await import('../context/PriceContext')
+    vi.mocked(usePriceContext).mockReturnValue({
+      prices: mockPrices,
+      pricesLoading: false,
+      pricesError: null,
+      pricesValidating: false,
+      livePrices: new Map(),
+      wsStatus: 'disconnected',
+      refetchPrices: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    )
+    await user.click(screen.getByLabelText('Table view'))
+    expect(screen.getByRole('table', { name: 'Price feeds table' })).toBeInTheDocument()
+  })
+
+  it('persists view mode to localStorage', async () => {
+    const { usePriceContext } = await import('../context/PriceContext')
+    vi.mocked(usePriceContext).mockReturnValue({
+      prices: mockPrices,
+      pricesLoading: false,
+      pricesError: null,
+      pricesValidating: false,
+      livePrices: new Map(),
+      wsStatus: 'disconnected',
+      refetchPrices: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    )
+    await user.click(screen.getByLabelText('Table view'))
+    expect(localStorage.getItem('dashboard:viewMode')).toBe('table')
+  })
+
+  it('loads table view from localStorage on mount', async () => {
+    localStorage.setItem('dashboard:viewMode', 'table')
+    const { usePriceContext } = await import('../context/PriceContext')
+    vi.mocked(usePriceContext).mockReturnValue({
+      prices: mockPrices,
+      pricesLoading: false,
+      pricesError: null,
+      pricesValidating: false,
+      livePrices: new Map(),
+      wsStatus: 'disconnected',
+      refetchPrices: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('table', { name: 'Price feeds table' })).toBeInTheDocument()
+  })
+})
+
+describe('drag-and-drop card order', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
+  it('shows drag handle on each card', async () => {
+    const { usePriceContext } = await import('../context/PriceContext')
+    vi.mocked(usePriceContext).mockReturnValue({
+      prices: mockPrices,
+      pricesLoading: false,
+      pricesError: null,
+      pricesValidating: false,
+      livePrices: new Map(),
+      wsStatus: 'disconnected',
+      refetchPrices: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    )
+    const handles = screen.getAllByLabelText(/Drag to reorder/)
+    expect(handles.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('persists card order to localStorage after keyboard reorder', async () => {
+    const { usePriceContext } = await import('../context/PriceContext')
+    vi.mocked(usePriceContext).mockReturnValue({
+      prices: mockPrices,
+      pricesLoading: false,
+      pricesError: null,
+      pricesValidating: false,
+      livePrices: new Map(),
+      wsStatus: 'disconnected',
+      refetchPrices: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    )
+    const firstHandle = screen.getByLabelText('Drag to reorder BTC/USD')
+    firstHandle.focus()
+    await user.keyboard('{ArrowRight}')
+    const saved = JSON.parse(localStorage.getItem('dashboard:cardOrder') ?? '[]') as string[]
+    expect(saved).toContain('BTC/USD')
+    expect(saved).toContain('ETH/USD')
+    // ETH/USD should now come before BTC/USD
+    expect(saved.indexOf('ETH/USD')).toBeLessThan(saved.indexOf('BTC/USD'))
+  })
+
+  it('loads card order from localStorage on mount', async () => {
+    localStorage.setItem('dashboard:cardOrder', JSON.stringify(['ETH/USD', 'BTC/USD']))
+    const { usePriceContext } = await import('../context/PriceContext')
+    vi.mocked(usePriceContext).mockReturnValue({
+      prices: mockPrices,
+      pricesLoading: false,
+      pricesError: null,
+      pricesValidating: false,
+      livePrices: new Map(),
+      wsStatus: 'disconnected',
+      refetchPrices: vi.fn(),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    )
+    // ETH should appear before BTC in handles order
+    const handles = screen.getAllByLabelText(/Drag to reorder/)
+    const pairs = handles.map((h) => h.getAttribute('aria-label')?.replace('Drag to reorder ', ''))
+    expect(pairs.indexOf('ETH/USD')).toBeLessThan(pairs.indexOf('BTC/USD'))
+  })
+})
+
 describe('snapshots', () => {
   it('loading', () => {
     const { container } = render(
