@@ -4,6 +4,7 @@ import { Layout } from './components/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Dashboard } from './pages/Dashboard'
 import { NotFound } from './pages/NotFound'
+import { useWebVitals } from './hooks/useWebVitals'
 import { PreferencesProvider } from './preferences/PreferencesContext'
 
 const PriceDetail = lazy(() =>
@@ -21,6 +22,8 @@ function PriceDetailLoader() {
 const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 export default function App() {
+  useWebVitals()
+
   return (
     <BrowserRouter basename={BASENAME}>
       <ErrorBoundary>

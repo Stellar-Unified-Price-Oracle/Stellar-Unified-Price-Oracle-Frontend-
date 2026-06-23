@@ -4,6 +4,21 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { Dashboard } from './Dashboard'
 
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: ({ count, estimateSize }: { count: number; estimateSize: (i: number) => number }) => {
+    const items = Array.from({ length: count }, (_, i) => {
+      const size = estimateSize(i)
+      const start = i * size
+      return { key: i, index: i, start, end: start + size, size, lane: 0 }
+    })
+    return {
+      getVirtualItems: () => items,
+      getTotalSize: () => items.reduce((total, item) => total + item.size, 0),
+      measure: () => {},
+    }
+  },
+}))
+
 afterEach(cleanup)
 
 vi.mock('../context/PriceContext', () => ({
