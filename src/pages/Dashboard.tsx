@@ -4,22 +4,24 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { usePriceContext } from '../context/PriceContext'
 import { useAlerts } from '../hooks/useAlerts'
 import { useColumnCount } from '../hooks/useColumnCount'
+import { useDashboardPrefs, useDragAndDrop, applyOrder } from '../hooks/useDashboardPrefs'
 import { PriceCard } from '../components/PriceCard'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
+import { PriceTable } from '../components/PriceTable'
 import { AlertModal } from '../components/AlertModal'
 import { AlertBadge } from '../components/AlertBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
 import { NetworkStatusBanner } from '../components/NetworkStatusBanner'
 import { FilterBar } from '../components/FilterBar'
-import type { AlertFormData } from '../types'
+import type { AlertFormData, PriceData } from '../types'
 
 const ROW_HEIGHT = 200
 const SKELETON_COUNT = 8
 
 function mergePrices(
-  restPrices: { assetPair: string; price: number; timestamp: number; confidence: number; sources: string[] }[],
-  livePrices: Map<string, { assetPair: string; price: number; timestamp: number; confidence: number; sources: string[] }>,
-) {
+  restPrices: PriceData[],
+  livePrices: Map<string, PriceData>,
+): PriceData[] {
   return restPrices.map((p) => {
     const live = livePrices.get(p.assetPair)
     if (live && live.timestamp >= p.timestamp) {
@@ -29,11 +31,184 @@ function mergePrices(
   })
 }
 
+// --- View toggle button ---
+function ViewToggle({ mode, onChange }: { mode: 'card' | 'table'; onChange: (m: 'card' | 'table') => void }) {
+  return (
+    <div
+      className="flex items-center bg-gray-800 border border-gray-700 rounded-lg overflow-hidden"
+      role="group"
+      aria-label="View mode"
+    >
+      <button
+        type="button"
+        onClick={() => onChange('card')}
+        aria-pressed={mode === 'card'}
+        aria-label="Card view"
+        className={`px-3 py-1.5 text-sm transition-colors ${mode === 'card' ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-white'}`}
+      >
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="2" y="2" width="9" height="9" rx="1" />
+          <rect x="13" y="2" width="9" height="9" rx="1" />
+          <rect x="2" y="13" width="9" height="9" rx="1" />
+          <rect x="13" y="13" width="9" height="9" rx="1" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('table')}
+        aria-pressed={mode === 'table'}
+        aria-label="Table view"
+        className={`px-3 py-1.5 text-sm transition-colors ${mode === 'table' ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-white'}`}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M10 4v16M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+// --- Draggable card grid ---
+interface DraggableCardGridProps {
+  items: PriceData[]
+  columns: number
+  livePrices: Map<string, PriceData>
+  pricesValidating: boolean
+  hasAlertsForPair: (pair: string) => boolean
+  onCardClick: (pair: string) => void
+  onAlertClick: (e: React.MouseEvent, pair: string) => void
+  onReorder: (newPairs: string[]) => void
+  containerRef: React.RefObject<HTMLDivElement | null>
+}
+
+function DraggableCardGrid({
+  items,
+  columns,
+  livePrices,
+  pricesValidating,
+  hasAlertsForPair,
+  onCardClick,
+  onAlertClick,
+  onReorder,
+  containerRef,
+}: DraggableCardGridProps) {
+  const pairs = useMemo(() => items.map((p) => p.assetPair), [items])
+  const { onDragStart, onDragOver, onDrop, onDragEnd, overIndex } = useDragAndDrop(pairs, onReorder)
+
+  const rowCount = Math.ceil(items.length / columns)
+  const virtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: useCallback(() => document.documentElement, []),
+    estimateSize: useCallback(() => ROW_HEIGHT, []),
+    overscan: 5,
+  })
+
+  // Keyboard reorder: arrow keys on drag handle
+  const handleKeyReorder = useCallback(
+    (e: React.KeyboardEvent, index: number) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        if (index === 0) return
+        e.preventDefault()
+        const next = [...pairs]
+        ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
+        onReorder(next)
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        if (index === pairs.length - 1) return
+        e.preventDefault()
+        const next = [...pairs]
+        ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
+        onReorder(next)
+      }
+    },
+    [pairs, onReorder],
+  )
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}
+      aria-label="Price feeds"
+    >
+      {virtualizer.getVirtualItems().map((virtualRow) => {
+        const startIdx = virtualRow.index * columns
+        const rowItems = items.slice(startIdx, startIdx + columns)
+        return (
+          <div
+            key={virtualRow.key}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              transform: `translateY(${virtualRow.start}px)`,
+            }}
+          >
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${columns}, 1fr)`,
+                gap: '1rem',
+              }}
+              role="list"
+            >
+              {rowItems.map((p, colIdx) => {
+                const itemIndex = startIdx + colIdx
+                const isOver = overIndex === itemIndex
+                return (
+                  <div
+                    key={p.assetPair}
+                    draggable
+                    onDragStart={() => onDragStart(itemIndex)}
+                    onDragOver={(e) => onDragOver(e, itemIndex)}
+                    onDrop={(e) => onDrop(e, itemIndex)}
+                    onDragEnd={onDragEnd}
+                    className={`relative transition-opacity ${isOver ? 'opacity-50' : ''}`}
+                    role="listitem"
+                  >
+                    {/* Drag handle */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Drag to reorder ${p.assetPair}`}
+                      className="absolute top-2 right-2 z-10 p-1 cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded"
+                      onKeyDown={(e) => handleKeyReorder(e, itemIndex)}
+                      // Prevent card click when handle is focused/activated
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="9" cy="6" r="1.5" />
+                        <circle cx="15" cy="6" r="1.5" />
+                        <circle cx="9" cy="12" r="1.5" />
+                        <circle cx="15" cy="12" r="1.5" />
+                        <circle cx="9" cy="18" r="1.5" />
+                        <circle cx="15" cy="18" r="1.5" />
+                      </svg>
+                    </div>
+                    <PriceCard
+                      price={p}
+                      isLive={livePrices.has(p.assetPair)}
+                      isStale={pricesValidating}
+                      hasAlert={hasAlertsForPair(p.assetPair)}
+                      onClick={() => onCardClick(p.assetPair)}
+                      onAlertClick={(e) => onAlertClick(e, p.assetPair)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function Dashboard() {
   const { prices, pricesLoading, pricesError, pricesValidating, livePrices, wsStatus } = usePriceContext()
   const navigate = useNavigate()
   const { alerts, addAlert, removeAlert, hasAlertsForPair, activeCount } = useAlerts()
   const [searchParams] = useSearchParams()
+  const { cardOrder, updateOrder, viewMode, setViewMode } = useDashboardPrefs()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPair, setModalPair] = useState('')
@@ -47,27 +222,24 @@ export function Dashboard() {
   const columns = useColumnCount(containerRef)
 
   const merged = mergePrices(prices, livePrices)
+
   const filtered = useMemo(() => {
     let result = merged
 
-    // Search filter
     if (search) {
       result = result.filter((p) => p.assetPair.toLowerCase().includes(search.toLowerCase()))
     }
 
-    // Confidence filter
     if (confidence === 'high') {
       result = result.filter((p) => p.confidence > 80)
     } else if (confidence === 'medium') {
       result = result.filter((p) => p.confidence > 50)
     }
 
-    // Source filter
     if (source !== 'all') {
       result = result.filter((p) => p.sources.some((s) => s.toLowerCase() === source.toLowerCase()))
     }
 
-    // Sort
     if (sort === 'price-high') {
       result = [...result].sort((a, b) => b.price - a.price)
     } else if (sort === 'price-low') {
@@ -81,13 +253,11 @@ export function Dashboard() {
     return result
   }, [merged, search, confidence, source, sort])
 
-  const rowCount = Math.ceil(filtered.length / columns)
-  const virtualizer = useVirtualizer({
-    count: rowCount,
-    getScrollElement: useCallback(() => document.documentElement, []),
-    estimateSize: useCallback(() => ROW_HEIGHT, []),
-    overscan: 5,
-  })
+  // Apply user-defined card order (only in card view, only when no sort active)
+  const orderedFiltered = useMemo(() => {
+    if (viewMode === 'table' || sort) return filtered
+    return applyOrder(filtered, cardOrder)
+  }, [filtered, cardOrder, viewMode, sort])
 
   const handleCardClick = useCallback(
     (pair: string) => navigate(`/price/${encodeURIComponent(pair)}`),
@@ -114,6 +284,23 @@ export function Dashboard() {
     [addAlert],
   )
 
+  // When user reorders in card view: merge with full orderedFiltered pairs
+  const handleReorder = useCallback(
+    (newFilteredPairs: string[]) => {
+      // Rebuild full order: new filtered order + any pairs not currently filtered
+      const filteredSet = new Set(newFilteredPairs)
+      const unfiltered = cardOrder.filter((p) => !filteredSet.has(p))
+      // Pairs new to cardOrder (not previously tracked) that aren't filtered
+      const allPairs = merged.map((p) => p.assetPair)
+      const trackedSet = new Set([...cardOrder, ...newFilteredPairs])
+      const newPairs = allPairs.filter((p) => !trackedSet.has(p))
+      updateOrder([...newFilteredPairs, ...unfiltered, ...newPairs])
+    },
+    [cardOrder, merged, updateOrder],
+  )
+
+  const livePairSet = useMemo(() => new Set(livePrices.keys()), [livePrices])
+
   return (
     <div>
       <NetworkStatusBanner />
@@ -125,6 +312,9 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {!pricesLoading && prices.length > 0 && (
+            <ViewToggle mode={viewMode} onChange={setViewMode} />
+          )}
           <AlertBadge count={activeCount} alerts={alerts} />
           <ConnectionBadge status={wsStatus} />
         </div>
@@ -144,50 +334,27 @@ export function Dashboard() {
             <PriceCardSkeleton key={i} />
           ))}
         </div>
+      ) : viewMode === 'table' ? (
+        <PriceTable
+          prices={filtered}
+          livePairs={livePairSet}
+          isStale={pricesValidating}
+          onRowClick={handleCardClick}
+          onAlertClick={handleAlertClick}
+          hasAlert={hasAlertsForPair}
+        />
       ) : (
-        <div
-          ref={containerRef}
-          style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}
-          aria-label="Price feeds"
-        >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const startIdx = virtualRow.index * columns
-            const rowItems = filtered.slice(startIdx, startIdx + columns)
-            return (
-              <div
-                key={virtualRow.key}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: `repeat(${columns}, 1fr)`,
-                    gap: '1rem',
-                  }}
-                  role="list"
-                >
-                  {rowItems.map((p) => (
-                    <PriceCard
-                      key={p.assetPair}
-                      price={p}
-                      isLive={livePrices.has(p.assetPair)}
-                      isStale={pricesValidating}
-                      hasAlert={hasAlertsForPair(p.assetPair)}
-                      onClick={() => handleCardClick(p.assetPair)}
-                      onAlertClick={(e) => handleAlertClick(e, p.assetPair)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <DraggableCardGrid
+          items={orderedFiltered}
+          columns={columns}
+          livePrices={livePrices}
+          pricesValidating={pricesValidating}
+          hasAlertsForPair={hasAlertsForPair}
+          onCardClick={handleCardClick}
+          onAlertClick={handleAlertClick}
+          onReorder={handleReorder}
+          containerRef={containerRef}
+        />
       )}
 
       {!pricesLoading && merged.length === 0 && (
