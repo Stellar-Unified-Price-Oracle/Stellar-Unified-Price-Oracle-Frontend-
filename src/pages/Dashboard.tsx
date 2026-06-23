@@ -23,9 +23,6 @@ function mergePrices(
   })
 }
 
-const TOP_MOVERS_COUNT = 3
-const SKELETON_COUNT = 8
-
 export function Dashboard() {
   const { prices, pricesLoading, pricesError, pricesValidating, livePrices, wsStatus } = usePriceContext()
   const navigate = useNavigate()
@@ -43,11 +40,6 @@ export function Dashboard() {
         : merged,
     [merged, searchQuery],
   )
-
-  const sortedPrices = useMemo(() => selectSortedPrices(merged), [merged])
-  const avgConfidence = useMemo(() => selectAverageConfidence(merged), [merged])
-  const topMovers = useMemo(() => selectTopMovers(merged, TOP_MOVERS_COUNT), [merged])
-  const staleAssets = useMemo(() => selectStaleAssets(merged), [merged])
 
   const handleCardClick = useCallback(
     (pair: string) => navigate(`/price/${encodeURIComponent(pair)}`),
