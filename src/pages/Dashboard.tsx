@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { usePrices } from '../hooks/usePrices'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { PriceCard } from '../components/PriceCard'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
 import { ConnectionBadge } from '../components/ConnectionBadge'
 import { NetworkStatusBanner } from '../components/NetworkStatusBanner'
+import { FilterBar } from '../components/FilterBar'
 
 function mergePrices(
   restPrices: { assetPair: string; price: number; timestamp: number; confidence: number; sources: string[] }[],
@@ -24,8 +25,25 @@ export function Dashboard() {
   const { prices, loading, error } = usePrices()
   const { livePrices, status } = useWebSocket(prices.map((p) => p.assetPair))
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  const merged = mergePrices(prices, livePrices)
+  const search = searchParams.get('search') || ''
+  const confidence = searchParams.get('confidence') || 'all'
+  const source = searchParams.get('source') || 'all'
+
+  let merged = mergePrices(prices, livePrices)
+
+  if (search) {
+    merged = merged.filter((p) => p.assetPair.toLowerCase().includes(search.toLowerCase()))
+  }
+  if (confidence === 'high') {
+    merged = merged.filter((p) => p.confidence >= 0.8)
+  } else if (confidence === 'medium') {
+    merged = merged.filter((p) => p.confidence >= 0.5)
+  }
+  if (source !== 'all') {
+    merged = merged.filter((p) => p.sources.some((s) => s.toLowerCase() === source.toLowerCase()))
+  }
 
   const handleCardClick = useCallback(
     (pair: string) => navigate(`/price/${encodeURIComponent(pair)}`),
@@ -46,6 +64,8 @@ export function Dashboard() {
         </div>
         <ConnectionBadge status={status} />
       </div>
+
+      <FilterBar />
 
       {error && (
         <div className="mb-6 p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
