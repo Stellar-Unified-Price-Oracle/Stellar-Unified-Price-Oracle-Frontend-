@@ -28,8 +28,8 @@ describe('PriceCard', () => {
 
   it('renders source badges', () => {
     render(<PriceCard price={mockPrice} />)
-    const buttons = screen.getAllByRole('button')
-    expect(buttons).toHaveLength(1)
+    const alertButton = screen.getByLabelText('Set alert for BTC/USD')
+    expect(alertButton).toBeInTheDocument()
     expect(screen.getByText('chainlink')).toBeInTheDocument()
     expect(screen.getByText('redstone')).toBeInTheDocument()
   })
@@ -44,16 +44,81 @@ describe('PriceCard', () => {
     expect(container.querySelector('.bg-green-500')).not.toBeInTheDocument()
   })
 
-  it('calls onClick when clicked', async () => {
+  it('shows alert indicator when hasAlert is true', () => {
+    const { container } = render(<PriceCard price={mockPrice} hasAlert />)
+    expect(container.querySelector('.bg-amber-400')).toBeInTheDocument()
+  })
+
+  it('does not show alert indicator when hasAlert is false', () => {
+    const { container } = render(<PriceCard price={mockPrice} hasAlert={false} />)
+    expect(container.querySelector('.bg-amber-400')).not.toBeInTheDocument()
+  })
+
+  it('calls onClick when card is clicked', async () => {
     const onClick = vi.fn()
     const user = userEvent.setup()
     render(<PriceCard price={mockPrice} onClick={onClick} />)
-    await user.click(screen.getByRole('button'))
+    const card = screen.getByRole('button', { name: 'View details for BTC/USD' })
+    await user.click(card)
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it('has accessible aria-label', () => {
+  it('shows Set alert text when no alert', () => {
     render(<PriceCard price={mockPrice} />)
-    expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'View details for BTC/USD')
+    expect(screen.getByText('Set alert')).toBeInTheDocument()
+  })
+
+  it('shows Alert set text when hasAlert', () => {
+    render(<PriceCard price={mockPrice} hasAlert />)
+    expect(screen.getByText('Alert set')).toBeInTheDocument()
+  })
+
+  it('calls onAlertClick without triggering onClick', async () => {
+    const onClick = vi.fn()
+    const onAlertClick = vi.fn()
+    const user = userEvent.setup()
+    render(<PriceCard price={mockPrice} onClick={onClick} onAlertClick={onAlertClick} />)
+    const alertButton = screen.getByLabelText('Set alert for BTC/USD')
+    await user.click(alertButton)
+    expect(onAlertClick).toHaveBeenCalledTimes(1)
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('has accessible aria-label on card', () => {
+    render(<PriceCard price={mockPrice} />)
+    expect(screen.getByRole('button', { name: 'View details for BTC/USD' })).toBeInTheDocument()
+  })
+
+  it('has accessible aria-label on alert button', () => {
+    render(<PriceCard price={mockPrice} />)
+    expect(screen.getByLabelText('Set alert for BTC/USD')).toBeInTheDocument()
+  })
+
+  it('calls onClick on Enter key', async () => {
+    const onClick = vi.fn()
+    const user = userEvent.setup()
+    render(<PriceCard price={mockPrice} onClick={onClick} />)
+    const card = screen.getByRole('button', { name: 'View details for BTC/USD' })
+    card.focus()
+    await user.keyboard('{Enter}')
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('applies reduced opacity when isStale is true', () => {
+    const { container } = render(<PriceCard price={mockPrice} isStale />)
+    const card = container.querySelector('[role="button"]')
+    expect(card?.className).toContain('opacity-60')
+  })
+
+  it('does not apply reduced opacity when isStale is false', () => {
+    const { container } = render(<PriceCard price={mockPrice} isStale={false} />)
+    const card = container.querySelector('[role="button"]')
+    expect(card?.className).not.toContain('opacity-60')
+  })
+
+  it('does not apply reduced opacity when isStale is undefined', () => {
+    const { container } = render(<PriceCard price={mockPrice} />)
+    const card = container.querySelector('[role="button"]')
+    expect(card?.className).not.toContain('opacity-60')
   })
 })

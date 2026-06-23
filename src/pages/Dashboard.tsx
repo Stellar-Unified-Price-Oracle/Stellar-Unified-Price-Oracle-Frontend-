@@ -1,12 +1,14 @@
-import { useCallback } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { usePrices } from '../hooks/usePrices'
-import { useWebSocket } from '../hooks/useWebSocket'
+import { useCallback, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { usePriceContext } from '../context/PriceContext'
+import { useAlerts } from '../hooks/useAlerts'
 import { PriceCard } from '../components/PriceCard'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
+import { AlertModal } from '../components/AlertModal'
+import { AlertBadge } from '../components/AlertBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
 import { NetworkStatusBanner } from '../components/NetworkStatusBanner'
-import { FilterBar } from '../components/FilterBar'
+import type { AlertFormData } from '../types'
 
 function mergePrices(
   restPrices: { assetPair: string; price: number; timestamp: number; confidence: number; sources: string[] }[],
@@ -22,32 +24,46 @@ function mergePrices(
 }
 
 export function Dashboard() {
-  const { prices, loading, error } = usePrices()
-  const { livePrices, status } = useWebSocket(prices.map((p) => p.assetPair))
+  const { prices, pricesLoading, pricesError, pricesValidating, livePrices, wsStatus } = usePriceContext()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const { alerts, addAlert, removeAlert, hasAlertsForPair, activeCount } = useAlerts()
 
-  const search = searchParams.get('search') || ''
-  const confidence = searchParams.get('confidence') || 'all'
-  const source = searchParams.get('source') || 'all'
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalPair, setModalPair] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
-  let merged = mergePrices(prices, livePrices)
-
-  if (search) {
-    merged = merged.filter((p) => p.assetPair.toLowerCase().includes(search.toLowerCase()))
-  }
-  if (confidence === 'high') {
-    merged = merged.filter((p) => p.confidence >= 0.8)
-  } else if (confidence === 'medium') {
-    merged = merged.filter((p) => p.confidence >= 0.5)
-  }
-  if (source !== 'all') {
-    merged = merged.filter((p) => p.sources.some((s) => s.toLowerCase() === source.toLowerCase()))
-  }
+  const merged = mergePrices(prices, livePrices)
+  const filtered = useMemo(
+    () =>
+      searchQuery
+        ? merged.filter((p) => p.assetPair.toLowerCase().includes(searchQuery.toLowerCase()))
+        : merged,
+    [merged, searchQuery],
+  )
 
   const handleCardClick = useCallback(
     (pair: string) => navigate(`/price/${encodeURIComponent(pair)}`),
     [navigate],
+  )
+
+  const handleAlertClick = useCallback((e: React.MouseEvent, pair: string) => {
+    e.stopPropagation()
+    setModalPair(pair)
+    setModalOpen(true)
+  }, [])
+
+  const handleSave = useCallback(
+    (data: AlertFormData) => {
+      addAlert({
+        assetPair: data.assetPair,
+        upperThreshold: data.upperThreshold ? Number.parseFloat(data.upperThreshold) : null,
+        lowerThreshold: data.lowerThreshold ? Number.parseFloat(data.lowerThreshold) : null,
+        triggerOnce: data.triggerOnce,
+        active: true,
+      })
+      setModalOpen(false)
+    },
+    [addAlert],
   )
 
   const SKELETON_COUNT = 8
@@ -62,18 +78,32 @@ export function Dashboard() {
             Aggregated from Chainlink, Redstone, Band &amp; Reflector
           </p>
         </div>
-        <ConnectionBadge status={status} />
+        <div className="flex items-center gap-3">
+          <AlertBadge count={activeCount} alerts={alerts} />
+          <ConnectionBadge status={wsStatus} />
+        </div>
       </div>
 
-      <FilterBar />
-
-      {error && (
+      {pricesError && (
         <div className="mb-6 p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
-          {error}
+          {pricesError}
         </div>
       )}
 
-      {loading && prices.length === 0 ? (
+      {!pricesLoading && prices.length > 0 && (
+        <div className="mb-6">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by asset pair..."
+            aria-label="Search price feeds"
+            className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors"
+          />
+        </div>
+      )}
+
+      {pricesLoading && prices.length === 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" aria-label="Loading price cards">
           {Array.from({ length: SKELETON_COUNT }, (_, i) => (
             <PriceCardSkeleton key={i} />
@@ -81,23 +111,50 @@ export function Dashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" role="list" aria-label="Price feeds">
-          {merged.map((p) => (
+          {filtered.map((p) => (
             <PriceCard
               key={p.assetPair}
               price={p}
               isLive={livePrices.has(p.assetPair)}
+              isStale={pricesValidating}
+              hasAlert={hasAlertsForPair(p.assetPair)}
               onClick={() => handleCardClick(p.assetPair)}
+              onAlertClick={(e) => handleAlertClick(e, p.assetPair)}
             />
           ))}
         </div>
       )}
 
-      {!loading && merged.length === 0 && (
+      {!pricesLoading && merged.length === 0 && (
         <div className="text-center py-32 text-gray-500">
           <p className="text-lg mb-2">No price feeds available</p>
           <p className="text-sm">Connect to the aggregator API to see price data.</p>
         </div>
       )}
+
+      {!pricesLoading && merged.length > 0 && filtered.length === 0 && (
+        <div className="text-center py-16 text-gray-500">
+          <p className="text-lg mb-2">No results for "{searchQuery}"</p>
+          <p className="text-sm">Try a different search term.</p>
+        </div>
+      )}
+
+      <AlertModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={handleSave}
+        alert={alerts.find((a) => a.assetPair === modalPair) ?? null}
+        defaultAssetPair={modalPair}
+        onDelete={
+          alerts.find((a) => a.assetPair === modalPair)
+            ? () => {
+                const existing = alerts.find((a) => a.assetPair === modalPair)
+                if (existing) removeAlert(existing.id)
+                setModalOpen(false)
+              }
+            : undefined
+        }
+      />
     </div>
   )
 }
