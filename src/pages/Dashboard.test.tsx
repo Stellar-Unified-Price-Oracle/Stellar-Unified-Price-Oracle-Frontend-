@@ -19,6 +19,18 @@ vi.mock('@tanstack/react-virtual', () => ({
   },
 }))
 
+vi.mock('../preferences/PreferencesContext', () => ({
+  usePreferences: vi.fn(() => ({
+    preferences: { refreshInterval: 10000, chartTimeRange: '24h', staleThresholdMinutes: 5, dashboardView: 'card', cardOrder: [] },
+    updatePreference: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
+    canUndo: false,
+    canRedo: false,
+    clearHistory: vi.fn(),
+  })),
+}))
+
 afterEach(cleanup)
 
 vi.mock('../context/PriceContext', () => ({
