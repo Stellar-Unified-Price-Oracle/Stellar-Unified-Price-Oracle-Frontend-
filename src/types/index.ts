@@ -47,3 +47,21 @@ export interface WsPriceUpdate {
 }
 
 export type WsMessage = WsPriceUpdate
+
+export interface Alert {
+  id: string
+  assetPair: string
+  upperThreshold: number | null
+  lowerThreshold: number | null
+  triggerOnce: boolean
+  active: boolean
+  createdAt: number
+  lastTriggeredAt: number | null
+}
+
+export interface AlertFormData {
+  assetPair: string
+  upperThreshold: string
+  lowerThreshold: string
+  triggerOnce: boolean
+}

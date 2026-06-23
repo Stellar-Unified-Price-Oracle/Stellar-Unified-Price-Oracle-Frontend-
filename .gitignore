@@ -1,6 +1,11 @@
 node_modules
 dist
+reports
 .env
 .env.local
 *.tsbuildinfo
 .DS_Store
+e2e/results
+e2e/test-results
+test-results/
+playwright-report

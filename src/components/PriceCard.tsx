@@ -13,20 +13,40 @@ interface PriceCardProps {
   price: PriceData
   onClick?: () => void
   isLive?: boolean
+  isStale?: boolean
+  hasAlert?: boolean
+  onAlertClick?: (e: React.MouseEvent) => void
 }
 
-export const PriceCard = memo(function PriceCard({ price, onClick, isLive }: PriceCardProps) {
+export const PriceCard = memo(function PriceCard({ price, onClick, isLive, isStale, hasAlert, onAlertClick }: PriceCardProps) {
   const confidencePct = (price.confidence * 100).toFixed(1)
 
   return (
-    <button
+    <div
       onClick={onClick}
-      className="w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:border-gray-300 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/80 transition-all shadow-sm dark:shadow-lg dark:shadow-black/20"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick?.()
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className={`w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer ${isStale ? 'opacity-60' : ''}`}
       aria-label={`View details for ${price.assetPair}`}
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">{price.assetPair}</h3>
-        {isLive && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" role="status" aria-label="Live data" />}
+        <h3 className="text-lg font-semibold text-gray-100">{price.assetPair}</h3>
+        <div className="flex items-center gap-2">
+          {hasAlert && (
+            <span
+              className="w-2 h-2 rounded-full bg-amber-400"
+              role="status"
+              aria-label="Active alert"
+            />
+          )}
+          {isLive && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" role="status" aria-label="Live data" />}
+        </div>
       </div>
 
       <div className="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight">
@@ -48,6 +68,23 @@ export const PriceCard = memo(function PriceCard({ price, onClick, isLive }: Pri
           </span>
         ))}
       </div>
-    </button>
+
+      <div className="mt-3 pt-3 border-t border-gray-800">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onAlertClick?.(e)
+          }}
+          className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${hasAlert ? 'text-amber-400 hover:text-amber-300' : 'text-gray-500 hover:text-gray-300'}`}
+          aria-label={`Set alert for ${price.assetPair}`}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+          </svg>
+          {hasAlert ? 'Alert set' : 'Set alert'}
+        </button>
+      </div>
+    </div>
   )
 })
