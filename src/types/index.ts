@@ -78,4 +78,3 @@ export interface AlertsContextType {
   togglePanel: () => void
   markAsRead: (id: string) => void
 }
-}

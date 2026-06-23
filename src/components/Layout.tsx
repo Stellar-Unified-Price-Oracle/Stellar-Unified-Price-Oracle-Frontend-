@@ -118,8 +118,9 @@ export function Layout({ children }: { children: ReactNode }) {
               </button>
             </div>
           </div>
+        </div>
 
-          {menuOpen && (
+        {menuOpen && (
             <div className="sm:hidden pb-3">
               {NAV_ITEMS.map((item) => (
                 <Link
