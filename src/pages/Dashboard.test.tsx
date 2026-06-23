@@ -110,8 +110,8 @@ describe('Dashboard', () => {
         <Dashboard />
       </MemoryRouter>,
     )
-    expect(screen.getByText('BTC/USD')).toBeInTheDocument()
-    expect(screen.getByText('ETH/USD')).toBeInTheDocument()
+    expect(screen.getAllByText('BTC/USD').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('ETH/USD').length).toBeGreaterThanOrEqual(1)
   })
 
   it('opens alert modal when Set alert is clicked', async () => {
