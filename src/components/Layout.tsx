@@ -54,7 +54,6 @@ export function Layout({ children }: { children: ReactNode }) {
               </span>
             </Link>
 
-<<<<<<< HEAD
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="hidden sm:flex items-center gap-1">
                 {NAV_ITEMS.map((item) => (
@@ -77,18 +76,6 @@ export function Layout({ children }: { children: ReactNode }) {
                   onClick={togglePanel}
                   className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   aria-label="Toggle price alerts"
-=======
-            <div className="hidden sm:flex items-center gap-1">
-              {NAV_ITEMS.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    location.pathname === item.path
-                      ? 'bg-gray-100 dark:bg-gray-800 text-cyan-600 dark:text-cyan-400'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-                  }`}
->>>>>>> ecdb171f1c985c60ec4320e838a7607850361bfc
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -113,34 +100,12 @@ export function Layout({ children }: { children: ReactNode }) {
                   aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
                 >
                   {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-
-<<<<<<< HEAD
-=======
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSettingsOpen(true)}
-                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                aria-label="Open settings"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-              >
-                {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
->>>>>>> ecdb171f1c985c60ec4320e838a7607850361bfc
-              </button>
-
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="sm:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-                aria-label="Toggle menu"
-              >
+                </button>
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="sm:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  aria-label="Toggle menu"
+                >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {menuOpen ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -181,11 +146,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <footer className="border-t border-gray-200 dark:border-gray-800 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
         Stellar Unified Price Oracle &middot; Developer Portal &amp; Analytics Dashboard
       </footer>
-<<<<<<< HEAD
       <AlertPanel />
-=======
-
->>>>>>> ecdb171f1c985c60ec4320e838a7607850361bfc
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
     </div>
   )

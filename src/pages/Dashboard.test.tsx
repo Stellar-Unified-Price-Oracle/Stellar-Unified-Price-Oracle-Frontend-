@@ -36,9 +36,10 @@ vi.mock('../context/PriceContext', () => ({
   })),
 }))
 
+const TEST_TIMESTAMP = new Date('2024-01-01T12:00:00Z').getTime()
 const mockPrices = [
-  { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
-  { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 0.95, sources: ['redstone'] },
+  { assetPair: 'BTC/USD', price: 50000, timestamp: TEST_TIMESTAMP, confidence: 0.99, sources: ['chainlink'] },
+  { assetPair: 'ETH/USD', price: 3000, timestamp: TEST_TIMESTAMP, confidence: 0.95, sources: ['redstone'] },
 ]
 
 describe('Dashboard', () => {
@@ -468,6 +469,15 @@ describe('Dashboard', () => {
 })
 
 describe('snapshots', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-01-01T12:00:03Z'))
+  })
+  
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('loading', () => {
     const { container } = render(
       <MemoryRouter>

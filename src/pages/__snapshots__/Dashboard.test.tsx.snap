@@ -345,7 +345,7 @@ exports[`snapshots > loading 1`] = `
           >
             <span>
               Updated 
-              0s ago
+              -78125721s ago
             </span>
             <span
               class="text-cyan-600 dark:text-cyan-400"
@@ -418,7 +418,7 @@ exports[`snapshots > loading 1`] = `
           >
             <span>
               Updated 
-              0s ago
+              -78125721s ago
             </span>
             <span
               class="text-cyan-600 dark:text-cyan-400"
@@ -491,7 +491,7 @@ exports[`snapshots > loading 1`] = `
           >
             <span>
               Updated 
-              0s ago
+              -78125721s ago
             </span>
             <span
               class="text-cyan-600 dark:text-cyan-400"
