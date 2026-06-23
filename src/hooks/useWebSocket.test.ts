@@ -6,7 +6,7 @@ import { FakeWebSocket } from '../test/fakeWebSocket'
 let ws: FakeWebSocket
 
 function stubWebSocket(): void {
-  const mock = vi.fn(() => ws) as any
+  const mock = vi.fn(() => ws) as unknown as { OPEN: number; CONNECTING: number; CLOSING: number; CLOSED: number }
   mock.OPEN = FakeWebSocket.OPEN
   mock.CONNECTING = FakeWebSocket.CONNECTING
   mock.CLOSING = FakeWebSocket.CLOSING

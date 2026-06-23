@@ -1,0 +1,514 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshots > create mode 1`] = `
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+  role="presentation"
+>
+  <div
+    aria-label="Create price alert"
+    aria-modal="true"
+    class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl focus:outline-none"
+    role="dialog"
+    tabindex="-1"
+  >
+    <div
+      class="flex items-center justify-between mb-6"
+    >
+      <h2
+        class="text-xl font-semibold text-white"
+      >
+        New Price Alert
+      </h2>
+      <button
+        aria-label="Close modal"
+        class="text-gray-500 hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-800"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M6 18L18 6M6 6l12 12"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+      </button>
+    </div>
+    <form
+      novalidate=""
+    >
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-asset-pair"
+        >
+          Asset Pair
+        </label>
+        <input
+          class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          id="alert-asset-pair"
+          placeholder="e.g. BTC/USD"
+          type="text"
+          value=""
+        />
+      </div>
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-upper"
+        >
+          Upper Threshold
+        </label>
+        <div
+          class="flex gap-2"
+        >
+          <input
+            class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            id="alert-upper"
+            min="0"
+            placeholder="Max price"
+            step="any"
+            type="number"
+            value=""
+          />
+        </div>
+      </div>
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-lower"
+        >
+          Lower Threshold
+        </label>
+        <div
+          class="flex gap-2"
+        >
+          <input
+            class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            id="alert-lower"
+            min="0"
+            placeholder="Min price"
+            step="any"
+            type="number"
+            value=""
+          />
+        </div>
+      </div>
+      <div
+        class="mb-6"
+      >
+        <label
+          class="flex items-center gap-3 cursor-pointer group"
+          for="alert-trigger-once"
+        >
+          <input
+            class="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500/50 focus:ring-offset-0 cursor-pointer"
+            id="alert-trigger-once"
+            type="checkbox"
+          />
+          <div>
+            <span
+              class="text-sm text-gray-300 group-hover:text-white transition-colors"
+            >
+              Trigger once
+            </span>
+            <p
+              class="text-xs text-gray-500"
+            >
+              Alert deactivates after being triggered
+            </p>
+          </div>
+        </label>
+      </div>
+      <div
+        class="flex gap-3"
+      >
+        <div
+          class="flex-1 flex gap-3 justify-end"
+        >
+          <button
+            class="px-4 py-2.5 text-sm font-medium text-gray-400 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 transition-colors"
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-4 py-2.5 text-sm font-medium text-white bg-cyan-600 rounded-xl hover:bg-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            type="submit"
+          >
+            Create Alert
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+`;
+
+exports[`snapshots > edit mode 1`] = `
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+  role="presentation"
+>
+  <div
+    aria-label="Edit price alert"
+    aria-modal="true"
+    class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl focus:outline-none"
+    role="dialog"
+    tabindex="-1"
+  >
+    <div
+      class="flex items-center justify-between mb-6"
+    >
+      <h2
+        class="text-xl font-semibold text-white"
+      >
+        Edit Alert
+      </h2>
+      <button
+        aria-label="Close modal"
+        class="text-gray-500 hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-800"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M6 18L18 6M6 6l12 12"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+      </button>
+    </div>
+    <form
+      novalidate=""
+    >
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-asset-pair"
+        >
+          Asset Pair
+        </label>
+        <input
+          class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled=""
+          id="alert-asset-pair"
+          placeholder="e.g. BTC/USD"
+          type="text"
+          value="BTC/USD"
+        />
+      </div>
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-upper"
+        >
+          Upper Threshold
+        </label>
+        <div
+          class="flex gap-2"
+        >
+          <input
+            class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            id="alert-upper"
+            min="0"
+            placeholder="Max price"
+            step="any"
+            type="number"
+            value="60000"
+          />
+        </div>
+      </div>
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-lower"
+        >
+          Lower Threshold
+        </label>
+        <div
+          class="flex gap-2"
+        >
+          <input
+            class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            id="alert-lower"
+            min="0"
+            placeholder="Min price"
+            step="any"
+            type="number"
+            value="40000"
+          />
+        </div>
+      </div>
+      <div
+        class="mb-6"
+      >
+        <label
+          class="flex items-center gap-3 cursor-pointer group"
+          for="alert-trigger-once"
+        >
+          <input
+            class="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500/50 focus:ring-offset-0 cursor-pointer"
+            id="alert-trigger-once"
+            type="checkbox"
+          />
+          <div>
+            <span
+              class="text-sm text-gray-300 group-hover:text-white transition-colors"
+            >
+              Trigger once
+            </span>
+            <p
+              class="text-xs text-gray-500"
+            >
+              Alert deactivates after being triggered
+            </p>
+          </div>
+        </label>
+      </div>
+      <div
+        class="flex gap-3"
+      >
+        <button
+          class="px-4 py-2.5 text-sm font-medium text-red-400 bg-red-400/10 border border-red-400/20 rounded-xl hover:bg-red-400/20 transition-colors"
+          type="button"
+        >
+          Delete Alert
+        </button>
+        <div
+          class="flex-1 flex gap-3 justify-end"
+        >
+          <button
+            class="px-4 py-2.5 text-sm font-medium text-gray-400 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 transition-colors"
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-4 py-2.5 text-sm font-medium text-white bg-cyan-600 rounded-xl hover:bg-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            type="submit"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+`;
+
+exports[`snapshots > with suggestions 1`] = `
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+  role="presentation"
+>
+  <div
+    aria-label="Create price alert"
+    aria-modal="true"
+    class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl focus:outline-none"
+    role="dialog"
+    tabindex="-1"
+  >
+    <div
+      class="flex items-center justify-between mb-6"
+    >
+      <h2
+        class="text-xl font-semibold text-white"
+      >
+        New Price Alert
+      </h2>
+      <button
+        aria-label="Close modal"
+        class="text-gray-500 hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-800"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M6 18L18 6M6 6l12 12"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+      </button>
+    </div>
+    <form
+      novalidate=""
+    >
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-asset-pair"
+        >
+          Asset Pair
+        </label>
+        <input
+          class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          id="alert-asset-pair"
+          placeholder="e.g. BTC/USD"
+          type="text"
+          value=""
+        />
+      </div>
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-upper"
+        >
+          Upper Threshold
+        </label>
+        <div
+          class="flex gap-2"
+        >
+          <input
+            class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            id="alert-upper"
+            min="0"
+            placeholder="Max price"
+            step="any"
+            type="number"
+            value=""
+          />
+          <div
+            class="flex gap-1 shrink-0"
+          >
+            <button
+              class="px-2 py-1 text-xs font-medium text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded-lg hover:bg-cyan-400/20 transition-colors"
+              type="button"
+            >
+              +5%
+            </button>
+            <button
+              class="px-2 py-1 text-xs font-medium text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded-lg hover:bg-cyan-400/20 transition-colors"
+              type="button"
+            >
+              +10%
+            </button>
+          </div>
+        </div>
+      </div>
+      <div
+        class="mb-4"
+      >
+        <label
+          class="block text-sm font-medium text-gray-400 mb-1.5"
+          for="alert-lower"
+        >
+          Lower Threshold
+        </label>
+        <div
+          class="flex gap-2"
+        >
+          <input
+            class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            id="alert-lower"
+            min="0"
+            placeholder="Min price"
+            step="any"
+            type="number"
+            value=""
+          />
+          <div
+            class="flex gap-1 shrink-0"
+          >
+            <button
+              class="px-2 py-1 text-xs font-medium text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded-lg hover:bg-cyan-400/20 transition-colors"
+              type="button"
+            >
+              -5%
+            </button>
+            <button
+              class="px-2 py-1 text-xs font-medium text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded-lg hover:bg-cyan-400/20 transition-colors"
+              type="button"
+            >
+              -10%
+            </button>
+          </div>
+        </div>
+      </div>
+      <div
+        class="mb-6"
+      >
+        <label
+          class="flex items-center gap-3 cursor-pointer group"
+          for="alert-trigger-once"
+        >
+          <input
+            class="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500/50 focus:ring-offset-0 cursor-pointer"
+            id="alert-trigger-once"
+            type="checkbox"
+          />
+          <div>
+            <span
+              class="text-sm text-gray-300 group-hover:text-white transition-colors"
+            >
+              Trigger once
+            </span>
+            <p
+              class="text-xs text-gray-500"
+            >
+              Alert deactivates after being triggered
+            </p>
+          </div>
+        </label>
+      </div>
+      <div
+        class="flex gap-3"
+      >
+        <div
+          class="flex-1 flex gap-3 justify-end"
+        >
+          <button
+            class="px-4 py-2.5 text-sm font-medium text-gray-400 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 transition-colors"
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-4 py-2.5 text-sm font-medium text-white bg-cyan-600 rounded-xl hover:bg-cyan-500 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            type="submit"
+          >
+            Create Alert
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+`;
