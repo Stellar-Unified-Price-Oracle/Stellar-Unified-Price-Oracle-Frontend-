@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 
 :root {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -9,6 +10,11 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background-color: #ffffff;
+  color: #111827;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 * {

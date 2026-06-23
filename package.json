@@ -12,9 +12,36 @@
     "test:run": "vitest run",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
+    "build:analyze": "ANALYZE=true vite build",
+    "size-limit": "size-limit",
     "preview": "vite preview",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:webkit": "playwright test --project=webkit"
   },
+  "size-limit": [
+    {
+      "name": "Main JS (entry)",
+      "path": "dist/assets/index-*.js",
+      "limit": "200 kB",
+      "brotli": true
+    },
+    {
+      "name": "Total JS (all chunks)",
+      "path": "dist/assets/*.js",
+      "limit": "600 kB",
+      "brotli": true
+    },
+    {
+      "name": "CSS Bundle",
+      "path": "dist/assets/index-*.css",
+      "limit": "50 kB",
+      "brotli": true
+    }
+  ],
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -23,10 +50,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
+    "@playwright/test": "^1.61.0",
+    "@size-limit/file": "^12.1.0",
     "@tailwindcss/vite": "^4.1.4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
@@ -38,6 +68,8 @@
     "jsdom": "^26.0.0",
     "lint-staged": "^15.5.1",
     "prettier": "^3.5.3",
+    "rollup-plugin-visualizer": "^7.0.1",
+    "size-limit": "^12.1.0",
     "tailwindcss": "^4.1.4",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.29.1",

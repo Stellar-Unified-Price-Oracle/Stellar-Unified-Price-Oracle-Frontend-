@@ -7,7 +7,7 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#030712" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="description" content="Stellar Unified Price Oracle & Aggregator - Developer Portal & Analytics Dashboard" />
     <meta property="og:title" content="Stellar Oracle - Developer Portal & Analytics Dashboard" />
     <meta property="og:description" content="Stellar Unified Price Oracle & Aggregator - Developer Portal & Analytics Dashboard" />
@@ -19,6 +19,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <title>Stellar Oracle - Developer Portal & Analytics Dashboard</title>
     <script>
+      // Apply theme before paint to avoid flash
+      (function () {
+        var stored = localStorage.getItem('stellar-oracle-theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (stored === 'dark' || (!stored && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -26,7 +34,7 @@
       }
     </script>
   </head>
-  <body class="bg-gray-950 text-gray-100">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
