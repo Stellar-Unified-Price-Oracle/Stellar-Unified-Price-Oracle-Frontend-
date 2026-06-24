@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "--- pre-push: frontend build ---"
+npm run build
+BUILD_EXIT=$?
+if [ $BUILD_EXIT -ne 0 ]; then
+  echo "FAILED: frontend build failed, push aborted"
+  exit $BUILD_EXIT
+fi
+
+echo "--- pre-push: tests ---"
+npm run test:run
+TEST_EXIT=$?
+if [ $TEST_EXIT -ne 0 ]; then
+  echo "FAILED: tests failed, push aborted"
+  exit $TEST_EXIT
+fi
+
+echo "--- pre-push: all checks passed ---"

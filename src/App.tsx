@@ -1,36 +1,42 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Dashboard } from './pages/Dashboard'
 import { NotFound } from './pages/NotFound'
+import { useWebVitals } from './hooks/useWebVitals'
+import { useAccessibility } from './hooks/useAccessibility'
+import { PreferencesProvider } from './preferences/PreferencesContext'
+import { ToastProvider } from './context/ToastContext'
+import { ToastContainer } from './components/ToastContainer'
 
-const PriceDetail = lazy(() =>
-  import('./pages/PriceDetail').then((m) => ({ default: m.PriceDetail })),
-)
+const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
 
-function PriceDetailLoader() {
+function AppContent() {
+  const location = useLocation()
+  useAccessibility()
   return (
-    <div className="flex items-center justify-center py-32" role="status" aria-label="Loading page">
-      <div className="animate-spin w-10 h-10 border-2 border-cyan-400 border-t-transparent rounded-full" />
-    </div>
+    <ErrorBoundary key={location.key}>
+      <PreferencesProvider>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
+      </PreferencesProvider>
+    </ErrorBoundary>
   )
 }
 
 export default function App() {
+  useWebVitals()
+
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <Layout>
-          <Suspense fallback={<PriceDetailLoader />}>
-            <Routes>
-              <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
-              <Route path="/price/:pair" element={<ErrorBoundary><PriceDetail /></ErrorBoundary>} />
-              <Route path="*" element={<ErrorBoundary><NotFound /></ErrorBoundary>} />
-            </Routes>
-          </Suspense>
-        </Layout>
-      </ErrorBoundary>
+    <BrowserRouter basename={BASENAME}>
+      <ToastProvider>
+        <AppContent />
+        <ToastContainer />
+      </ToastProvider>
     </BrowserRouter>
   )
 }

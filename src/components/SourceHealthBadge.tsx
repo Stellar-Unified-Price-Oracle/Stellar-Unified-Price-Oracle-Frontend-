@@ -11,7 +11,7 @@ interface SourceHealthProps {
 
 export function SourceHealthBadge({ sources }: SourceHealthProps) {
   if (!sources.length) {
-    return <span className="text-xs text-gray-500">No sources</span>
+    return <span className="text-xs text-gray-400 dark:text-gray-500">No sources</span>
   }
 
   return (
@@ -22,7 +22,7 @@ export function SourceHealthBadge({ sources }: SourceHealthProps) {
         return (
           <span
             key={src}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border border-gray-700 text-gray-300 bg-gray-800"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800"
           >
             <span className={`w-1.5 h-1.5 rounded-full ${info.color}`} />
             {info.label}

@@ -7,7 +7,7 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#030712" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="description" content="Stellar Unified Price Oracle & Aggregator - Developer Portal & Analytics Dashboard" />
     <meta property="og:title" content="Stellar Oracle - Developer Portal & Analytics Dashboard" />
     <meta property="og:description" content="Stellar Unified Price Oracle & Aggregator - Developer Portal & Analytics Dashboard" />
@@ -17,8 +17,21 @@
     <meta name="twitter:description" content="Stellar Unified Price Oracle & Aggregator - Developer Portal & Analytics Dashboard" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all';this.onload=null" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" /></noscript>
+    <link rel="preload" as="image" href="/vite.svg" />
+    <!-- __RESOURCE_HINTS__ -->
     <title>Stellar Oracle - Developer Portal & Analytics Dashboard</title>
     <script>
+      // Apply theme before paint to avoid flash
+      (function () {
+        var stored = localStorage.getItem('stellar-oracle-theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (stored === 'dark' || (!stored && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -26,7 +39,7 @@
       }
     </script>
   </head>
-  <body class="bg-gray-950 text-gray-100">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

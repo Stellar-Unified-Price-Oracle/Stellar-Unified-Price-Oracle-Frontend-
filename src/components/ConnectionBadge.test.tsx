@@ -1,8 +1,15 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
 import { ConnectionBadge } from './ConnectionBadge'
+import { checkAccessibility } from '../test/accessibility'
+
+afterEach(cleanup)
 
 describe('ConnectionBadge', () => {
+  it('should have no accessibility violations', async () => {
+    await checkAccessibility(<ConnectionBadge status="connected" />)
+  })
+
   it('renders connected status', () => {
     render(<ConnectionBadge status="connected" />)
     expect(screen.getByText('Live')).toBeInTheDocument()
@@ -22,5 +29,27 @@ describe('ConnectionBadge', () => {
   it('renders disconnected status', () => {
     render(<ConnectionBadge status="disconnected" />)
     expect(screen.getByText('Offline')).toBeInTheDocument()
+  })
+})
+
+describe('snapshots', () => {
+  it('connected', () => {
+    const { container } = render(<ConnectionBadge status="connected" />)
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('connecting', () => {
+    const { container } = render(<ConnectionBadge status="connecting" />)
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('reconnecting', () => {
+    const { container } = render(<ConnectionBadge status="reconnecting" />)
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('disconnected', () => {
+    const { container } = render(<ConnectionBadge status="disconnected" />)
+    expect(container.firstChild).toMatchSnapshot()
   })
 })

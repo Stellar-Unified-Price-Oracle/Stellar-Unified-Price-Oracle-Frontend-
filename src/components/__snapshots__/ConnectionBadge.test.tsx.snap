@@ -1,0 +1,57 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshots > connected 1`] = `
+<span
+  aria-label="WebSocket Live"
+  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+  role="status"
+>
+  <span
+    aria-hidden="true"
+    class="w-2 h-2 rounded-full bg-green-500 animate-pulse"
+  />
+  Live
+</span>
+`;
+
+exports[`snapshots > connecting 1`] = `
+<span
+  aria-label="WebSocket Connecting"
+  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+  role="status"
+>
+  <span
+    aria-hidden="true"
+    class="w-2 h-2 rounded-full bg-yellow-500 "
+  />
+  Connecting
+</span>
+`;
+
+exports[`snapshots > disconnected 1`] = `
+<span
+  aria-label="WebSocket Offline"
+  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+  role="status"
+>
+  <span
+    aria-hidden="true"
+    class="w-2 h-2 rounded-full bg-red-500 "
+  />
+  Offline
+</span>
+`;
+
+exports[`snapshots > reconnecting 1`] = `
+<span
+  aria-label="WebSocket Reconnecting"
+  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+  role="status"
+>
+  <span
+    aria-hidden="true"
+    class="w-2 h-2 rounded-full bg-yellow-500 "
+  />
+  Reconnecting
+</span>
+`;
