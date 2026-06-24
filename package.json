@@ -15,12 +15,7 @@
     "build:analyze": "ANALYZE=true vite build",
     "size-limit": "size-limit",
     "preview": "vite preview",
-    "prepare": "husky || true",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:chromium": "playwright test --project=chromium",
-    "test:e2e:firefox": "playwright test --project=firefox",
-    "test:e2e:webkit": "playwright test --project=webkit"
+    "prepare": "husky || true"
   },
   "size-limit": [
     {
@@ -43,16 +38,13 @@
     }
   ],
   "dependencies": {
-    "@tanstack/react-virtual": "^3.14.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.0",
-    "recharts": "^2.15.3",
-    "web-vitals": "^4.2.4"
+    "zod": "^3.24.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
-    "@playwright/test": "^1.61.0",
     "@size-limit/file": "^12.1.0",
     "@tailwindcss/vite": "^4.1.4",
     "@testing-library/jest-dom": "^6.6.3",

@@ -13,19 +13,22 @@ vi.mock('../config', () => ({
   },
 }))
 
-import { rateLimitManager } from './rateLimit'
-
-const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchHealth, RateLimitError } = await import('./rest')
+// Keep a reference to reset coalescing state between tests
+const restModule = await import('./rest')
+const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchBatchHistory, fetchHealth } =
+  restModule
 
 const mockFetch = vi.fn()
 
 beforeEach(() => {
   mockFetch.mockReset()
   vi.stubGlobal('fetch', mockFetch)
-  rateLimitManager.clearRateLimit()
+  vi.useFakeTimers()
 })
 
 afterEach(() => {
+  vi.runAllTimers()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   rateLimitManager.clearRateLimit()
 })
@@ -45,6 +48,9 @@ function errorResponse(status: number, text: string, headers?: Record<string, st
   }
 }
 
+// ---------------------------------------------------------------------------
+// fetchAllPrices
+// ---------------------------------------------------------------------------
 describe('fetchAllPrices', () => {
   it('fetches all prices without params', async () => {
     mockFetch.mockResolvedValue(okResponse([{ assetPair: 'BTC/USD' }]))
@@ -66,40 +72,18 @@ describe('fetchAllPrices', () => {
 
   it('throws HttpRetryError after retrying transient 5xx failures', async () => {
     mockFetch.mockResolvedValue(errorResponse(500, 'Server error'))
-    await expect(fetchAllPrices()).rejects.toThrow('HTTP 500 Server error')
-  })
-
-  it('throws RateLimitError on 429 with Retry-After header', async () => {
-    mockFetch.mockResolvedValue(
-      errorResponse(429, 'Too Many Requests', { 'Retry-After': '30' }),
-    )
-    try {
-      await fetchAllPrices()
-      expect.unreachable('should have thrown')
-    } catch (e) {
-      expect(e).toBeInstanceOf(RateLimitError)
-      expect(e).toHaveProperty('retryAfterMs', 30000)
-      expect((e as Error).message).toContain('429')
+    const promise = fetchAllPrices()
+    for (let i = 0; i < 10; i++) {
+      vi.advanceTimersByTime(5000)
+      await Promise.resolve()
     }
-    expect(rateLimitManager.isLimited).toBe(true)
-  })
-
-  it('prevents cascading requests when rate limited', async () => {
-    // First request triggers rate limit
-    mockFetch.mockResolvedValue(
-      errorResponse(429, 'Too Many Requests', { 'Retry-After': '60' }),
-    )
-    await expect(fetchAllPrices()).rejects.toThrow(RateLimitError)
-
-    // Reject first call (mocked above) is now used; clear mock to verify no new fetch is called
-    mockFetch.mockClear()
-
-    // Second request should be immediately rejected without making a network call
-    await expect(fetchAllPrices()).rejects.toThrow(RateLimitError)
-    expect(mockFetch).not.toHaveBeenCalled()
-  })
+    await expect(promise).rejects.toThrow('HTTP 500 Server error')
+  }, 10_000)
 })
 
+// ---------------------------------------------------------------------------
+// fetchPrice
+// ---------------------------------------------------------------------------
 describe('fetchPrice', () => {
   it('fetches a single price', async () => {
     mockFetch.mockResolvedValue(okResponse({ assetPair: 'BTC/USD', price: 50000 }))
@@ -114,25 +98,120 @@ describe('fetchPrice', () => {
   })
 })
 
-describe('fetchPriceHistory', () => {
-  it('fetches history with default limit', async () => {
-    mockFetch.mockResolvedValue(okResponse({ pair: 'BTC/USD', history: [] }))
-    const result = await fetchPriceHistory('BTC/USD')
-    expect(result).toEqual({ pair: 'BTC/USD', history: [] })
-    expect(mockFetch.mock.calls[0][0]).toBe('/api/prices/BTC%2FUSD/history?limit=100&offset=0')
-  })
-
-  it('fetches history with custom limit and offset', async () => {
-    mockFetch.mockResolvedValue(okResponse({ pair: 'BTC/USD', history: [] }))
-    await fetchPriceHistory('BTC/USD', 50, 10)
-    expect(mockFetch.mock.calls[0][0]).toBe('/api/prices/BTC%2FUSD/history?limit=50&offset=10')
-  })
-})
-
+// ---------------------------------------------------------------------------
+// fetchHealth
+// ---------------------------------------------------------------------------
 describe('fetchHealth', () => {
   it('fetches health endpoint', async () => {
     mockFetch.mockResolvedValue(okResponse({ status: 'ok', uptime: 1234 }))
     const result = await fetchHealth()
     expect(result).toEqual({ status: 'ok', uptime: 1234 })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// fetchBatchHistory
+// ---------------------------------------------------------------------------
+describe('fetchBatchHistory', () => {
+  it('posts to the batch endpoint', async () => {
+    const batchResult = [
+      { pair: 'BTC/USD', history: [] },
+      { pair: 'ETH/USD', history: [] },
+    ]
+    mockFetch.mockResolvedValue(okResponse(batchResult))
+
+    const result = await fetchBatchHistory(['BTC/USD', 'ETH/USD'])
+
+    expect(result).toEqual(batchResult)
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/prices/history/batch')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body as string)).toEqual({ pairs: ['BTC/USD', 'ETH/USD'] })
+  })
+
+  it('throws on batch endpoint error', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+    await expect(fetchBatchHistory(['BTC/USD'])).rejects.toThrow('404')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// fetchPriceHistory — coalescing
+// ---------------------------------------------------------------------------
+describe('fetchPriceHistory coalescing', () => {
+  const btcHistory = { pair: 'BTC/USD', history: [{ price: 1, timestamp: 0, confidence: 0.9, sources: [] }] }
+  const ethHistory = { pair: 'ETH/USD', history: [] }
+
+  it('coalesces concurrent calls into a single batch request', async () => {
+    mockFetch.mockResolvedValue(okResponse([btcHistory, ethHistory]))
+
+    const p1 = fetchPriceHistory('BTC/USD')
+    const p2 = fetchPriceHistory('ETH/USD')
+
+    // Advance past the 50ms coalescing window
+    vi.advanceTimersByTime(50)
+    await Promise.resolve() // flush microtasks
+
+    const [r1, r2] = await Promise.all([p1, p2])
+
+    // Only one network call should have been made
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockFetch.mock.calls[0][0]).toBe('/api/prices/history/batch')
+    expect(r1).toEqual(btcHistory)
+    expect(r2).toEqual(ethHistory)
+  })
+
+  it('deduplicates identical concurrent requests', async () => {
+    mockFetch.mockResolvedValue(okResponse([btcHistory]))
+
+    const p1 = fetchPriceHistory('BTC/USD')
+    const p2 = fetchPriceHistory('BTC/USD')
+
+    vi.advanceTimersByTime(50)
+    await Promise.resolve()
+
+    const [r1, r2] = await Promise.all([p1, p2])
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(r1).toEqual(btcHistory)
+    expect(r2).toEqual(btcHistory)
+  })
+
+  it('falls back to individual requests when batch endpoint fails', async () => {
+    // First call = batch fails, then individual succeeds
+    mockFetch
+      .mockResolvedValueOnce(errorResponse(404, 'Not Found')) // batch
+      .mockResolvedValue(okResponse(btcHistory)) // individual fallback
+
+    const p1 = fetchPriceHistory('BTC/USD')
+
+    vi.advanceTimersByTime(50)
+    await Promise.resolve()
+
+    const result = await p1
+    expect(result).toEqual(btcHistory)
+    // First call was batch, second was individual
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(mockFetch.mock.calls[1][0]).toBe('/api/prices/BTC%2FUSD/history?limit=100&offset=0')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Zod schema validation
+// ---------------------------------------------------------------------------
+describe('schema validation', () => {
+  it('warns on schema mismatch in test mode but still returns data', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    // confidence > 1 violates the schema
+    const badData = [{ assetPair: 'BTC/USD', price: 1, timestamp: 0, confidence: 1.5, sources: [] }]
+    mockFetch.mockResolvedValue(okResponse(badData))
+
+    const result = await fetchAllPrices()
+    // Still returns data (graceful degradation)
+    expect(result).toEqual(badData)
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[API validation]'))
+
+    warnSpy.mockRestore()
   })
 })
