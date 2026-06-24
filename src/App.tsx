@@ -6,6 +6,7 @@ import { NotFound } from './pages/NotFound'
 import { useWebVitals } from './hooks/useWebVitals'
 import { useAccessibility } from './hooks/useAccessibility'
 import { PreferencesProvider } from './preferences/PreferencesContext'
+import { FeatureFlagsProvider } from './features/FeatureFlagsContext'
 import { ToastProvider } from './context/ToastContext'
 import { ToastContainer } from './components/ToastContainer'
 
@@ -16,14 +17,16 @@ function AppContent() {
   useAccessibility()
   return (
     <ErrorBoundary key={location.key}>
-      <PreferencesProvider>
-        <Layout>
+      <FeatureFlagsProvider>
+        <PreferencesProvider>
+          <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
       </PreferencesProvider>
+    </FeatureFlagsProvider>
     </ErrorBoundary>
   )
 }

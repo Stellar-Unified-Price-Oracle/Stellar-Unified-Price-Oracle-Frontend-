@@ -1,4 +1,5 @@
 import { usePreferences } from '../preferences/PreferencesContext'
+import { useFeatureFlags } from '../features/FeatureFlagsContext'
 import {
   REFRESH_INTERVAL_OPTIONS,
   CHART_RANGE_OPTIONS,
@@ -52,6 +53,7 @@ function AccessibilityToggle({
 export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const { preferences, updatePreference, undo, redo, canUndo, canRedo, clearHistory } =
     usePreferences()
+  const { flags, loading: flagsLoading, error: flagsError, override, clearAllOverrides } = useFeatureFlags()
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -155,6 +157,77 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                 checked={preferences.largeText}
                 onChange={(val) => updatePreference('largeText', val)}
               />
+            </div>
+          </section>
+
+          {/* Feature Flags */}
+          <section aria-labelledby="feature-flags-heading">
+            <h3 id="feature-flags-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+              Feature Flags
+            </h3>
+            <div className="space-y-2">
+              {flagsLoading ? (
+                <div className="text-center text-gray-500 py-4">Loading...</div>
+              ) : flagsError ? (
+                <div className="text-center text-red-400 py-4">Error: {flagsError}</div>
+              ) : Object.keys(flags).length === 0 ? (
+                <div className="text-center text-gray-500 py-4">No feature flags configured</div>
+              ) : (
+                <>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {Object.entries(flags).map(([name, flag]) => (
+                      <div
+                        key={name}
+                        className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-200 truncate">{name}</span>
+                            <span
+                              className={`text-xs px-1.5 py-0.5 rounded ${
+                                flag.source === 'override'
+                                  ? 'bg-purple-900/50 text-purple-300'
+                                  : flag.source === 'local'
+                                    ? 'bg-blue-900/50 text-blue-300'
+                                    : 'bg-green-900/50 text-green-300'
+                              }`}
+                            >
+                              {flag.source}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">{flag.description}</p>
+                        </div>
+                        <label className="relative ml-4 flex-shrink-0">
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={flag.enabled}
+                            onChange={(e) => flag.source !== 'override' && override(name, e.target.checked)}
+                          />
+                          <div
+                            className={`w-10 h-5 rounded-full transition-colors duration-200 ${
+                              flag.enabled ? 'bg-cyan-500' : 'bg-gray-700'
+                            }`}
+                          />
+                          <div
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                              flag.enabled ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  {Object.values(flags).some(f => f.source === 'override') && (
+                    <button
+                      onClick={clearAllOverrides}
+                      className="text-xs text-cyan-400 hover:text-cyan-300"
+                    >
+                      Clear all overrides
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </section>
         </div>
