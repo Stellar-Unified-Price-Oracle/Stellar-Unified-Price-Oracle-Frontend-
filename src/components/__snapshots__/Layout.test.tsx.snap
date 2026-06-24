@@ -276,6 +276,34 @@ exports[`snapshots > default 1`] = `
           >
             <li>
               <a
+                aria-label="Ops"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg mx-1 transition-colors text-gray-400 hover:text-gray-200 hover:bg-gray-800/60"
+                data-discover="true"
+                href="/ops"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="w-5 h-5 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+                <span
+                  class="truncate transition-opacity duration-200"
+                >
+                  Ops
+                </span>
+              </a>
+            </li>
+            <li>
+              <a
                 aria-label="Health"
                 class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg mx-1 transition-colors text-gray-400 hover:text-gray-200 hover:bg-gray-800/60"
                 data-discover="true"
@@ -503,6 +531,29 @@ exports[`snapshots > default 1`] = `
             class="space-y-0.5"
             role="list"
           >
+            <li>
+              <a
+                class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors text-gray-400 hover:text-gray-200 hover:bg-gray-800/60"
+                data-discover="true"
+                href="/ops"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="w-5 h-5 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+                Ops
+              </a>
+            </li>
             <li>
               <a
                 class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors text-gray-400 hover:text-gray-200 hover:bg-gray-800/60"
