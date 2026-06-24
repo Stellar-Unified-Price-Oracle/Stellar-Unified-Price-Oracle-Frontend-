@@ -19,16 +19,18 @@ export default defineConfig({
 
           try {
             origins.add(new URL(apiUrl).origin)
-          } catch {
-            /* ignore invalid URL */
+          } catch (err) {
+            // ignore invalid URL
+            void err
           }
 
           try {
             origins.add(
               new URL(wsUrl.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')).origin,
             )
-          } catch {
-            /* ignore invalid URL */
+          } catch (err) {
+            // ignore invalid URL
+            void err
           }
 
           const hints = Array.from(origins)
