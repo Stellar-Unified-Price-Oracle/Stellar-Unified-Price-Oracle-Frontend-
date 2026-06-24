@@ -41,10 +41,11 @@ function setRateLimitInfo(response: Response): void {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal): Promise<T> {
   const url = `${config.apiUrl}${path}`
   const res = await fetchWithRetry(url, {
     ...init,
+    signal,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
 
@@ -129,11 +130,14 @@ async function _fetchHistoryDirect(
   pair: string,
   limit: number,
   offset: number,
+  signal?: AbortSignal,
 ): Promise<PriceHistoryResponse> {
   const cacheKey = `${pair}:${limit}:${offset}`
   try {
     const raw = await request<PriceHistoryResponse>(
       `/api/prices/${encodeURIComponent(pair)}/history?limit=${limit}&offset=${offset}`,
+      undefined,
+      signal,
     )
     const data = validate(PriceHistoryResponseSchema, raw)
     idbCache.set('history', cacheKey, data)
@@ -148,11 +152,11 @@ async function _fetchHistoryDirect(
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
-export async function fetchAllPrices(pairs?: string[]): Promise<PriceData[]> {
+export async function fetchAllPrices(pairs?: string[], signal?: AbortSignal): Promise<PriceData[]> {
   const params = pairs?.length ? `?pairs=${pairs.join(',')}` : ''
   const cacheKey = `all${params}`
   try {
-    const raw = await request<PriceData[]>(`/api/prices${params}`)
+    const raw = await request<PriceData[]>(`/api/prices${params}`, undefined, signal)
     const data = validate(PriceDataSchema.array(), raw)
     idbCache.set('prices', cacheKey, data)
     return data
@@ -163,9 +167,9 @@ export async function fetchAllPrices(pairs?: string[]): Promise<PriceData[]> {
   }
 }
 
-export async function fetchPrice(pair: string): Promise<PriceData> {
+export async function fetchPrice(pair: string, signal?: AbortSignal): Promise<PriceData> {
   try {
-    const raw = await request<PriceData>(`/api/prices/${encodeURIComponent(pair)}`)
+    const raw = await request<PriceData>(`/api/prices/${encodeURIComponent(pair)}`, undefined, signal)
     const data = validate(PriceDataSchema, raw)
     idbCache.set('prices', pair, data)
     return data
