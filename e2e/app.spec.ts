@@ -69,6 +69,7 @@ test.describe('Dashboard', () => {
   test('loads and displays price cards', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible()
     await expect(page.getByText('Aggregated from Chainlink, Redstone, Band & Reflector')).toBeVisible()
@@ -84,6 +85,7 @@ test.describe('Dashboard', () => {
   test('shows price details on each card', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     const btcCard = page.getByRole('button', { name: 'View details for BTC/USD' })
     await expect(btcCard).toBeVisible()
@@ -95,6 +97,7 @@ test.describe('Dashboard', () => {
   test('navigates to price detail page on card click', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     await page.getByRole('button', { name: 'View details for BTC/USD' }).click()
 
@@ -107,6 +110,7 @@ test.describe('Dashboard', () => {
   test('shows WebSocket connection indicator', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     const badge = page.getByRole('status', { name: /WebSocket/ })
     await expect(badge).toBeVisible()
@@ -129,6 +133,7 @@ test.describe('Dashboard', () => {
   test('filters price cards by search query', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     const searchInput = page.getByPlaceholder('Search by asset pair...')
     await expect(searchInput).toBeVisible()
@@ -148,6 +153,7 @@ test.describe('Dashboard', () => {
   test('shows no results message when search matches nothing', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     const searchInput = page.getByPlaceholder('Search by asset pair...')
     await searchInput.fill('zzz')
@@ -159,6 +165,7 @@ test.describe('Dashboard', () => {
   test('clears search and restores all cards', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     const searchInput = page.getByPlaceholder('Search by asset pair...')
     await searchInput.fill('eth')
@@ -171,6 +178,7 @@ test.describe('Dashboard', () => {
   test('shows connection badge text', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     const badge = page.getByRole('status', { name: /WebSocket/ })
     await expect(badge).toBeVisible()
@@ -190,6 +198,7 @@ test.describe('Error states', () => {
       })
     })
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     const alert = page.getByRole('alert').first()
     await expect(alert).toBeVisible({ timeout: 15_000 })
@@ -200,6 +209,7 @@ test.describe('Error states', () => {
       await route.abort('connectionrefused')
     })
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     const alert = page.getByRole('alert').first()
     await expect(alert).toBeVisible({ timeout: 15_000 })
@@ -214,6 +224,7 @@ test.describe('Error states', () => {
       })
     })
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('No price feeds available')).toBeVisible({ timeout: 15_000 })
   })
@@ -223,6 +234,7 @@ test.describe('Navigation', () => {
   test('navigates from dashboard to detail and back', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     await page.getByRole('button', { name: 'View details for BTC/USD' }).click()
     await expect(page).toHaveURL(/\/price\/BTC%2FUSD/)
@@ -236,6 +248,7 @@ test.describe('Navigation', () => {
   test('direct navigation to root shows dashboard', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
     await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible()
   })
 })
@@ -244,6 +257,7 @@ test.describe('Price detail page', () => {
   test('shows price detail with confidence and back button', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     await page.getByRole('button', { name: 'View details for BTC/USD' }).click()
 
@@ -255,6 +269,7 @@ test.describe('Price detail page', () => {
   test('opens alert modal from detail page', async ({ page }) => {
     await setupMockApi(page)
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
 
     await page.getByRole('button', { name: 'View details for BTC/USD' }).click()
     await page.getByRole('button', { name: 'Set price alert' }).click()
