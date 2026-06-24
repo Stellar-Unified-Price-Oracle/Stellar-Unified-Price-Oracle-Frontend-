@@ -196,6 +196,20 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search by asset pair..."
+            value={search}
+            onChange={(e) => {
+              const value = e.target.value
+              const params = new URLSearchParams(searchParams)
+              if (value) params.set('search', value)
+              else params.delete('search')
+              navigate({ search: params.toString() }, { replace: true })
+            }}
+            className="px-3 py-1.5 text-sm rounded-lg border border-gray-700 bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 w-48"
+            aria-label="Search by asset pair"
+          />
           {/* #50 — Share link button */}
           <button
             type="button"
