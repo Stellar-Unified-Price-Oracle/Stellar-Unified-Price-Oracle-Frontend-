@@ -21,7 +21,36 @@ exports[`snapshots > default 1`] = `
     </div>
     <div
       class="flex items-center gap-2"
-    />
+    >
+      <button
+        aria-label="More actions for BTC/USD"
+        class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <circle
+            cx="8"
+            cy="3"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="13"
+            r="1.2"
+          />
+        </svg>
+      </button>
+    </div>
   </div>
   <div
     class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
@@ -112,6 +141,34 @@ exports[`snapshots > hasAlert 1`] = `
         class="w-2 h-2 rounded-full bg-amber-400"
         role="status"
       />
+      <button
+        aria-label="More actions for BTC/USD"
+        class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <circle
+            cx="8"
+            cy="3"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="13"
+            r="1.2"
+          />
+        </svg>
+      </button>
     </div>
   </div>
   <div
@@ -203,6 +260,34 @@ exports[`snapshots > isLive 1`] = `
         class="w-2 h-2 rounded-full bg-green-500 animate-pulse"
         role="status"
       />
+      <button
+        aria-label="More actions for BTC/USD"
+        class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <circle
+            cx="8"
+            cy="3"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="13"
+            r="1.2"
+          />
+        </svg>
+      </button>
     </div>
   </div>
   <div
@@ -288,7 +373,36 @@ exports[`snapshots > isStale 1`] = `
     </div>
     <div
       class="flex items-center gap-2"
-    />
+    >
+      <button
+        aria-label="More actions for BTC/USD"
+        class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <circle
+            cx="8"
+            cy="3"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="13"
+            r="1.2"
+          />
+        </svg>
+      </button>
+    </div>
   </div>
   <div
     class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"

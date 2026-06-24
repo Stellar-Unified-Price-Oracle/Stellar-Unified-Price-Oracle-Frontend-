@@ -4,9 +4,11 @@ import { Layout } from './components/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Dashboard } from './pages/Dashboard'
 import { NotFound } from './pages/NotFound'
-import { AlertsProvider } from './hooks/useAlerts'
 import { useWebVitals } from './hooks/useWebVitals'
 import { PreferencesProvider } from './preferences/PreferencesContext'
+import { ToastProvider } from './context/ToastContext'
+import { ToastContainer } from './components/ToastContainer'
+import { OnboardingProvider, OnboardingTourOverlay } from './components/OnboardingTour'
 
 const PriceDetail = lazy(() =>
   import('./pages/PriceDetail').then((m) => ({ default: m.PriceDetail })),
@@ -51,7 +53,13 @@ export default function App() {
 
   return (
     <BrowserRouter basename={BASENAME}>
-      <AppContent />
+      <ToastProvider>
+        <OnboardingProvider>
+          <AppContent />
+          <ToastContainer />
+          <OnboardingTourOverlay />
+        </OnboardingProvider>
+      </ToastProvider>
     </BrowserRouter>
   )
 }

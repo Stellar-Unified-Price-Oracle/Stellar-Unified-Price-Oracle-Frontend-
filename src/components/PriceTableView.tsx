@@ -12,6 +12,9 @@ interface PriceTableViewProps {
   onRowClick: (pair: string) => void
   onAlertClick: (e: React.MouseEvent, pair: string) => void
   hasAlertFn: (pair: string) => boolean
+  selectMode?: boolean
+  selected?: Set<string>
+  onToggleSelect?: (pair: string) => void
 }
 
 const COLUMNS: { key: SortKey; label: string }[] = [
@@ -29,6 +32,9 @@ export const PriceTableView = memo(function PriceTableView({
   onRowClick,
   onAlertClick,
   hasAlertFn,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: PriceTableViewProps) {
   const [sortKey, setSortKey] = useState<SortKey>('assetPair')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
@@ -60,6 +66,11 @@ export const PriceTableView = memo(function PriceTableView({
       <table className="min-w-full text-sm" aria-label="Price feeds table">
         <thead>
           <tr className="sticky top-0 bg-gray-900 border-b border-gray-800">
+            {selectMode && (
+              <th scope="col" className="px-4 py-3 w-10">
+                <span className="sr-only">Select</span>
+              </th>
+            )}
             {COLUMNS.map(({ key, label }) => (
               <th
                 key={key}
@@ -87,21 +98,37 @@ export const PriceTableView = memo(function PriceTableView({
           {sorted.map((p) => {
             const isLive = livePairs.has(p.assetPair)
             const hasAlert = hasAlertFn(p.assetPair)
+            const isSelected = selected?.has(p.assetPair) ?? false
             return (
               <tr
                 key={p.assetPair}
-                onClick={() => onRowClick(p.assetPair)}
+                onClick={() => { if (selectMode) { onToggleSelect?.(p.assetPair) } else { onRowClick(p.assetPair) } }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    onRowClick(p.assetPair)
+                    if (selectMode) { onToggleSelect?.(p.assetPair) } else { onRowClick(p.assetPair) }
                   }
                 }}
                 role="button"
                 tabIndex={0}
-                className={`border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer transition-colors ${isStale ? 'opacity-60' : ''}`}
+                className={`border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer transition-colors ${isStale ? 'opacity-60' : ''} ${isSelected ? 'bg-cyan-900/20' : ''}`}
                 aria-label={`View details for ${p.assetPair}`}
+                aria-selected={selectMode ? isSelected : undefined}
               >
+                {selectMode && (
+                  <td className="px-4 py-3 w-10">
+                    <span
+                      className={`inline-flex w-4 h-4 items-center justify-center rounded border ${isSelected ? 'bg-cyan-600 border-cyan-500' : 'border-gray-600'}`}
+                      aria-hidden="true"
+                    >
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </span>
+                  </td>
+                )}
                 <td className="px-4 py-3 font-semibold text-gray-100 whitespace-nowrap">
                   <span className="flex items-center gap-2">
                     {p.assetPair}

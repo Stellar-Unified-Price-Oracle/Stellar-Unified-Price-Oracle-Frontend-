@@ -20,6 +20,27 @@ exports[`snapshots > empty 1`] = `
     <div
       class="flex items-center gap-3"
     >
+      <button
+        aria-label="Copy shareable link"
+        class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+        Share
+      </button>
       <span
         aria-label="WebSocket Offline"
         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
@@ -74,6 +95,27 @@ exports[`snapshots > error 1`] = `
     <div
       class="flex items-center gap-3"
     >
+      <button
+        aria-label="Copy shareable link"
+        class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+        Share
+      </button>
       <span
         aria-label="WebSocket Offline"
         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
@@ -134,6 +176,27 @@ exports[`snapshots > loading 1`] = `
     <div
       class="flex items-center gap-3"
     >
+      <button
+        aria-label="Copy shareable link"
+        class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+        Share
+      </button>
       <span
         aria-label="WebSocket Offline"
         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
@@ -147,7 +210,7 @@ exports[`snapshots > loading 1`] = `
       </span>
     </div>
   </div>
-  <section
+  <div
     aria-label="Loading price cards"
     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
   >
@@ -455,7 +518,7 @@ exports[`snapshots > loading 1`] = `
         />
       </div>
     </div>
-  </section>
+  </div>
 </div>
 `;
 
@@ -479,6 +542,49 @@ exports[`snapshots > with data 1`] = `
     <div
       class="flex items-center gap-3"
     >
+      <button
+        aria-label="Copy shareable link"
+        class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+        Share
+      </button>
+      <button
+        aria-label="Toggle selection mode"
+        aria-pressed="false"
+        class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+        Select
+      </button>
       <div
         aria-label="View toggle"
         class="flex items-center rounded-lg border border-gray-700 overflow-hidden"
@@ -745,255 +851,305 @@ exports[`snapshots > with data 1`] = `
         style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;"
       >
         <div
-          role="listitem"
+          aria-label="View details for BTC/USD"
+          class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
+          role="button"
+          tabindex="0"
         >
           <div
-            aria-label="View details for BTC/USD"
-            class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
-            role="button"
-            tabindex="0"
+            class="flex items-center justify-between mb-3"
           >
             <div
-              class="flex items-center justify-between mb-3"
-            >
-              <div
-                class="flex items-center gap-2"
-              >
-                <button
-                  aria-label="Drag handle for BTC/USD"
-                  class="cursor-grab text-gray-600 hover:text-gray-400 touch-none"
-                  draggable="true"
-                  tabindex="0"
-                  type="button"
-                >
-                  <svg
-                    aria-hidden="true"
-                    class="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 16 16"
-                  >
-                    <circle
-                      cx="5"
-                      cy="4"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="5"
-                      cy="8"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="5"
-                      cy="12"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="11"
-                      cy="4"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="11"
-                      cy="8"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="11"
-                      cy="12"
-                      r="1.2"
-                    />
-                  </svg>
-                </button>
-                <h2
-                  class="text-lg font-semibold text-gray-100"
-                >
-                  BTC/USD
-                </h2>
-              </div>
-              <div
-                class="flex items-center gap-2"
-              />
-            </div>
-            <div
-              class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
-            >
-              $
-              50,000.00
-            </div>
-            <div
-              class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
-            >
-              <span>
-                Updated 
-                1m ago
-              </span>
-              <span
-                class="text-cyan-600 dark:text-cyan-400"
-              >
-                99.0
-                % confidence
-              </span>
-            </div>
-            <div
-              class="flex flex-wrap gap-1.5"
-            >
-              <span
-                class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
-              >
-                chainlink
-              </span>
-            </div>
-            <div
-              class="mt-3 pt-3 border-t border-gray-800"
+              class="flex items-center gap-2"
             >
               <button
-                aria-label="Set alert for BTC/USD"
-                class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-500 hover:text-gray-300"
+                aria-label="Drag handle for BTC/USD"
+                class="cursor-grab text-gray-600 hover:text-gray-400 touch-none"
+                draggable="true"
+                tabindex="0"
                 type="button"
               >
                 <svg
                   aria-hidden="true"
-                  class="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                  class="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 16 16"
                 >
-                  <path
-                    d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
+                  <circle
+                    cx="5"
+                    cy="4"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="5"
+                    cy="8"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="5"
+                    cy="12"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="11"
+                    cy="4"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="11"
+                    cy="8"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="11"
+                    cy="12"
+                    r="1.2"
                   />
                 </svg>
-                Set alert
+              </button>
+              <h3
+                class="text-lg font-semibold text-gray-100"
+              >
+                BTC/USD
+              </h3>
+            </div>
+            <div
+              class="flex items-center gap-2"
+            >
+              <button
+                aria-label="More actions for BTC/USD"
+                class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 16 16"
+                >
+                  <circle
+                    cx="8"
+                    cy="3"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="8"
+                    cy="8"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="8"
+                    cy="13"
+                    r="1.2"
+                  />
+                </svg>
               </button>
             </div>
           </div>
+          <div
+            class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
+          >
+            $
+            50,000.00
+          </div>
+          <div
+            class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
+          >
+            <span>
+              Updated 
+              1m ago
+            </span>
+            <span
+              class="text-cyan-600 dark:text-cyan-400"
+            >
+              99.0
+              % confidence
+            </span>
+          </div>
+          <div
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+            >
+              chainlink
+            </span>
+          </div>
+          <div
+            class="mt-3 pt-3 border-t border-gray-800"
+          >
+            <button
+              aria-label="Set alert for BTC/USD"
+              class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-500 hover:text-gray-300"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+              Set alert
+            </button>
+          </div>
         </div>
         <div
-          role="listitem"
+          aria-label="View details for ETH/USD"
+          class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
+          role="button"
+          tabindex="0"
         >
           <div
-            aria-label="View details for ETH/USD"
-            class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
-            role="button"
-            tabindex="0"
+            class="flex items-center justify-between mb-3"
           >
             <div
-              class="flex items-center justify-between mb-3"
-            >
-              <div
-                class="flex items-center gap-2"
-              >
-                <button
-                  aria-label="Drag handle for ETH/USD"
-                  class="cursor-grab text-gray-600 hover:text-gray-400 touch-none"
-                  draggable="true"
-                  tabindex="0"
-                  type="button"
-                >
-                  <svg
-                    aria-hidden="true"
-                    class="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 16 16"
-                  >
-                    <circle
-                      cx="5"
-                      cy="4"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="5"
-                      cy="8"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="5"
-                      cy="12"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="11"
-                      cy="4"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="11"
-                      cy="8"
-                      r="1.2"
-                    />
-                    <circle
-                      cx="11"
-                      cy="12"
-                      r="1.2"
-                    />
-                  </svg>
-                </button>
-                <h2
-                  class="text-lg font-semibold text-gray-100"
-                >
-                  ETH/USD
-                </h2>
-              </div>
-              <div
-                class="flex items-center gap-2"
-              />
-            </div>
-            <div
-              class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
-            >
-              $
-              3,000.00
-            </div>
-            <div
-              class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
-            >
-              <span>
-                Updated 
-                2m ago
-              </span>
-              <span
-                class="text-cyan-600 dark:text-cyan-400"
-              >
-                95.0
-                % confidence
-              </span>
-            </div>
-            <div
-              class="flex flex-wrap gap-1.5"
-            >
-              <span
-                class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
-              >
-                redstone
-              </span>
-            </div>
-            <div
-              class="mt-3 pt-3 border-t border-gray-800"
+              class="flex items-center gap-2"
             >
               <button
-                aria-label="Set alert for ETH/USD"
-                class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-500 hover:text-gray-300"
+                aria-label="Drag handle for ETH/USD"
+                class="cursor-grab text-gray-600 hover:text-gray-400 touch-none"
+                draggable="true"
+                tabindex="0"
                 type="button"
               >
                 <svg
                   aria-hidden="true"
-                  class="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                  class="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 16 16"
                 >
-                  <path
-                    d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
+                  <circle
+                    cx="5"
+                    cy="4"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="5"
+                    cy="8"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="5"
+                    cy="12"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="11"
+                    cy="4"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="11"
+                    cy="8"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="11"
+                    cy="12"
+                    r="1.2"
                   />
                 </svg>
-                Set alert
+              </button>
+              <h3
+                class="text-lg font-semibold text-gray-100"
+              >
+                ETH/USD
+              </h3>
+            </div>
+            <div
+              class="flex items-center gap-2"
+            >
+              <button
+                aria-label="More actions for ETH/USD"
+                class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 16 16"
+                >
+                  <circle
+                    cx="8"
+                    cy="3"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="8"
+                    cy="8"
+                    r="1.2"
+                  />
+                  <circle
+                    cx="8"
+                    cy="13"
+                    r="1.2"
+                  />
+                </svg>
               </button>
             </div>
+          </div>
+          <div
+            class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
+          >
+            $
+            3,000.00
+          </div>
+          <div
+            class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
+          >
+            <span>
+              Updated 
+              2m ago
+            </span>
+            <span
+              class="text-cyan-600 dark:text-cyan-400"
+            >
+              95.0
+              % confidence
+            </span>
+          </div>
+          <div
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+            >
+              redstone
+            </span>
+          </div>
+          <div
+            class="mt-3 pt-3 border-t border-gray-800"
+          >
+            <button
+              aria-label="Set alert for ETH/USD"
+              class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-500 hover:text-gray-300"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                class="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+              Set alert
+            </button>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
-import { useParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState, useCallback } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { usePriceHistory } from '../hooks/usePriceHistory'
 import { usePriceContext } from '../context/PriceContext'
 import { useAlerts } from '../hooks/useAlerts'
@@ -8,19 +8,55 @@ import { SourceHealthBadge } from '../components/SourceHealthBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
 import { AlertBadge } from '../components/AlertBadge'
 import { AlertModal } from '../components/AlertModal'
+import { DateRangePicker, dateRangeToParams, type DateRange } from '../components/DateRangePicker'
 import { formatPrice, formatTimestamp } from '../utils/format'
 import type { Alert, AlertFormData } from '../types'
+
+function parseDateRange(searchParams: URLSearchParams): DateRange {
+  const preset = searchParams.get('preset')
+  const startDate = searchParams.get('startDate') ?? ''
+  const endDate = searchParams.get('endDate') ?? ''
+
+  const validPresets = ['1h', '24h', '7d', '30d', '1y', 'all', 'custom']
+  if (preset && validPresets.includes(preset)) {
+    return { preset: preset as DateRange['preset'], startDate, endDate }
+  }
+  return { preset: '24h', startDate: '', endDate: '' }
+}
 
 export function PriceDetail() {
   const { pair } = useParams<{ pair: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const decodedPair = pair ? decodeURIComponent(pair) : null
-  const { history, loading: historyLoading } = usePriceHistory(decodedPair)
+
+  // Date range state — persisted in URL
+  const [dateRange, setDateRange] = useState<DateRange>(() => parseDateRange(searchParams))
+
+  const historyParams = useMemo(() => dateRangeToParams(dateRange), [dateRange])
+
+  const { history, loading: historyLoading } = usePriceHistory(decodedPair, historyParams)
   const { prices, livePrices, wsStatus, subscribe, unsubscribe } = usePriceContext()
-  const { alerts, addAlert, updateAlert, removeAlert, getAlertsForPair, hasAlertsForPair } = useAlerts()
+  const { alerts, addAlert, updateAlert, removeAlert, getAlertsForPair, hasAlertsForPair } =
+    useAlerts()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingAlert, setEditingAlert] = useState<Alert | null>(null)
+
+  // Sync date range to URL
+  const handleDateRangeChange = useCallback(
+    (range: DateRange) => {
+      setDateRange(range)
+      const params = new URLSearchParams(searchParams)
+      params.set('preset', range.preset)
+      if (range.startDate) params.set('startDate', range.startDate)
+      else params.delete('startDate')
+      if (range.endDate) params.set('endDate', range.endDate)
+      else params.delete('endDate')
+      setSearchParams(params, { replace: true })
+    },
+    [searchParams, setSearchParams],
+  )
 
   useEffect(() => {
     if (decodedPair) subscribe([decodedPair])
@@ -29,7 +65,8 @@ export function PriceDetail() {
     }
   }, [decodedPair, subscribe, unsubscribe])
 
-  const priceData = livePrices.get(decodedPair ?? '') ?? prices.find((p) => p.assetPair === decodedPair)
+  const priceData =
+    livePrices.get(decodedPair ?? '') ?? prices.find((p) => p.assetPair === decodedPair)
 
   const handleOpenModal = useCallback(() => {
     const existing = alerts.find((a) => a.assetPair === decodedPair && a.active)
@@ -82,7 +119,13 @@ export function PriceDetail() {
         className="mb-6 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors flex items-center gap-1 cursor-pointer"
         type="button"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Back to Dashboard
@@ -129,8 +172,19 @@ export function PriceDetail() {
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-colors ${hasAlertsForPair(decodedPair) ? 'text-amber-400 bg-amber-400/10 border border-amber-400/20 hover:bg-amber-400/20' : 'text-gray-400 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'}`}
               aria-label={hasAlertsForPair(decodedPair) ? 'Manage alerts' : 'Set price alert'}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+                />
               </svg>
               {hasAlertsForPair(decodedPair) ? 'Manage Alert' : 'Set Alert'}
             </button>
@@ -147,19 +201,31 @@ export function PriceDetail() {
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-400 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 hover:text-gray-300 transition-colors"
             aria-label="Set price alert"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+              />
             </svg>
             Set Alert
           </button>
         </div>
       )}
 
-      <PriceChart
-        data={history}
-        pair={decodedPair}
-        loading={historyLoading}
-      />
+      {/* Date range picker */}
+      <div className="mb-4">
+        <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
+      </div>
+
+      <PriceChart data={history} pair={decodedPair} loading={historyLoading} />
 
       <AlertModal
         isOpen={modalOpen}
