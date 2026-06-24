@@ -4,10 +4,19 @@ import { PriceProvider } from './context/PriceContext'
 import App from './App'
 import './index.css'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <PriceProvider>
-      <App />
-    </PriceProvider>
-  </StrictMode>,
-)
+async function prepare() {
+  if (import.meta.env.VITE_USE_MOCK === 'true') {
+    const { worker } = await import('./mocks/browser')
+    return worker.start({ onUnhandledRequest: 'bypass' })
+  }
+}
+
+prepare().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <PriceProvider>
+        <App />
+      </PriceProvider>
+    </StrictMode>,
+  )
+})

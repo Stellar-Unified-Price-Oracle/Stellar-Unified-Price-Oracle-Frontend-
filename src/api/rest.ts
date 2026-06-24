@@ -33,10 +33,11 @@ function setRateLimitInfo(response: Response): void {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal): Promise<T> {
   const url = `${config.apiUrl}${path}`
   const res = await fetchWithRetry(url, {
     ...init,
+    signal,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
 
@@ -114,9 +115,12 @@ async function _fetchHistoryDirect(
   pair: string,
   limit: number,
   offset: number,
+  signal?: AbortSignal,
 ): Promise<PriceHistoryResponse> {
   const raw = await request<PriceHistoryResponse>(
     `/api/prices/${encodeURIComponent(pair)}/history?limit=${limit}&offset=${offset}`,
+    undefined,
+    signal,
   )
   return validate(PriceHistoryResponseSchema, raw)
 }
@@ -124,14 +128,14 @@ async function _fetchHistoryDirect(
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
-export async function fetchAllPrices(pairs?: string[]): Promise<PriceData[]> {
+export async function fetchAllPrices(pairs?: string[], signal?: AbortSignal): Promise<PriceData[]> {
   const params = pairs?.length ? `?pairs=${pairs.join(',')}` : ''
-  const raw = await request<PriceData[]>(`/api/prices${params}`)
+  const raw = await request<PriceData[]>(`/api/prices${params}`, undefined, signal)
   return validate(PriceDataSchema.array(), raw)
 }
 
-export async function fetchPrice(pair: string): Promise<PriceData> {
-  const raw = await request<PriceData>(`/api/prices/${encodeURIComponent(pair)}`)
+export async function fetchPrice(pair: string, signal?: AbortSignal): Promise<PriceData> {
+  const raw = await request<PriceData>(`/api/prices/${encodeURIComponent(pair)}`, undefined, signal)
   return validate(PriceDataSchema, raw)
 }
 
@@ -157,15 +161,15 @@ export function fetchPriceHistory(
   })
 }
 
-export async function fetchBatchHistory(pairs: string[]): Promise<PriceHistoryResponse[]> {
+export async function fetchBatchHistory(pairs: string[], signal?: AbortSignal): Promise<PriceHistoryResponse[]> {
   const raw = await request<PriceHistoryResponse[]>('/api/prices/history/batch', {
     method: 'POST',
     body: JSON.stringify({ pairs }),
-  })
+  }, signal)
   return validate(BatchHistoryResponseSchema, raw)
 }
 
-export async function fetchHealth(): Promise<{ status: string; uptime: number }> {
-  const raw = await request('/health')
+export async function fetchHealth(signal?: AbortSignal): Promise<{ status: string; uptime: number }> {
+  const raw = await request('/health', undefined, signal)
   return validate(HealthSchema, raw)
 }
