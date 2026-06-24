@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../context/ToastContext'
 import { formatPrice } from '../utils/format'
@@ -137,6 +138,7 @@ function ContextMenuPopup({ x, y, pair, price, onClose, actions }: ContextMenuPr
       role="menu"
       aria-label={`Actions for ${pair}`}
       style={style}
+      onClick={(e) => e.stopPropagation()}
       className="w-48 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl py-1 overflow-hidden"
     >
       <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 border-b border-gray-800 mb-1">
@@ -199,16 +201,19 @@ export function useCardContextMenu(
     'aria-label': `More actions for ${pair}`,
   }
 
-  const menuElement = menu ? (
-    <ContextMenuPopup
-      x={menu.x}
-      y={menu.y}
-      pair={pair}
-      price={price}
-      onClose={close}
-      actions={actions}
-    />
-  ) : null
+  const menuElement = menu
+    ? createPortal(
+        <ContextMenuPopup
+          x={menu.x}
+          y={menu.y}
+          pair={pair}
+          price={price}
+          onClose={close}
+          actions={actions}
+        />,
+        document.body,
+      )
+    : null
 
   return { contextMenuProps, overflowButtonProps, menuElement }
 }
