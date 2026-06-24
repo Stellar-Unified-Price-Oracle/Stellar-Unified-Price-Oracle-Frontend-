@@ -6,6 +6,14 @@ export interface PriceData {
   sources: string[]
 }
 
+export type PriceSyncState = 'optimistic' | 'confirmed' | 'rollback' | 'synced'
+
+export interface LivePriceEntry {
+  data: PriceData
+  syncState: PriceSyncState
+  flashVersion: number
+}
+
 export interface PriceHistoryEntry {
   price: number
   timestamp: number

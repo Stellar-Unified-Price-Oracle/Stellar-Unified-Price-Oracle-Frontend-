@@ -1,15 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import * as matchers from 'vitest-axe/matchers'
-import { expect } from 'vitest'
-import type { AxeMatchers } from 'vitest-axe/matchers'
-
-expect.extend(matchers)
-
-declare module 'vitest' {
-  export interface Assertion<T = any> extends AxeMatchers {}
-  export interface AsymmetricMatchersContaining extends AxeMatchers {}
-}
-
+import { vi } from 'vitest'
 
 class ResizeObserverMock {
   observe = () => {}
@@ -33,3 +23,18 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 })
+
+// SVGPathElement.getTotalLength is not implemented in jsdom (used by Sparkline animation)
+if (!SVGPathElement.prototype.getTotalLength) {
+  SVGPathElement.prototype.getTotalLength = () => 0
+}
+
+// Mock fetch globally so components that call the REST API in unit tests
+// (e.g. useSparkline inside PriceCard) don't fail with "fetch is not defined".
+// Individual tests can override this with vi.spyOn(global, 'fetch') as needed.
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ pair: '', history: [] }),
+  text: async () => '',
+} as unknown as Response)
+

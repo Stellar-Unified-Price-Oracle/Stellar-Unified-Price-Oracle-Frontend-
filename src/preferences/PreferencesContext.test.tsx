@@ -79,6 +79,7 @@ describe('PreferencesProvider / usePreferences', () => {
     act(() => result.current.updatePreference('staleThresholdMinutes', 15))
 
     expect(result.current.preferences).toEqual({
+      ...DEFAULT_PREFERENCES,
       refreshInterval: 5000,
       chartTimeRange: '7d',
       staleThresholdMinutes: 15,

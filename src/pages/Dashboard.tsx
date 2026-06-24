@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { usePriceContext } from '../context/PriceContext'
 import { useAlerts } from '../hooks/useAlerts'
+import { useExport } from '../hooks/useExport'
 import { useColumnCount } from '../hooks/useColumnCount'
 import { useDragOrder } from '../hooks/useDragOrder'
 import { usePreferences } from '../preferences/PreferencesContext'
@@ -25,7 +26,7 @@ function mergePrices(
   livePrices: Map<string, PriceData>,
 ) {
   return restPrices.map((p) => {
-    const live = livePrices.get(p.assetPair)
+    const live = livePrices.get(p.assetPair)?.data
     if (live && live.timestamp >= p.timestamp) {
       return { ...p, ...live }
     }
@@ -57,6 +58,7 @@ export function Dashboard() {
   const { prices, pricesLoading, pricesError, pricesValidating, livePrices, wsStatus } = usePriceContext()
   const navigate = useNavigate()
   const { alerts, addAlert, removeAlert, hasAlertsForPair, activeCount } = useAlerts()
+  const { exporting, exportPrices } = useExport()
   const [searchParams] = useSearchParams()
   const { preferences, updatePreference } = usePreferences()
   const { copy: copyShareLink, copied: linkCopied } = useCopyShareLink()

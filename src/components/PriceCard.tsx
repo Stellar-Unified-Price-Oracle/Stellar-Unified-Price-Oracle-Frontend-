@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import type { PriceData } from '../types'
+import type { PriceData, PriceSyncState } from '../types'
 import { formatPrice, timeAgo } from '../utils/format'
 import { useCardContextMenu, type CardContextMenuAction } from './CardContextMenu'
 
@@ -24,6 +24,9 @@ interface PriceCardProps {
   onClick?: () => void
   isLive?: boolean
   isStale?: boolean
+  syncState?: PriceSyncState
+  flashVersion?: number
+  isValidating?: boolean
   hasAlert?: boolean
   onAlertClick?: (e: React.MouseEvent) => void
   dragHandleProps?: DragHandleProps
@@ -34,6 +37,16 @@ interface PriceCardProps {
 
 export const PriceCard = memo(function PriceCard({ price, onClick, isLive, isStale, hasAlert, onAlertClick, dragHandleProps, isDragOver, selectMode, isSelected }: PriceCardProps) {
   const confidencePct = (price.confidence * 100).toFixed(1)
+  const optimistic = syncState === 'optimistic'
+  const confirmed = syncState === 'confirmed'
+  const rolledBack = syncState === 'rollback'
+  const cardClassName = [
+    'w-full text-left bg-gray-900 border rounded-xl p-5 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer',
+    optimistic ? 'border-amber-500/60 ring-1 ring-amber-500/25' : 'border-gray-800 hover:border-gray-700',
+    confirmed ? 'border-emerald-500/60 ring-1 ring-emerald-500/25' : '',
+    rolledBack ? 'border-rose-500/60 ring-1 ring-rose-500/25' : '',
+    isStale ? 'opacity-80' : '',
+  ].filter(Boolean).join(' ')
 
   const contextActions: CardContextMenuAction = {
     onSetAlert: () => {
@@ -151,4 +164,17 @@ export const PriceCard = memo(function PriceCard({ price, onClick, isLive, isSta
       {menuElement}
     </>
   )
+})
+
+/**
+ * PriceCard with self-contained sparkline history fetching.
+ * When `history` prop is provided it is used directly (useful in tests/stories).
+ * When omitted the card fetches its own history via useSparkline.
+ */
+export const PriceCard = memo(function PriceCard(props: PriceCardProps) {
+  // Only call useSparkline when no external history is supplied.
+  // This wrapper exists to keep the hook call unconditional (Rules of Hooks).
+  const fetchedHistory = useSparkline(props.price.assetPair, 24)
+  const history = props.history ?? fetchedHistory
+  return <PriceCardInner {...props} history={history} />
 })

@@ -431,8 +431,8 @@ describe('Dashboard', () => {
   it('filters by confidence from URL params', async () => {
     const { usePriceContext } = await import('../context/PriceContext')
     const pricesWithConfidence = [
-      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 90, sources: ['chainlink'] },
-      { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 45, sources: ['redstone'] },
+      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.90, sources: ['chainlink'] },
+      { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 0.45, sources: ['redstone'] },
     ]
     vi.mocked(usePriceContext).mockReturnValue({
       prices: pricesWithConfidence,
@@ -507,9 +507,9 @@ describe('Dashboard', () => {
   it('applies multiple filters and sort from URL params', async () => {
     const { usePriceContext } = await import('../context/PriceContext')
     const manyPrices = [
-      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 90, sources: ['chainlink'] },
-      { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 85, sources: ['chainlink'] },
-      { assetPair: 'XLM/USD', price: 0.1, timestamp: Date.now(), confidence: 70, sources: ['redstone'] },
+      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.90, sources: ['chainlink'] },
+      { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 0.85, sources: ['chainlink'] },
+      { assetPair: 'XLM/USD', price: 0.1, timestamp: Date.now(), confidence: 0.70, sources: ['redstone'] },
     ]
     vi.mocked(usePriceContext).mockReturnValue({
       prices: manyPrices,
