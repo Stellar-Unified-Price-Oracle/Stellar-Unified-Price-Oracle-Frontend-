@@ -8,24 +8,33 @@ export function usePrices(pairs?: string[]) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined)
+  const abortRef = useRef<AbortController>(undefined)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const data = await fetchAllPrices(pairs)
+      const data = await fetchAllPrices(pairs, signal)
       setPrices(data)
       setError(null)
     } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return
       setError(e instanceof Error ? e.message : 'Failed to fetch prices')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
   }, [pairs])
 
   useEffect(() => {
-    load()
-    intervalRef.current = setInterval(load, config.refreshInterval)
-    return () => clearInterval(intervalRef.current)
+    abortRef.current = new AbortController()
+    load(abortRef.current.signal)
+    intervalRef.current = setInterval(() => {
+      abortRef.current = new AbortController()
+      load(abortRef.current.signal)
+    }, config.refreshInterval)
+    return () => {
+      abortRef.current?.abort()
+      clearInterval(intervalRef.current)
+    }
   }, [load])
 
-  return { prices, loading, error, refetch: load }
+  return { prices, loading, error, refetch: () => load() }
 }
