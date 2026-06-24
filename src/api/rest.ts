@@ -68,7 +68,6 @@ interface Waiter {
   reject: (reason: unknown) => void
 }
 
-// key = `${pair}:${limit}:${offset}`
 const pending = new Map<string, Waiter[]>()
 let coalesceTimer: ReturnType<typeof setTimeout> | null = null
 const COALESCE_WINDOW_MS = 50
