@@ -5,7 +5,7 @@ describe('config defaults', () => {
     vi.resetModules()
     vi.unstubAllEnvs()
   })
-const mock = vi.fn(() => ws) as typeof WebSocket
+
   afterEach(() => {
     vi.unstubAllEnvs()
   })

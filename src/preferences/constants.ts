@@ -6,6 +6,9 @@ export const DEFAULT_PREFERENCES: Preferences = {
   staleThresholdMinutes: 5,
   dashboardView: 'card',
   cardOrder: [],
+  reducedMotion: false,
+  highContrast: false,
+  largeText: false,
 } as const
 
 export const MAX_UNDO_DEPTH = 20

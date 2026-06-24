@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { usePriceContext } from '../context/PriceContext'
 import { useAlerts } from '../hooks/useAlerts'
-import { useExport } from '../hooks/useExport'
 import { useColumnCount } from '../hooks/useColumnCount'
 import { useDragOrder } from '../hooks/useDragOrder'
 import { usePreferences } from '../preferences/PreferencesContext'
@@ -15,20 +14,19 @@ import { AlertModal } from '../components/AlertModal'
 import { AlertBadge } from '../components/AlertBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
 import { NetworkStatusBanner } from '../components/NetworkStatusBanner'
-import { FilterBar } from '../components/FilterBar'
-import type { AlertFormData, PriceData } from '../types'
+import type { AlertFormData, LivePriceEntry, PriceData } from '../types'
 
 const ROW_HEIGHT = 200
 const SKELETON_COUNT = 8
 
 function mergePrices(
   restPrices: PriceData[],
-  livePrices: Map<string, PriceData>,
+  livePrices: Map<string, LivePriceEntry>,
 ) {
   return restPrices.map((p) => {
-    const live = livePrices.get(p.assetPair)?.data
-    if (live && live.timestamp >= p.timestamp) {
-      return { ...p, ...live }
+    const live = livePrices.get(p.assetPair)
+    if (live && live.data.timestamp >= p.timestamp) {
+      return { ...p, ...live.data }
     }
     return p
   })
@@ -58,7 +56,6 @@ export function Dashboard() {
   const { prices, pricesLoading, pricesError, pricesValidating, livePrices, wsStatus } = usePriceContext()
   const navigate = useNavigate()
   const { alerts, addAlert, removeAlert, hasAlertsForPair, activeCount } = useAlerts()
-  const { exporting, exportPrices } = useExport()
   const [searchParams] = useSearchParams()
   const { preferences, updatePreference } = usePreferences()
   const { copy: copyShareLink, copied: linkCopied } = useCopyShareLink()
@@ -330,8 +327,6 @@ export function Dashboard() {
           {pricesError}
         </div>
       )}
-
-      {!pricesLoading && prices.length > 0 && <FilterBar />}
 
       {pricesLoading && prices.length === 0 ? (
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" aria-label="Loading price cards">

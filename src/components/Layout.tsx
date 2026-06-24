@@ -4,6 +4,7 @@ import { useAlerts } from '../hooks/useAlerts'
 import { AlertPanel } from './AlertPanel'
 import { useTheme } from '../hooks/useTheme'
 import { SettingsPanel } from './SettingsPanel'
+import { Sidebar, MobileSidebar } from './Sidebar'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard' },
@@ -41,7 +42,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
             {/* Hamburger – mobile only */}
             <button
-              onClick={() => setMobileMenuOpen(true)}
+              onClick={() => setMenuOpen(true)}
               className="md:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
               aria-label="Toggle menu"
             >
@@ -151,16 +152,21 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {/* Mobile drawer */}
         <MobileSidebar
-          open={mobileMenuOpen}
-          onClose={() => setMobileMenuOpen(false)}
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
           onSettingsOpen={() => setSettingsOpen(true)}
         />
+
+        <main className="flex-1 px-6 py-6 overflow-auto">
+          {children}
+        </main>
 
       <footer className="border-t border-gray-200 dark:border-gray-800 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
         Stellar Unified Price Oracle &middot; Developer Portal &amp; Analytics Dashboard
       </footer>
       <AlertPanel />
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      </div>
     </div>
   )
 }

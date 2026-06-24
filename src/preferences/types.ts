@@ -8,4 +8,7 @@ export interface Preferences {
   staleThresholdMinutes: number
   dashboardView: DashboardView
   cardOrder: string[]
+  reducedMotion: boolean
+  highContrast: boolean
+  largeText: boolean
 }

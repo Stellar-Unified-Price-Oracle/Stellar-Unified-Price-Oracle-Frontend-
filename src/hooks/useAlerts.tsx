@@ -35,7 +35,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       const livePriceData = livePrices.get(alert.assetPair)
       if (!livePriceData) return alert
       
-      const currentPrice = livePriceData.price
+      const currentPrice = livePriceData.data.price
       let triggered = false
 
       if (alert.upperThreshold !== null && currentPrice >= alert.upperThreshold) {

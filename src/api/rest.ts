@@ -46,8 +46,8 @@ export async function fetchPriceHistory(
   pair: string,
   limit = 100,
   offset = 0,
-  startTs?: number,
-  endTs?: number,
+  _startTs?: number,
+  _endTs?: number,
 ): Promise<PriceHistoryResponse> {
   const cacheKey = `${pair}:${limit}:${offset}`
   try {
