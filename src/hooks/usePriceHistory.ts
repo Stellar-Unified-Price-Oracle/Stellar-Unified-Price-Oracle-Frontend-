@@ -14,26 +14,35 @@ export function usePriceHistory(pair: string | null, options: PriceHistoryOption
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined)
+  const abortRef = useRef<AbortController>(undefined)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     if (!pair) return
     setLoading(true)
     try {
-      const res = await fetchPriceHistory(pair, limit, 0, startTs, endTs)
+      const res = await fetchPriceHistory(pair, limit, 0, startTs, endTs, signal)
       setHistory(res.history)
       setError(null)
     } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return
       setError(e instanceof Error ? e.message : 'Failed to fetch history')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
   }, [pair, limit, startTs, endTs])
 
   useEffect(() => {
-    load()
-    intervalRef.current = setInterval(load, 30_000)
-    return () => clearInterval(intervalRef.current)
+    abortRef.current = new AbortController()
+    load(abortRef.current.signal)
+    intervalRef.current = setInterval(() => {
+      abortRef.current = new AbortController()
+      load(abortRef.current.signal)
+    }, 30_000)
+    return () => {
+      abortRef.current?.abort()
+      clearInterval(intervalRef.current)
+    }
   }, [load])
 
-  return { history, loading, error, refetch: load }
+  return { history, loading, error, refetch: () => load() }
 }
