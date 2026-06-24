@@ -1,69 +1,57 @@
-import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { fetchPrice } from '../api/rest'
-import { usePriceHistory } from '../hooks/usePriceHistory'
-import { PriceChart } from '../components/PriceChart'
-import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
-import type { PriceData } from '../types'
-
-const SOURCE_COLORS: Record<string, string> = {
-  chainlink: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
-  redstone: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
-  band: 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
-  reflector: 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
-}
+import { useCallback, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { usePriceContext } from '../context/PriceContext'
+import { useAlerts } from '../hooks/useAlerts'
+import { AlertModal } from '../components/AlertModal'
+import type { AlertFormData } from '../types'
 
 export function PriceDetail() {
   const { pair } = useParams<{ pair: string }>()
   const navigate = useNavigate()
   const decodedPair = pair ? decodeURIComponent(pair) : ''
+  const { prices, livePrices } = usePriceContext()
+  const { alerts, addAlert, removeAlert } = useAlerts()
 
-  const [priceData, setPriceData] = useState<PriceData | null>(null)
-  const [priceLoading, setPriceLoading] = useState(true)
-  const [priceError, setPriceError] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
-  const { history, loading: historyLoading, error: historyError } = usePriceHistory(decodedPair || null)
+  const price = prices.find((p) => p.assetPair === decodedPair)
+  const live = decodedPair ? livePrices.get(decodedPair) : undefined
+  const displayData = live ? live.data : price
 
-  useEffect(() => {
-    if (!decodedPair) return
-    let cancelled = false
-    setPriceLoading(true)
-    setPriceError(null)
-
-    fetchPrice(decodedPair)
-      .then((data) => {
-        if (!cancelled) {
-          setPriceData(data)
-          setPriceLoading(false)
-        }
+  const handleSave = useCallback(
+    (data: AlertFormData) => {
+      addAlert({
+        assetPair: data.assetPair,
+        upperThreshold: data.upperThreshold ? Number.parseFloat(data.upperThreshold) : null,
+        lowerThreshold: data.lowerThreshold ? Number.parseFloat(data.lowerThreshold) : null,
+        triggerOnce: data.triggerOnce,
+        active: true,
       })
-      .catch((e) => {
-        if (!cancelled) {
-          setPriceError(e instanceof Error ? e.message : 'Failed to load price data')
-          setPriceLoading(false)
-        }
-      })
+      setModalOpen(false)
+    },
+    [addAlert],
+  )
 
-    return () => { cancelled = true }
-  }, [decodedPair])
-
-  if (!decodedPair) {
+  if (!displayData) {
     return (
       <div className="text-center py-32 text-gray-500">
-        <p className="text-lg mb-2">No pair specified</p>
+        <p className="text-lg mb-2">Price feed not found</p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-500/20 transition-colors cursor-pointer"
+        >
+          Back to Dashboard
+        </button>
       </div>
     )
   }
 
-  const loading = priceLoading || (decodedPair !== null && !priceData && !priceError)
-  const error = priceError || historyError
-
   return (
-    <div className="max-w-5xl mx-auto">
+    <div>
       <button
-        type="button"
         onClick={() => navigate('/')}
-        className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-6"
+        className="mb-6 flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+        aria-label="Back to Dashboard"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -71,58 +59,68 @@ export function PriceDetail() {
         Back to Dashboard
       </button>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
-          {error}
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">{decodedPair}</h1>
+            <p className="text-sm text-gray-400 mt-1">
+              Updated {new Date(displayData.timestamp).toLocaleString()}
+            </p>
+          </div>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-900/40 text-amber-400 border border-amber-800/50 rounded-lg text-sm font-medium hover:bg-amber-900/60 transition-colors cursor-pointer"
+            aria-label="Set price alert"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            Set price alert
+          </button>
         </div>
-      )}
 
-      {loading ? (
-        <div className="space-y-6">
-          <div className="h-8 w-64 bg-gray-800 rounded animate-pulse" />
-          <div className="h-16 w-48 bg-gray-800 rounded animate-pulse" />
-          <div className="h-80 bg-gray-800 rounded-xl animate-pulse" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-gray-800 rounded-lg p-4">
+            <p className="text-xs text-gray-500 mb-1">Price</p>
+            <p className="text-2xl font-bold text-white">
+              ${displayData.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+            </p>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-4">
+            <p className="text-xs text-gray-500 mb-1">Confidence</p>
+            <p className="text-2xl font-bold text-cyan-400">
+              {(displayData.confidence * 100).toFixed(1)}% confidence
+            </p>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-4">
+            <p className="text-xs text-gray-500 mb-1">Sources</p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {displayData.sources.map((source) => (
+                <span key={source} className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300">
+                  {source}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
-      ) : priceData ? (
-        <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-100">{priceData.assetPair}</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Updated {timeAgo(priceData.timestamp)}
-                <span className="ml-2 text-gray-600">({formatTimestamp(priceData.timestamp)})</span>
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-4xl font-bold text-gray-100 font-mono tracking-tight">
-                ${formatPrice(priceData.price)}
-              </div>
-              <div className="text-sm text-cyan-400 mt-1">
-                {(priceData.confidence * 100).toFixed(1)}% confidence
-              </div>
-            </div>
-          </div>
+      </div>
 
-          <div className="flex flex-wrap gap-2 mb-8">
-            {priceData.sources.map((src) => (
-              <span
-                key={src}
-                className={`px-3 py-1 rounded-lg text-sm font-medium border ${SOURCE_COLORS[src] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'}`}
-              >
-                {src}
-              </span>
-            ))}
-          </div>
-
-          <div className="mb-8">
-            <PriceChart
-              data={history}
-              pair={priceData.assetPair}
-              loading={historyLoading}
-            />
-          </div>
-        </>
-      ) : null}
+      <AlertModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={handleSave}
+        alert={alerts.find((a) => a.assetPair === decodedPair) ?? null}
+        defaultAssetPair={decodedPair}
+        onDelete={
+          alerts.find((a) => a.assetPair === decodedPair)
+            ? () => {
+                const existing = alerts.find((a) => a.assetPair === decodedPair)
+                if (existing) removeAlert(existing.id)
+                setModalOpen(false)
+              }
+            : undefined
+        }
+      />
     </div>
   )
 }

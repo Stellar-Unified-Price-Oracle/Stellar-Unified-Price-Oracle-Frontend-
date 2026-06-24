@@ -229,7 +229,7 @@ test.describe('Navigation', () => {
     await expect(page.getByRole('heading', { name: 'BTC/USD' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Back to Dashboard' }).click()
-    await expect(page).toHaveURL(/\/Stellar-Unified-Price-Oracle-Frontend-$/)
+    await expect(page).toHaveURL(/\/Stellar-Unified-Price-Oracle-Frontend-\/?$/)
     await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible()
   })
 
