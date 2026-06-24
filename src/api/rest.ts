@@ -1,10 +1,11 @@
 import { config } from '../config'
+import { fetchWithRetry } from './retry'
 import type { PriceData, PriceHistoryResponse } from '../types'
 import { idbCache } from '../hooks/useIndexedDB'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${config.apiUrl}${path}`
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })

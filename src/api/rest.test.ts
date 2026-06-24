@@ -1,7 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('../config', () => ({
-  config: { apiUrl: '' },
+  config: {
+    apiUrl: '',
+    retry: {
+      maxAttempts: 3,
+      baseDelayMs: 1000,
+      backoffMultiplier: 2,
+      maxDelayMs: 30000,
+      jitter: true,
+    },
+  },
 }))
 
 const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchHealth } = await import('./rest')
@@ -39,9 +48,14 @@ describe('fetchAllPrices', () => {
     expect(mockFetch.mock.calls[0][0]).toBe('/api/prices?pairs=BTC/USD')
   })
 
-  it('throws on error', async () => {
+  it('throws on error for non-retryable 4xx', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+    await expect(fetchAllPrices()).rejects.toThrow('404 Not Found: Not Found')
+  })
+
+  it('throws HttpRetryError after retrying transient 5xx failures', async () => {
     mockFetch.mockResolvedValue(errorResponse(500, 'Server error'))
-    await expect(fetchAllPrices()).rejects.toThrow('500 Server error: Server error')
+    await expect(fetchAllPrices()).rejects.toThrow('HTTP 500 Server error')
   })
 })
 
