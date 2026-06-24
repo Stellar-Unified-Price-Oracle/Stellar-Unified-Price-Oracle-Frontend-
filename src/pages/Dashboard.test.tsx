@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { Dashboard } from './Dashboard'
 import { AlertsProvider } from '../hooks/useAlerts'
-import { ToastProvider } from '../context/ToastContext'
+import { AnalyticsProvider } from '../context/AnalyticsContext'
 import { checkAccessibility } from '../test/accessibility'
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -81,11 +81,11 @@ describe('Dashboard', () => {
   it('should have no accessibility violations when loading', async () => {
     await checkAccessibility(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
       {
         rules: {
@@ -112,11 +112,11 @@ describe('Dashboard', () => {
     })
     await checkAccessibility(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
       {
         rules: {
@@ -129,11 +129,11 @@ describe('Dashboard', () => {
   it('renders the title', () => {
     render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Price Oracle Dashboard')).toBeInTheDocument()
@@ -142,11 +142,11 @@ describe('Dashboard', () => {
   it('shows loading skeletons when loading and no prices', () => {
     render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
@@ -169,11 +169,11 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Something broke')).toBeInTheDocument()
@@ -196,11 +196,11 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     const emptyTexts = screen.getAllByText('No price feeds available')
@@ -224,11 +224,11 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(screen.getAllByText('BTC/USD').length).toBeGreaterThanOrEqual(1)
@@ -253,11 +253,11 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
@@ -283,11 +283,11 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
@@ -316,11 +316,11 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
 
@@ -355,11 +355,11 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?search=btc']}>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -387,11 +387,11 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?confidence=high']}>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -415,11 +415,11 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?source=chainlink']}>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -443,11 +443,11 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?sort=price-high']}>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -476,11 +476,11 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?source=chainlink&confidence=high&sort=price-low']}>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('ETH/USD')).toBeInTheDocument()
@@ -513,11 +513,11 @@ describe('snapshots', () => {
   it('loading', () => {
     const { container } = render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()
@@ -540,11 +540,11 @@ describe('snapshots', () => {
     })
     const { container } = render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()
@@ -567,11 +567,11 @@ describe('snapshots', () => {
     })
     const { container } = render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()
@@ -594,11 +594,11 @@ describe('snapshots', () => {
     })
     const { container } = render(
       <MemoryRouter>
-        <ToastProvider>
+        <AnalyticsProvider endpoint="">
           <AlertsProvider>
             <Dashboard />
           </AlertsProvider>
-        </ToastProvider>
+        </AnalyticsProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()

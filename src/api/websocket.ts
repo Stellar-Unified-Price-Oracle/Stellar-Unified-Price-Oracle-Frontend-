@@ -1,10 +1,12 @@
 import { config } from '../config'
-import type { WsMessage, WsSubscribeMessage, WsUnsubscribeMessage } from '../types'
+import { TokenStorage } from '../utils/tokenStorage'
+import type { WsMessage, WsSubscribeMessage, WsUnsubscribeMessage, WsAuthMessage, WsAuthResponseMessage } from '../types'
 
-type MessageHandler = (msg: WsMessage) => void
+type MessageHandler = (msg: WsMessage | WsAuthResponseMessage) => void
 type StatusHandler = (status: ConnectionStatus) => void
+type TokenProvider = () => Promise<string | null>
 
-export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'auth_failed'
 
 // Detect browser support for DecompressionStream (gzip/deflate)
 const supportsDecompression = typeof DecompressionStream !== 'undefined'
@@ -40,6 +42,10 @@ export class WebSocketClient {
   private subscribedPairs = new Set<string>()
   /** Whether the server negotiated compressed binary frames */
   private useCompression = false
+  /** Token provider for authentication (Issue #96) */
+  private tokenProvider: TokenProvider | null = null
+  /** Flag to track if we're authenticated */
+  private isAuthenticated = false
 
   private _status: ConnectionStatus = 'disconnected'
   get status(): ConnectionStatus {
@@ -49,6 +55,16 @@ export class WebSocketClient {
   private setStatus(status: ConnectionStatus) {
     this._status = status
     this.statusHandlers.forEach((h) => h(status))
+  }
+
+  /**
+   * Set a token provider function for authentication (Issue #96)
+   * @param provider - Async function that returns an auth token
+   */
+  setTokenProvider(provider: TokenProvider): void {
+    this.tokenProvider = provider
+    // Clear any stored token on setup
+    TokenStorage.clearToken()
   }
 
   connect() {
@@ -65,12 +81,17 @@ export class WebSocketClient {
     this.ws.binaryType = 'blob'
 
     this.ws.onopen = () => {
-      this.setStatus('connected')
-      if (this.subscribedPairs.size > 0) {
-        this.send({
-          action: 'subscribe',
-          assetPairs: Array.from(this.subscribedPairs),
-        })
+      // Attempt authentication if token provider is set (Issue #96)
+      if (this.tokenProvider) {
+        this.authenticate()
+      } else {
+        this.setStatus('connected')
+        if (this.subscribedPairs.size > 0) {
+          this.send({
+            action: 'subscribe',
+            assetPairs: Array.from(this.subscribedPairs),
+          })
+        }
       }
     }
 
@@ -84,8 +105,15 @@ export class WebSocketClient {
         } else {
           text = e.data as string
         }
-        const msg = JSON.parse(text) as WsMessage
-        this.messageHandlers.forEach((h) => h(msg))
+        const msg = JSON.parse(text)
+
+        // Handle auth response (Issue #96)
+        if (msg.type === 'auth_response') {
+          this.handleAuthResponse(msg as WsAuthResponseMessage)
+          return
+        }
+
+        this.messageHandlers.forEach((h) => h(msg as WsMessage | WsAuthResponseMessage))
       } catch {
         // ignore malformed messages
       }
@@ -93,11 +121,65 @@ export class WebSocketClient {
 
     this.ws.onclose = () => {
       this.useCompression = false
+      this.isAuthenticated = false
       this.setStatus('disconnected')
       this.scheduleReconnect()
     }
 
     this.ws.onerror = () => {
+      this.ws?.close()
+    }
+  }
+
+  /**
+   * Authenticate with the server using a token (Issue #96)
+   */
+  private async authenticate(): Promise<void> {
+    if (!this.tokenProvider || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      this.setStatus('auth_failed')
+      return
+    }
+
+    try {
+      const token = await this.tokenProvider()
+      if (!token) {
+        this.setStatus('auth_failed')
+        this.ws?.close()
+        return
+      }
+
+      // Send auth message
+      const authMsg: WsAuthMessage = {
+        action: 'auth',
+        token,
+      }
+      this.ws.send(JSON.stringify(authMsg))
+    } catch (err) {
+      console.error('Authentication error:', err)
+      this.setStatus('auth_failed')
+      this.ws?.close()
+    }
+  }
+
+  /**
+   * Handle authentication response from server (Issue #96)
+   */
+  private handleAuthResponse(msg: WsAuthResponseMessage): void {
+    if (msg.success) {
+      this.isAuthenticated = true
+      this.setStatus('connected')
+
+      // Subscribe to pairs if we have any
+      if (this.subscribedPairs.size > 0) {
+        this.send({
+          action: 'subscribe',
+          assetPairs: Array.from(this.subscribedPairs),
+        })
+      }
+    } else {
+      console.error('Authentication failed:', msg.error)
+      this.setStatus('auth_failed')
+      // On auth failure, close and reconnect (will retry)
       this.ws?.close()
     }
   }
@@ -116,10 +198,11 @@ export class WebSocketClient {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     this.ws?.close()
     this.ws = null
+    this.isAuthenticated = false
     this.setStatus('disconnected')
   }
 
-  send(msg: WsSubscribeMessage | WsUnsubscribeMessage) {
+  send(msg: WsSubscribeMessage | WsUnsubscribeMessage | WsAuthMessage) {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg))
     }
@@ -150,5 +233,10 @@ export class WebSocketClient {
   /** Returns true if the last received frame was compressed */
   get isCompressed(): boolean {
     return this.useCompression
+  }
+
+  /** Returns true if authenticated (Issue #96) */
+  get authenticated(): boolean {
+    return this.isAuthenticated || !this.tokenProvider
   }
 }

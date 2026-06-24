@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { usePriceContext } from '../context/PriceContext'
@@ -7,7 +7,7 @@ import { useColumnCount } from '../hooks/useColumnCount'
 import { useDragOrder } from '../hooks/useDragOrder'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { useCopyShareLink } from '../hooks/useCopyShareLink'
-import { useToast } from '../context/ToastContext'
+import { useAnalytics } from '../context/AnalyticsContext'
 import { PriceCard } from '../components/PriceCard'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
 import { PriceTableView } from '../components/PriceTableView'
@@ -69,9 +69,22 @@ export function Dashboard() {
   const [searchParams] = useSearchParams()
   const { preferences, updatePreference } = usePreferences()
   const { copy: copyShareLink, copied: linkCopied } = useCopyShareLink()
+  const { track } = useAnalytics()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPair, setModalPair] = useState('')
+  const pageStartTimeRef = useRef(Date.now())
+
+  // Track page view on mount
+  useEffect(() => {
+    track('page_view', { page: 'dashboard' })
+    const pageStartTime = pageStartTimeRef.current
+
+    return () => {
+      const timeOnPage = Date.now() - pageStartTime
+      track('time_on_page', { page: 'dashboard', duration_ms: timeOnPage })
+    }
+  }, [track])
 
   // Show a toast when rate limiting is first triggered
   const prevRateLimitRef = useRef(rateLimitStatus)
@@ -183,9 +196,14 @@ export function Dashboard() {
         triggerOnce: data.triggerOnce,
         active: true,
       })
+      track('alert_created', {
+        pair: data.assetPair,
+        hasUpper: !!data.upperThreshold,
+        hasLower: !!data.lowerThreshold,
+      })
       setModalOpen(false)
     },
-    [addAlert],
+    [addAlert, track],
   )
 
   // #49 — bulk action handlers
@@ -200,7 +218,8 @@ export function Dashboard() {
   const handleBulkExportCSV = useCallback(() => {
     const items = filtered.filter((p) => selected.has(p.assetPair))
     exportCSV(items)
-  }, [filtered, selected])
+    track('export_performed', { format: 'csv', count: items.length })
+  }, [filtered, selected, track])
 
   const handleBulkCreateAlerts = useCallback(() => {
     for (const pair of selected) {
@@ -225,6 +244,20 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search by asset pair..."
+            value={search}
+            onChange={(e) => {
+              const value = e.target.value
+              const params = new URLSearchParams(searchParams)
+              if (value) params.set('search', value)
+              else params.delete('search')
+              navigate({ search: params.toString() }, { replace: true })
+            }}
+            className="px-3 py-1.5 text-sm rounded-lg border border-gray-700 bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 w-48"
+            aria-label="Search by asset pair"
+          />
           {/* #50 — Share link button */}
           <button
             type="button"
