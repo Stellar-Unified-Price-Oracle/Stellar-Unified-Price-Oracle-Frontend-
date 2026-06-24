@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useSwr } from '../hooks/useSwr'
 import { WebSocketClient, type ConnectionStatus } from '../api/websocket'
 import { fetchAllPrices, fetchPrice } from '../api/rest'
+import { rateLimitManager, type RateLimitStatus } from '../api/rateLimit'
 import { config } from '../config'
 import type { LivePriceEntry, PriceData } from '../types'
 
@@ -12,6 +13,8 @@ export interface PriceContextValue {
   pricesValidating: boolean
   livePrices: Map<string, LivePriceEntry>
   wsStatus: ConnectionStatus
+  rateLimitStatus: RateLimitStatus
+  rateLimitRetryAfterMs: number
   refetchPrices: () => void
   subscribe: (pairs: string[]) => void
   unsubscribe: (pairs: string[]) => void
@@ -28,6 +31,12 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
   const [livePrices, setLivePrices] = useState<Map<string, LivePriceEntry>>(new Map())
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('disconnected')
+  const [rateLimitStatus, setRateLimitStatus] = useState<RateLimitStatus>(
+    rateLimitManager.status,
+  )
+  const [rateLimitRetryAfterMs, setRateLimitRetryAfterMs] = useState(
+    rateLimitManager.retryAfterMs,
+  )
   const wsRef = useRef<WebSocketClient | null>(null)
   const requestIdsRef = useRef<Map<string, number>>(new Map())
   const cleanupTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -82,10 +91,18 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       })
 
       scheduleSettledState(pair)
-    } catch {
-      // Keep optimistic data visible and let polling retry the canonical state.
+    } catch { // Keep optimistic data visible and let polling retry the canonical state.
     }
   }
+
+  // Subscribe to rate limit status changes
+  useEffect(() => {
+    const unsub = rateLimitManager.onStatusChange((status, retryAfterMs) => {
+      setRateLimitStatus(status)
+      setRateLimitRetryAfterMs(retryAfterMs)
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     const client = new WebSocketClient()
@@ -178,6 +195,8 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     pricesValidating,
     livePrices,
     wsStatus,
+    rateLimitStatus,
+    rateLimitRetryAfterMs,
     refetchPrices,
     subscribe,
     unsubscribe,

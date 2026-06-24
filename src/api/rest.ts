@@ -1,17 +1,51 @@
 import { config } from '../config'
 import type { PriceData, PriceHistoryResponse } from '../types'
 import { idbCache } from '../hooks/useIndexedDB'
+import { rateLimitManager } from './rateLimit'
+
+/** Error thrown when a request fails due to rate limiting. */
+export class RateLimitError extends Error {
+  retryAfterMs: number
+
+  constructor(message: string, retryAfterMs: number) {
+    super(message)
+    this.name = 'RateLimitError'
+    this.retryAfterMs = retryAfterMs
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Block request if currently rate limited (prevent cascading)
+  if (rateLimitManager.checkAndClear()) {
+    throw new RateLimitError(
+      `Rate limited. Retry in ${Math.ceil(rateLimitManager.retryAfterMs / 1000)}s`,
+      rateLimitManager.retryAfterMs,
+    )
+  }
+
   const url = `${config.apiUrl}${path}`
   const res = await fetch(url, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
+
+  if (res.status === 429) {
+    const retryAfter = rateLimitManager.parseRetryAfter(
+      res.headers.get('Retry-After'),
+    )
+    const retryAfterMs = rateLimitManager.setRateLimited(retryAfter)
+    const text = await res.text().catch(() => '')
+    throw new RateLimitError(
+      `429 Too Many Requests: ${text || `Retry after ${retryAfter}s`}`,
+      retryAfterMs,
+    )
+  }
+
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`${res.status} ${res.statusText}: ${text}`)
   }
+
   return res.json() as Promise<T>
 }
 

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { Dashboard } from './Dashboard'
 import { AlertsProvider } from '../hooks/useAlerts'
+import { ToastProvider } from '../context/ToastContext'
 import { checkAccessibility } from '../test/accessibility'
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -43,6 +44,8 @@ vi.mock('../context/PriceContext', () => ({
     pricesValidating: false,
     livePrices: new Map(),
     wsStatus: 'disconnected',
+    rateLimitStatus: 'ok' as const,
+    rateLimitRetryAfterMs: 0,
     refetchPrices: vi.fn(),
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
@@ -67,6 +70,8 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
@@ -76,9 +81,11 @@ describe('Dashboard', () => {
   it('should have no accessibility violations when loading', async () => {
     await checkAccessibility(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
       {
         rules: {
@@ -97,15 +104,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     await checkAccessibility(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
       {
         rules: {
@@ -118,9 +129,11 @@ describe('Dashboard', () => {
   it('renders the title', () => {
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Price Oracle Dashboard')).toBeInTheDocument()
@@ -129,9 +142,11 @@ describe('Dashboard', () => {
   it('shows loading skeletons when loading and no prices', () => {
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
@@ -146,15 +161,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Something broke')).toBeInTheDocument()
@@ -169,15 +188,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     const emptyTexts = screen.getAllByText('No price feeds available')
@@ -193,15 +216,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(screen.getAllByText('BTC/USD').length).toBeGreaterThanOrEqual(1)
@@ -217,6 +244,8 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
@@ -224,9 +253,11 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
@@ -243,6 +274,8 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
@@ -250,9 +283,11 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
@@ -272,6 +307,8 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
@@ -279,9 +316,11 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
 
@@ -308,15 +347,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     render(
       <MemoryRouter initialEntries={['/?search=btc']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -336,15 +379,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     render(
       <MemoryRouter initialEntries={['/?confidence=high']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -360,15 +407,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     render(
       <MemoryRouter initialEntries={['/?source=chainlink']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -384,15 +435,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     render(
       <MemoryRouter initialEntries={['/?sort=price-high']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -413,15 +468,19 @@ describe('Dashboard', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     render(
       <MemoryRouter initialEntries={['/?source=chainlink&confidence=high&sort=price-low']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('ETH/USD')).toBeInTheDocument()
@@ -441,6 +500,8 @@ describe('snapshots', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
@@ -452,9 +513,11 @@ describe('snapshots', () => {
   it('loading', () => {
     const { container } = render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()
@@ -469,15 +532,19 @@ describe('snapshots', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     const { container } = render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()
@@ -492,15 +559,19 @@ describe('snapshots', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     const { container } = render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()
@@ -515,15 +586,19 @@ describe('snapshots', () => {
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
+      rateLimitStatus: 'ok',
+      rateLimitRetryAfterMs: 0,
       refetchPrices: vi.fn(),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     })
     const { container } = render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <ToastProvider>
+          <AlertsProvider>
+            <Dashboard />
+          </AlertsProvider>
+        </ToastProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()

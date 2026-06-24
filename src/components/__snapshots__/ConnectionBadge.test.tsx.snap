@@ -42,6 +42,20 @@ exports[`snapshots > disconnected 1`] = `
 </span>
 `;
 
+exports[`snapshots > rate limited 1`] = `
+<span
+  aria-label="API rate limited"
+  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-900/40 border border-amber-500/50 text-amber-400"
+  role="status"
+>
+  <span
+    aria-hidden="true"
+    class="w-2 h-2 rounded-full bg-amber-400 animate-ping"
+  />
+  Rate limited (10s)
+</span>
+`;
+
 exports[`snapshots > reconnecting 1`] = `
 <span
   aria-label="WebSocket Reconnecting"

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { usePriceContext } from '../context/PriceContext'
@@ -7,6 +7,7 @@ import { useColumnCount } from '../hooks/useColumnCount'
 import { useDragOrder } from '../hooks/useDragOrder'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { useCopyShareLink } from '../hooks/useCopyShareLink'
+import { useToast } from '../context/ToastContext'
 import { PriceCard } from '../components/PriceCard'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
 import { PriceTableView } from '../components/PriceTableView'
@@ -53,7 +54,16 @@ function exportCSV(items: PriceData[]) {
 }
 
 export function Dashboard() {
-  const { prices, pricesLoading, pricesError, pricesValidating, livePrices, wsStatus } = usePriceContext()
+  const {
+    prices,
+    pricesLoading,
+    pricesError,
+    pricesValidating,
+    livePrices,
+    wsStatus,
+    rateLimitStatus,
+    rateLimitRetryAfterMs,
+  } = usePriceContext()
   const navigate = useNavigate()
   const { alerts, addAlert, removeAlert, hasAlertsForPair, activeCount } = useAlerts()
   const [searchParams] = useSearchParams()
@@ -62,6 +72,25 @@ export function Dashboard() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPair, setModalPair] = useState('')
+
+  // Show a toast when rate limiting is first triggered
+  const prevRateLimitRef = useRef(rateLimitStatus)
+  const { addToast } = useToast()
+
+  useEffect(() => {
+    if (
+      prevRateLimitRef.current === 'ok' &&
+      rateLimitStatus === 'limited'
+    ) {
+      const seconds = Math.ceil(rateLimitRetryAfterMs / 1000)
+      addToast({
+        type: 'warning',
+        message: `API rate limited. Retrying in ${seconds}s.`,
+        duration: rateLimitRetryAfterMs,
+      })
+    }
+    prevRateLimitRef.current = rateLimitStatus
+  }, [rateLimitStatus, rateLimitRetryAfterMs, addToast])
 
   // #49 — bulk selection state
   const [selectMode, setSelectMode] = useState(false)
@@ -272,7 +301,7 @@ export function Dashboard() {
             </div>
           )}
           <AlertBadge count={activeCount} alerts={alerts} />
-          <ConnectionBadge status={wsStatus} />
+          <ConnectionBadge status={wsStatus} rateLimitStatus={rateLimitStatus} retryAfterMs={rateLimitRetryAfterMs} />
         </div>
       </div>
 
