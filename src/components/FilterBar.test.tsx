@@ -33,7 +33,7 @@ describe('FilterBar', () => {
         <URLDisplay />
       </MemoryRouter>,
     )
-    const searchInput = screen.getByPlaceholderText('e.g. XLM')
+    const searchInput = screen.getByPlaceholderText('Search by asset pair...')
     await user.type(searchInput, 'btc')
     expect(screen.getByTestId('url-params')).toHaveTextContent('search=btc')
   })
@@ -97,7 +97,7 @@ describe('FilterBar', () => {
         <URLDisplay />
       </MemoryRouter>,
     )
-    const searchInput = screen.getByPlaceholderText('e.g. XLM')
+    const searchInput = screen.getByPlaceholderText('Search by asset pair...')
     expect(searchInput).toHaveValue('btc')
     await user.clear(searchInput)
     expect(screen.getByTestId('url-params')).toHaveTextContent('')
@@ -114,7 +114,7 @@ describe('FilterBar', () => {
     const clearButton = screen.getByRole('button', { name: /clear/i })
     await user.click(clearButton)
     expect(screen.getByTestId('url-params')).toHaveTextContent('')
-    expect(screen.getByPlaceholderText('e.g. XLM')).toHaveValue('')
+    expect(screen.getByPlaceholderText('Search by asset pair...')).toHaveValue('')
   })
 
   it('preserves other params when changing one filter', async () => {

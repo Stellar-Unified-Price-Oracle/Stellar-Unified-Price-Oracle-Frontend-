@@ -1,17 +1,34 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { AlertsProvider } from '../hooks/useAlerts'
 import { Layout } from './Layout'
 
 afterEach(cleanup)
+
+vi.mock('../context/PriceContext', () => ({
+  usePriceContext: vi.fn(() => ({
+    prices: [],
+    pricesLoading: true,
+    pricesError: null,
+    pricesValidating: false,
+    livePrices: new Map(),
+    wsStatus: 'disconnected',
+    refetchPrices: vi.fn(),
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+  })),
+}))
 
 describe('Layout', () => {
   it('renders children', () => {
     render(
       <MemoryRouter>
-        <Layout>
-          <div>Test Content</div>
-        </Layout>
+        <AlertsProvider>
+          <Layout>
+            <div>Test Content</div>
+          </Layout>
+        </AlertsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Test Content')).toBeInTheDocument()
@@ -20,9 +37,11 @@ describe('Layout', () => {
   it('renders the nav with Stellar Oracle brand', () => {
     render(
       <MemoryRouter>
-        <Layout>
-          <div />
-        </Layout>
+        <AlertsProvider>
+          <Layout>
+            <div />
+          </Layout>
+        </AlertsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Stellar Oracle')).toBeInTheDocument()
@@ -31,9 +50,11 @@ describe('Layout', () => {
   it('renders footer', () => {
     render(
       <MemoryRouter>
-        <Layout>
-          <div />
-        </Layout>
+        <AlertsProvider>
+          <Layout>
+            <div />
+          </Layout>
+        </AlertsProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText((content) => content.includes('Developer Portal'))).toBeInTheDocument()
@@ -42,9 +63,11 @@ describe('Layout', () => {
   it('renders Dashboard nav link', () => {
     render(
       <MemoryRouter>
-        <Layout>
-          <div />
-        </Layout>
+        <AlertsProvider>
+          <Layout>
+            <div />
+          </Layout>
+        </AlertsProvider>
       </MemoryRouter>,
     )
     const links = screen.getAllByText('Dashboard')
@@ -54,9 +77,11 @@ describe('Layout', () => {
   it('has a mobile menu button with aria-label', () => {
     render(
       <MemoryRouter>
-        <Layout>
-          <div />
-        </Layout>
+        <AlertsProvider>
+          <Layout>
+            <div />
+          </Layout>
+        </AlertsProvider>
       </MemoryRouter>,
     )
     const buttons = screen.getAllByLabelText('Toggle menu')
@@ -68,9 +93,11 @@ describe('snapshots', () => {
   it('default', () => {
     const { container } = render(
       <MemoryRouter>
-        <Layout>
-          <div>Content</div>
-        </Layout>
+        <AlertsProvider>
+          <Layout>
+            <div>Content</div>
+          </Layout>
+        </AlertsProvider>
       </MemoryRouter>,
     )
     expect(container.firstChild).toMatchSnapshot()

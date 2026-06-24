@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useAlerts } from './useAlerts'
+import { useAlerts, AlertsProvider } from './useAlerts'
 
 const STORAGE_KEY = 'price-alerts'
+
+vi.mock('../context/PriceContext', () => ({
+  usePriceContext: vi.fn(() => ({
+    livePrices: new Map(),
+  })),
+}))
 
 beforeEach(() => {
   localStorage.clear()
@@ -10,7 +16,7 @@ beforeEach(() => {
 
 describe('useAlerts', () => {
   it('starts with empty alerts', () => {
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     expect(result.current.alerts).toHaveLength(0)
     expect(result.current.activeCount).toBe(0)
   })
@@ -29,13 +35,13 @@ describe('useAlerts', () => {
       },
     ]
     localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     expect(result.current.alerts).toHaveLength(1)
     expect(result.current.activeCount).toBe(1)
   })
 
   it('adds an alert', () => {
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
         assetPair: 'ETH/USD',
@@ -56,7 +62,7 @@ describe('useAlerts', () => {
   })
 
   it('persists to localStorage after add', () => {
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
         assetPair: 'BTC/USD',
@@ -72,7 +78,7 @@ describe('useAlerts', () => {
   })
 
   it('updates an alert', () => {
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     let id: string
     act(() => {
       const alert = result.current.addAlert({
@@ -93,7 +99,7 @@ describe('useAlerts', () => {
   })
 
   it('removes an alert', () => {
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     let id: string
     act(() => {
       const alert = result.current.addAlert({
@@ -113,7 +119,7 @@ describe('useAlerts', () => {
   })
 
   it('filters alerts by pair', () => {
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
         assetPair: 'BTC/USD',
@@ -137,7 +143,7 @@ describe('useAlerts', () => {
   })
 
   it('checks if pair has alerts', () => {
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
         assetPair: 'BTC/USD',
@@ -152,7 +158,7 @@ describe('useAlerts', () => {
   })
 
   it('excludes inactive alerts from count', () => {
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
         assetPair: 'BTC/USD',
@@ -174,7 +180,7 @@ describe('useAlerts', () => {
 
   it('handles invalid localStorage data', () => {
     localStorage.setItem(STORAGE_KEY, 'invalid json')
-    const { result } = renderHook(() => useAlerts())
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     expect(result.current.alerts).toHaveLength(0)
   })
 })

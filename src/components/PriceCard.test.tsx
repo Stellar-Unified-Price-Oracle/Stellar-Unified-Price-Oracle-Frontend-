@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PriceCard } from './PriceCard'
@@ -107,23 +107,34 @@ describe('PriceCard', () => {
   it('applies reduced opacity when isStale is true', () => {
     const { container } = render(<PriceCard price={mockPrice} isStale />)
     const card = container.querySelector('[role="button"]')
-    expect(card?.className).toContain('opacity-60')
+    expect(card?.className).toContain('opacity-80')
   })
 
   it('does not apply reduced opacity when isStale is false', () => {
     const { container } = render(<PriceCard price={mockPrice} isStale={false} />)
     const card = container.querySelector('[role="button"]')
-    expect(card?.className).not.toContain('opacity-60')
+    expect(card?.className).not.toContain('opacity-80')
   })
 
   it('does not apply reduced opacity when isStale is undefined', () => {
     const { container } = render(<PriceCard price={mockPrice} />)
     const card = container.querySelector('[role="button"]')
-    expect(card?.className).not.toContain('opacity-60')
+    expect(card?.className).not.toContain('opacity-80')
+  })
+
+  it('shows optimistic indicator while REST confirmation is pending', () => {
+    render(<PriceCard price={mockPrice} syncState="optimistic" isStale />)
+    expect(screen.getByText('Optimistic update')).toBeInTheDocument()
+  })
+
+  it('shows rollback indicator when REST corrects the price', () => {
+    render(<PriceCard price={mockPrice} syncState="rollback" />)
+    expect(screen.getByText('REST corrected')).toBeInTheDocument()
   })
 })
 
 describe('snapshots', () => {
+  const FIXED_NOW = 1700100000000
   const fixedPrice = {
     assetPair: 'BTC/USD',
     price: 50000.1234,
@@ -131,6 +142,14 @@ describe('snapshots', () => {
     confidence: 0.9876,
     sources: ['chainlink', 'redstone'],
   }
+
+  beforeEach(() => {
+    vi.spyOn(Date, 'now').mockReturnValue(FIXED_NOW)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
   it('default', () => {
     const { container } = render(<PriceCard price={fixedPrice} />)
