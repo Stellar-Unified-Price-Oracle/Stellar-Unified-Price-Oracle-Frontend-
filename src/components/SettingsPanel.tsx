@@ -1,4 +1,5 @@
 import { usePreferences } from '../preferences/PreferencesContext'
+import { useOnboarding } from './OnboardingTour'
 import {
   REFRESH_INTERVAL_OPTIONS,
   CHART_RANGE_OPTIONS,
@@ -9,9 +10,50 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
+function AccessibilityToggle({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (val: boolean) => void
+}) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer group">
+      <div className="relative mt-0.5 flex-shrink-0">
+        <input
+          type="checkbox"
+          className="sr-only"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          aria-label={label}
+        />
+        <div
+          className={`w-10 h-5 rounded-full transition-colors duration-200 ${
+            checked ? 'bg-cyan-500' : 'bg-gray-700'
+          }`}
+        />
+        <div
+          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+            checked ? 'translate-x-5' : 'translate-x-0'
+          }`}
+        />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-200">{label}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      </div>
+    </label>
+  )
+}
+
 export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const { preferences, updatePreference, undo, redo, canUndo, canRedo, clearHistory } =
     usePreferences()
+  const { startTour } = useOnboarding()
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -31,56 +73,92 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
         </div>
 
         <div className="px-6 py-4 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Refresh Interval
-            </label>
-            <select
-              value={preferences.refreshInterval}
-              onChange={(e) => updatePreference('refreshInterval', Number(e.target.value) as typeof preferences.refreshInterval)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            >
-              {REFRESH_INTERVAL_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Data preferences */}
+          <section aria-labelledby="data-settings-heading">
+            <h3 id="data-settings-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+              Data
+            </h3>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Chart Time Range
-            </label>
-            <select
-              value={preferences.chartTimeRange}
-              onChange={(e) => updatePreference('chartTimeRange', e.target.value as typeof preferences.chartTimeRange)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            >
-              {CHART_RANGE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Refresh Interval
+                </label>
+                <select
+                  value={preferences.refreshInterval}
+                  onChange={(e) => updatePreference('refreshInterval', Number(e.target.value) as typeof preferences.refreshInterval)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                >
+                  {REFRESH_INTERVAL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Stale Asset Threshold
-            </label>
-            <select
-              value={preferences.staleThresholdMinutes}
-              onChange={(e) => updatePreference('staleThresholdMinutes', Number(e.target.value))}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            >
-              {STALE_THRESHOLD_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Chart Time Range
+                </label>
+                <select
+                  value={preferences.chartTimeRange}
+                  onChange={(e) => updatePreference('chartTimeRange', e.target.value as typeof preferences.chartTimeRange)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                >
+                  {CHART_RANGE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Stale Asset Threshold
+                </label>
+                <select
+                  value={preferences.staleThresholdMinutes}
+                  onChange={(e) => updatePreference('staleThresholdMinutes', Number(e.target.value))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                >
+                  {STALE_THRESHOLD_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </section>
+
+          {/* Accessibility presets */}
+          <section aria-labelledby="a11y-settings-heading">
+            <h3 id="a11y-settings-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+              Accessibility
+            </h3>
+            <div className="space-y-4">
+              <AccessibilityToggle
+                label="Reduced Motion"
+                description="Disables animations and transitions for motion-sensitive users"
+                checked={preferences.reducedMotion}
+                onChange={(val) => updatePreference('reducedMotion', val)}
+              />
+              <AccessibilityToggle
+                label="High Contrast"
+                description="Increases color contrast ratios for low-vision users"
+                checked={preferences.highContrast}
+                onChange={(val) => updatePreference('highContrast', val)}
+              />
+              <AccessibilityToggle
+                label="Large Text"
+                description="Increases base font size across the dashboard"
+                checked={preferences.largeText}
+                onChange={(val) => updatePreference('largeText', val)}
+              />
+            </div>
+          </section>
         </div>
 
         <div className="border-t border-gray-800 px-6 py-4">
@@ -117,6 +195,19 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
               Clear
             </button>
           </div>
+        </div>
+
+        <div className="border-t border-gray-800 px-6 py-4">
+          <button
+            onClick={() => { startTour(); onClose() }}
+            className="flex items-center gap-2 w-full px-4 py-2 rounded-lg text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors"
+            aria-label="Replay onboarding tour"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Replay Onboarding Tour
+          </button>
         </div>
       </div>
     </div>

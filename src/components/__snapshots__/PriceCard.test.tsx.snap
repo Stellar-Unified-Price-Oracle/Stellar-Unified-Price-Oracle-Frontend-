@@ -3,21 +3,54 @@
 exports[`snapshots > default 1`] = `
 <div
   aria-label="View details for BTC/USD"
-  class="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer "
+  class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
   role="button"
   tabindex="0"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
-    <h3
-      class="text-lg font-semibold text-gray-100"
-    >
-      BTC/USD
-    </h3>
     <div
       class="flex items-center gap-2"
-    />
+    >
+      <h3
+        class="text-lg font-semibold text-gray-100"
+      >
+        BTC/USD
+      </h3>
+    </div>
+    <div
+      class="flex items-center gap-2"
+    >
+      <button
+        aria-label="More actions for BTC/USD"
+        class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <circle
+            cx="8"
+            cy="3"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="13"
+            r="1.2"
+          />
+        </svg>
+      </button>
+    </div>
   </div>
   <div
     class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
@@ -30,7 +63,7 @@ exports[`snapshots > default 1`] = `
   >
     <span>
       Updated 
-      22841h ago
+      27h ago
     </span>
     <span
       class="text-cyan-600 dark:text-cyan-400"
@@ -84,18 +117,22 @@ exports[`snapshots > default 1`] = `
 exports[`snapshots > hasAlert 1`] = `
 <div
   aria-label="View details for BTC/USD"
-  class="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer "
+  class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
   role="button"
   tabindex="0"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
-    <h3
-      class="text-lg font-semibold text-gray-100"
+    <div
+      class="flex items-center gap-2"
     >
-      BTC/USD
-    </h3>
+      <h3
+        class="text-lg font-semibold text-gray-100"
+      >
+        BTC/USD
+      </h3>
+    </div>
     <div
       class="flex items-center gap-2"
     >
@@ -104,6 +141,34 @@ exports[`snapshots > hasAlert 1`] = `
         class="w-2 h-2 rounded-full bg-amber-400"
         role="status"
       />
+      <button
+        aria-label="More actions for BTC/USD"
+        class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <circle
+            cx="8"
+            cy="3"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="13"
+            r="1.2"
+          />
+        </svg>
+      </button>
     </div>
   </div>
   <div
@@ -117,7 +182,7 @@ exports[`snapshots > hasAlert 1`] = `
   >
     <span>
       Updated 
-      22841h ago
+      27h ago
     </span>
     <span
       class="text-cyan-600 dark:text-cyan-400"
@@ -171,18 +236,22 @@ exports[`snapshots > hasAlert 1`] = `
 exports[`snapshots > isLive 1`] = `
 <div
   aria-label="View details for BTC/USD"
-  class="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer "
+  class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
   role="button"
   tabindex="0"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
-    <h3
-      class="text-lg font-semibold text-gray-100"
+    <div
+      class="flex items-center gap-2"
     >
-      BTC/USD
-    </h3>
+      <h3
+        class="text-lg font-semibold text-gray-100"
+      >
+        BTC/USD
+      </h3>
+    </div>
     <div
       class="flex items-center gap-2"
     >
@@ -191,6 +260,34 @@ exports[`snapshots > isLive 1`] = `
         class="w-2 h-2 rounded-full bg-green-500 animate-pulse"
         role="status"
       />
+      <button
+        aria-label="More actions for BTC/USD"
+        class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <circle
+            cx="8"
+            cy="3"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="13"
+            r="1.2"
+          />
+        </svg>
+      </button>
     </div>
   </div>
   <div
@@ -204,7 +301,7 @@ exports[`snapshots > isLive 1`] = `
   >
     <span>
       Updated 
-      22841h ago
+      27h ago
     </span>
     <span
       class="text-cyan-600 dark:text-cyan-400"
@@ -258,21 +355,54 @@ exports[`snapshots > isLive 1`] = `
 exports[`snapshots > isStale 1`] = `
 <div
   aria-label="View details for BTC/USD"
-  class="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer opacity-60"
+  class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer opacity-60 border-gray-800"
   role="button"
   tabindex="0"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
-    <h3
-      class="text-lg font-semibold text-gray-100"
-    >
-      BTC/USD
-    </h3>
     <div
       class="flex items-center gap-2"
-    />
+    >
+      <h3
+        class="text-lg font-semibold text-gray-100"
+      >
+        BTC/USD
+      </h3>
+    </div>
+    <div
+      class="flex items-center gap-2"
+    >
+      <button
+        aria-label="More actions for BTC/USD"
+        class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-4 h-4"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <circle
+            cx="8"
+            cy="3"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="1.2"
+          />
+          <circle
+            cx="8"
+            cy="13"
+            r="1.2"
+          />
+        </svg>
+      </button>
+    </div>
   </div>
   <div
     class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
@@ -285,7 +415,7 @@ exports[`snapshots > isStale 1`] = `
   >
     <span>
       Updated 
-      22841h ago
+      27h ago
     </span>
     <span
       class="text-cyan-600 dark:text-cyan-400"

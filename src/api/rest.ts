@@ -1,5 +1,6 @@
 import { config } from '../config'
 import type { PriceData, PriceHistoryResponse } from '../types'
+import { idbCache } from '../hooks/useIndexedDB'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${config.apiUrl}${path}`
@@ -16,21 +17,50 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function fetchAllPrices(pairs?: string[]): Promise<PriceData[]> {
   const params = pairs?.length ? `?pairs=${pairs.join(',')}` : ''
-  return request<PriceData[]>(`/api/prices${params}`)
+  const cacheKey = `all${params}`
+  try {
+    const data = await request<PriceData[]>(`/api/prices${params}`)
+    idbCache.set('prices', cacheKey, data)
+    return data
+  } catch (err) {
+    // Serve stale cache on network failure (offline support)
+    const cached = await idbCache.get<PriceData[]>('prices', cacheKey, Infinity)
+    if (cached) return cached
+    throw err
+  }
 }
 
 export async function fetchPrice(pair: string): Promise<PriceData> {
-  return request<PriceData>(`/api/prices/${encodeURIComponent(pair)}`)
+  try {
+    const data = await request<PriceData>(`/api/prices/${encodeURIComponent(pair)}`)
+    idbCache.set('prices', pair, data)
+    return data
+  } catch (err) {
+    const cached = await idbCache.get<PriceData>('prices', pair, Infinity)
+    if (cached) return cached
+    throw err
+  }
 }
 
 export async function fetchPriceHistory(
   pair: string,
   limit = 100,
-  offset = 0
+  offset = 0,
+  startTs?: number,
+  endTs?: number,
 ): Promise<PriceHistoryResponse> {
-  return request<PriceHistoryResponse>(
-    `/api/prices/${encodeURIComponent(pair)}/history?limit=${limit}&offset=${offset}`
-  )
+  const cacheKey = `${pair}:${limit}:${offset}`
+  try {
+    const data = await request<PriceHistoryResponse>(
+      `/api/prices/${encodeURIComponent(pair)}/history?limit=${limit}&offset=${offset}`
+    )
+    idbCache.set('history', cacheKey, data)
+    return data
+  } catch (err) {
+    const cached = await idbCache.get<PriceHistoryResponse>('history', cacheKey, Infinity)
+    if (cached) return cached
+    throw err
+  }
 }
 
 export async function fetchHealth(): Promise<{ status: string; uptime: number }> {

@@ -21,3 +21,73 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* ── Accessibility: Reduced Motion ─────────────────────────────── */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Accessibility: High Contrast ──────────────────────────────── */
+.high-contrast {
+  --hc-border: #ffffff;
+  --hc-text: #ffffff;
+  --hc-bg: #000000;
+  --hc-accent: #00ffff;
+}
+
+.high-contrast body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.high-contrast .dark\:bg-gray-950,
+.high-contrast .bg-gray-900,
+.high-contrast .dark\:bg-gray-900\/80 {
+  background-color: #000000 !important;
+}
+
+.high-contrast .border-gray-800,
+.high-contrast .dark\:border-gray-800 {
+  border-color: #ffffff !important;
+}
+
+.high-contrast .text-gray-400,
+.high-contrast .text-gray-500,
+.high-contrast .dark\:text-gray-400,
+.high-contrast .dark\:text-gray-500 {
+  color: #e5e7eb !important;
+}
+
+.high-contrast .text-cyan-400,
+.high-contrast .dark\:text-cyan-400 {
+  color: #00ffff !important;
+}
+
+/* ── Accessibility: Large Text ──────────────────────────────────── */
+.large-text {
+  font-size: 112.5%; /* 18px base instead of 16px */
+}
+
+.large-text .text-sm {
+  font-size: 1rem !important;
+}
+
+.large-text .text-xs {
+  font-size: 0.875rem !important;
+}

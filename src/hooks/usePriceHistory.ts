@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchPriceHistory } from '../api/rest'
 import type { PriceHistoryEntry } from '../types'
 
-export function usePriceHistory(pair: string | null, limit = 100) {
+export interface PriceHistoryOptions {
+  limit?: number
+  startTs?: number
+  endTs?: number
+}
+
+export function usePriceHistory(pair: string | null, options: PriceHistoryOptions = {}) {
+  const { limit = 100, startTs, endTs } = options
   const [history, setHistory] = useState<PriceHistoryEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -12,7 +19,7 @@ export function usePriceHistory(pair: string | null, limit = 100) {
     if (!pair) return
     setLoading(true)
     try {
-      const res = await fetchPriceHistory(pair, limit)
+      const res = await fetchPriceHistory(pair, limit, 0, startTs, endTs)
       setHistory(res.history)
       setError(null)
     } catch (e) {
@@ -20,7 +27,7 @@ export function usePriceHistory(pair: string | null, limit = 100) {
     } finally {
       setLoading(false)
     }
-  }, [pair, limit])
+  }, [pair, limit, startTs, endTs])
 
   useEffect(() => {
     load()
