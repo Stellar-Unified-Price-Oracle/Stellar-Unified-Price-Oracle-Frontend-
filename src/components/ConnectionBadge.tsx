@@ -5,7 +5,6 @@ const STATUS_MAP: Record<ConnectionStatus, { label: string; color: string }> = {
   connecting: { label: 'Connecting', color: 'bg-yellow-500' },
   reconnecting: { label: 'Reconnecting', color: 'bg-yellow-500' },
   disconnected: { label: 'Offline', color: 'bg-red-500' },
-  auth_failed: { label: 'Auth Failed', color: 'bg-red-500' },
 }
 
 export function ConnectionBadge({ status }: { status: ConnectionStatus }) {

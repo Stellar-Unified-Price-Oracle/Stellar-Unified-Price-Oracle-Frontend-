@@ -87,65 +87,8 @@ export interface AlertsContextType {
   markAsRead: (id: string) => void
 }
 
-// Rate Limit Types (Issue #93)
 export interface RateLimitInfo {
   limit: number
   remaining: number
-  reset: number // Unix timestamp in seconds
-}
-
-// API Key Types (Issue #92)
-export type ApiKeyPermission = 'read' | 'write' | 'admin'
-
-export interface ApiKey {
-  id: string
-  name: string
-  key: string // Only returned when first created
-  maskedKey: string // e.g., "sk_test_...xxxx"
-  permissions: ApiKeyPermission[]
-  createdAt: number
-  lastUsedAt: number | null
-  quotaLimit: number
-  quotaUsed: number
-  active: boolean
-}
-
-export interface ApiKeyFormData {
-  name: string
-  permissions: ApiKeyPermission[]
-}
-
-// Analytics Types (Issue #90)
-export type AnalyticsEventType = 
-  | 'page_view' 
-  | 'feature_usage' 
-  | 'time_on_page' 
-  | 'alert_created' 
-  | 'export_performed' 
-  | 'settings_changed'
-  | 'api_key_created'
-  | 'api_key_revoked'
-
-export interface AnalyticsEvent {
-  type: AnalyticsEventType
-  timestamp: number
-  payload?: Record<string, unknown>
-}
-
-export interface AnalyticsConsent {
-  given: boolean
-  timestamp: number
-  version: number
-}
-
-// WebSocket Auth Types (Issue #96)
-export interface WsAuthMessage {
-  action: 'auth'
-  token: string
-}
-
-export interface WsAuthResponseMessage {
-  type: 'auth_response'
-  success: boolean
-  error?: string
+  reset: number
 }
