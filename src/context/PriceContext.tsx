@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSwr } from '../hooks/useSwr'
 import { WebSocketClient, type ConnectionStatus } from '../api/websocket'
 import { fetchAllPrices, fetchPrice } from '../api/rest'
@@ -40,54 +40,57 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const scheduleSettledState = useCallback((pair: string) => {
-    clearCleanupTimer(pair)
-    const timer = setTimeout(() => {
-      setLivePrices((prev) => {
-        const current = prev.get(pair)
-        if (!current || current.syncState === 'optimistic') return prev
-
-        const next = new Map(prev)
-        next.set(pair, { ...current, syncState: 'synced' })
-        return next
-      })
-      cleanupTimersRef.current.delete(pair)
-    }, 1200)
-    cleanupTimersRef.current.set(pair, timer)
-  }, [])
-
-  const revalidatePair = useCallback(async (pair: string, requestId: number) => {
-    try {
-      const restPrice = await fetchPrice(pair)
-
-      if (requestIdsRef.current.get(pair) !== requestId) return
-
-      setLivePrices((prev) => {
-        const current = prev.get(pair)
-        if (!current) return prev
-
-        const isConfirmed =
-          current.data.timestamp === restPrice.timestamp &&
-          current.data.price === restPrice.price &&
-          current.data.confidence === restPrice.confidence &&
-          current.data.sources.join('|') === restPrice.sources.join('|')
-
-        const next = new Map(prev)
-        next.set(pair, {
-          data: isConfirmed ? current.data : restPrice,
-          syncState: isConfirmed ? 'confirmed' : 'rollback',
-          flashVersion: current.flashVersion + 1,
-        })
-        return next
-      })
-
-      scheduleSettledState(pair)
-    } catch {
-      // Keep optimistic data visible and let polling retry the canonical state.
-    }
-  }, [scheduleSettledState])
-
   useEffect(() => {
+    const timers = cleanupTimersRef.current
+    const requestIds = requestIdsRef.current
+
+    const scheduleSettledState = (pair: string) => {
+      clearCleanupTimer(pair)
+      const timer = setTimeout(() => {
+        setLivePrices((prev) => {
+          const current = prev.get(pair)
+          if (!current || current.syncState === 'optimistic') return prev
+
+          const next = new Map(prev)
+          next.set(pair, { ...current, syncState: 'synced' })
+          return next
+        })
+        timers.delete(pair)
+      }, 1200)
+      timers.set(pair, timer)
+    }
+
+    const revalidatePair = async (pair: string, requestId: number) => {
+      try {
+        const restPrice = await fetchPrice(pair)
+
+        if (requestIds.get(pair) !== requestId) return
+
+        setLivePrices((prev) => {
+          const current = prev.get(pair)
+          if (!current) return prev
+
+          const isConfirmed =
+            current.data.timestamp === restPrice.timestamp &&
+            current.data.price === restPrice.price &&
+            current.data.confidence === restPrice.confidence &&
+            current.data.sources.join('|') === restPrice.sources.join('|')
+
+          const next = new Map(prev)
+          next.set(pair, {
+            data: isConfirmed ? current.data : restPrice,
+            syncState: isConfirmed ? 'confirmed' : 'rollback',
+            flashVersion: current.flashVersion + 1,
+          })
+          return next
+        })
+
+        scheduleSettledState(pair)
+      } catch {
+        // Keep optimistic data visible and let polling retry the canonical state.
+      }
+    }
+
     const client = new WebSocketClient()
     wsRef.current = client
 
@@ -112,27 +115,25 @@ export function PriceProvider({ children }: { children: ReactNode }) {
         })
 
         clearCleanupTimer(msg.assetPair)
-        const requestId = (requestIdsRef.current.get(msg.assetPair) ?? 0) + 1
-        requestIdsRef.current.set(msg.assetPair, requestId)
+        const requestId = (requestIds.get(msg.assetPair) ?? 0) + 1
+        requestIds.set(msg.assetPair, requestId)
         void revalidatePair(msg.assetPair, requestId)
       }
     })
 
     client.connect()
 
-    const cleanupTimers = cleanupTimersRef.current
-
     return () => {
       unsubStatus()
       unsubMsg()
       client.disconnect()
       wsRef.current = null
-      for (const timer of cleanupTimers.values()) {
+      for (const timer of timers.values()) {
         clearTimeout(timer)
       }
-      cleanupTimers.clear()
+      timers.clear()
     }
-  }, [revalidatePair, scheduleSettledState])
+  }, [])
 
   useEffect(() => {
     setLivePrices((prev) => {

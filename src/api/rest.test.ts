@@ -13,6 +13,10 @@ vi.mock('../config', () => ({
   },
 }))
 
+vi.mock('../hooks/useIndexedDB', () => ({
+  idbCache: { get: vi.fn().mockResolvedValue(null), set: vi.fn() },
+}))
+
 // Keep a reference to reset coalescing state between tests
 const restModule = await import('./rest')
 const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchBatchHistory, fetchHealth } =
