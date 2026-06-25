@@ -165,7 +165,7 @@ async function _fetchHistoryDirect(
 // ---------------------------------------------------------------------------
 
 /** Fetches the latest aggregated price for every tracked asset pair, or a filtered subset when `pairs` is provided. */
-export async function fetchAllPrices(pairs?: string[]): Promise<PriceData[]> {
+export async function fetchAllPrices(pairs?: string[], signal?: AbortSignal): Promise<PriceData[]> {
   const params = pairs?.length ? `?pairs=${pairs.join(',')}` : ''
   const raw = await request<PriceData[]>(`/api/prices${params}`, undefined, signal)
   return validate(PriceDataSchema.array(), raw)
@@ -217,7 +217,7 @@ export function fetchPriceHistory(
 }
 
 /** Fetches price history for multiple asset pairs in a single POST request. */
-export async function fetchBatchHistory(pairs: string[]): Promise<PriceHistoryResponse[]> {
+export async function fetchBatchHistory(pairs: string[], signal?: AbortSignal): Promise<PriceHistoryResponse[]> {
   const raw = await request<PriceHistoryResponse[]>('/api/prices/history/batch', {
     method: 'POST',
     body: JSON.stringify({ pairs }),
