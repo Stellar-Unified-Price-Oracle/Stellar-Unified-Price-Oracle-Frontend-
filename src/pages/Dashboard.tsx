@@ -50,14 +50,33 @@ export function Dashboard() {
   const activeFilterCount = countActiveFilters(filterState)
   const { sources, minConf, maxConf, minPrice, maxPrice, updatedWithin, sort, sortDir } = filterState
 
+  // Legacy params kept for backward compatibility
+  const legacyConfidence = searchParams.get('confidence') || 'all'
+  const legacySource = searchParams.get('source') || 'all'
+
   const merged = mergePrices(prices, livePrices)
 
   const filtered = useMemo(() => {
     let result = merged
     if (search) result = result.filter((p) => p.assetPair.toLowerCase().includes(search.toLowerCase()))
-    if (sources.length > 0) result = result.filter((p) => p.sources.some((s) => sources.includes(s)))
-    if (minConf > 0) result = result.filter((p) => p.confidence * 100 >= minConf)
-    if (maxConf < 100) result = result.filter((p) => p.confidence * 100 <= maxConf)
+
+    // Source filter: new 'sources' param takes precedence over legacy 'source'
+    if (sources.length > 0) {
+      result = result.filter((p) => p.sources.some((s) => sources.includes(s)))
+    } else if (legacySource !== 'all') {
+      result = result.filter((p) => p.sources.some((s) => s.toLowerCase() === legacySource.toLowerCase()))
+    }
+
+    // Confidence filter: new minConf/maxConf take precedence over legacy 'confidence'
+    if (minConf > 0 || maxConf < 100) {
+      if (minConf > 0) result = result.filter((p) => p.confidence * 100 >= minConf)
+      if (maxConf < 100) result = result.filter((p) => p.confidence * 100 <= maxConf)
+    } else if (legacyConfidence === 'high') {
+      result = result.filter((p) => p.confidence > 0.8)
+    } else if (legacyConfidence === 'medium') {
+      result = result.filter((p) => p.confidence > 0.5)
+    }
+
     if (minPrice) result = result.filter((p) => p.price >= Number(minPrice))
     if (maxPrice) result = result.filter((p) => p.price <= Number(maxPrice))
     if (updatedWithin !== 'all') {
@@ -72,7 +91,7 @@ export function Dashboard() {
     else if (sort === 'recent') result = [...result].sort((a, b) => desc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp)
     else if (sort === 'pair') result = [...result].sort((a, b) => desc ? b.assetPair.localeCompare(a.assetPair) : a.assetPair.localeCompare(b.assetPair))
     return result
-  }, [merged, search, sources, minConf, maxConf, minPrice, maxPrice, updatedWithin, sort, sortDir])
+  }, [merged, search, sources, minConf, maxConf, minPrice, maxPrice, updatedWithin, sort, sortDir, legacyConfidence, legacySource])
 
   const handleCardClick = useCallback(
     (pair: string) => {
