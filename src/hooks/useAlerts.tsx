@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, createContext, useContext, ReactNode, type ReactElement } from 'react'
+import { useState, useCallback, useEffect, createContext, useContext, ReactNode } from 'react'
 import type { Alert, AlertsContextType } from '../types'
 import { usePriceContext } from '../context/PriceContext'
 
