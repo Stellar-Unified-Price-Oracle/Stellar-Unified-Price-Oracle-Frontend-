@@ -19,7 +19,14 @@ function saveAlerts(alerts: Alert[]): void {
 
 const AlertsContext = createContext<AlertsContextType | null>(null)
 
-export function AlertsProvider({ children }: { children: ReactNode }): ReactElement {
+/**
+ * Provides the {@link AlertsContextType} to its subtree.
+ *
+ * Persists alerts to `localStorage` and evaluates them against live prices from {@link usePriceContext}.
+ * Fires browser notifications when a threshold is crossed (if permission is granted).
+ * Must be rendered inside `PriceProvider`.
+ */
+export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   
@@ -144,7 +151,12 @@ export function AlertsProvider({ children }: { children: ReactNode }): ReactElem
   return <AlertsContext.Provider value={value}>{children}</AlertsContext.Provider>
 }
 
-export function useAlerts(): AlertsContextType {
+/**
+ * Returns the alerts context value.
+ * Must be called inside a component that is a descendant of {@link AlertsProvider}.
+ * Throws if called outside of that tree.
+ */
+export function useAlerts() {
   const context = useContext(AlertsContext)
   if (!context) {
     throw new Error('useAlerts must be used within an AlertsProvider')

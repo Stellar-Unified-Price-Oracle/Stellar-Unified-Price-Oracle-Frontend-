@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, type ReactElement } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { usePriceContext } from '../context/PriceContext'
 import { useAlerts } from '../hooks/useAlerts'
+import { useExport } from '../hooks/useExport'
 import { PriceCard } from '../components/PriceCard'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
 import { PriceTableView } from '../components/PriceTableView'
@@ -25,30 +26,11 @@ function mergePrices(
   })
 }
 
-function exportCSV(items: PriceData[]): void {
-  const header = 'Asset Pair,Price,Confidence,Sources,Updated'
-  const rows = items.map((p) =>
-    [
-      p.assetPair,
-      p.price,
-      (p.confidence * 100).toFixed(2) + '%',
-      p.sources.join(';'),
-      new Date(p.timestamp).toISOString(),
-    ].join(',')
-  )
-  const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `oracle-prices-${Date.now()}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-export function Dashboard(): ReactElement {
+export function Dashboard() {
   const { prices, pricesLoading, pricesError, pricesValidating, livePrices, wsStatus } = usePriceContext()
   const navigate = useNavigate()
   const { alerts, addAlert, removeAlert, hasAlertsForPair, activeCount } = useAlerts()
+  const { exportCSV } = useExport()
   const [searchParams] = useSearchParams()
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -86,9 +68,11 @@ export function Dashboard(): ReactElement {
           if (next.has(pair)) { next.delete(pair) } else { next.add(pair) }
           return next
         })
+      } else {
+        navigate(`/prices/${encodeURIComponent(pair)}`)
       }
     },
-    [selectMode],
+    [selectMode, navigate],
   )
 
   const handleAlertClick = useCallback((e: React.MouseEvent, pair: string) => {
