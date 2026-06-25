@@ -81,7 +81,7 @@ function keyToLimitOffset(key: string): { limit: number; offset: number } {
   return { limit: Number(parts[parts.length - 2]), offset: Number(parts[parts.length - 1]) }
 }
 
-function flushCoalesced() {
+function flushCoalesced(): void {
   coalesceTimer = null
   if (pending.size === 0) return
 

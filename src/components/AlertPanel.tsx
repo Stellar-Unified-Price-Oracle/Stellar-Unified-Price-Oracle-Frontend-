@@ -1,7 +1,8 @@
+import { type ReactElement } from 'react'
 import { useAlerts } from '../hooks/useAlerts'
 import { formatPrice } from '../utils/format'
 
-export function AlertPanel() {
+export function AlertPanel(): ReactElement | null {
   const { alerts, removeAlert, updateAlert, markAsRead, isPanelOpen, togglePanel } = useAlerts()
 
   if (!isPanelOpen) return null
@@ -10,14 +11,14 @@ export function AlertPanel() {
   const triggeredAlerts = alerts.filter((a) => a.lastTriggeredAt !== null)
   const inactiveAlerts = alerts.filter((a) => !a.active && a.lastTriggeredAt === null)
 
-  const getConditionText = (upper: number | null, lower: number | null) => {
+  const getConditionText = (upper: number | null, lower: number | null): string => {
     if (upper !== null && lower !== null) return `Between $${formatPrice(lower)} and $${formatPrice(upper)}`
     if (upper !== null) return `↑ Above $${formatPrice(upper)}`
     if (lower !== null) return `↓ Below $${formatPrice(lower)}`
     return 'No threshold'
   }
 
-  const toggleAlert = (id: string, currentActive: boolean) => {
+  const toggleAlert = (id: string, currentActive: boolean): void => {
     updateAlert(id, { active: !currentActive })
   }
 

@@ -1,3 +1,4 @@
+import { type ReactElement } from 'react'
 import type { ConnectionStatus } from '../api/websocket'
 import { Tooltip } from './Tooltip'
 
@@ -8,30 +9,7 @@ const STATUS_MAP: Record<ConnectionStatus, { label: string; color: string; toolt
   disconnected: { label: 'Offline', color: 'bg-red-500', tooltip: 'WebSocket is offline. Prices are updated via REST polling only.' },
 }
 
-export function ConnectionBadge({
-  status,
-  rateLimitStatus,
-  retryAfterMs,
-}: {
-  status: ConnectionStatus
-  rateLimitStatus?: RateLimitStatus
-  retryAfterMs?: number
-}) {
-  // Rate-limited state takes visual priority
-  if (rateLimitStatus === 'limited') {
-    const seconds = retryAfterMs ? Math.ceil(retryAfterMs / 1000) : null
-    return (
-      <span
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-900/40 border border-amber-500/50 text-amber-400"
-        role="status"
-        aria-label="API rate limited"
-      >
-        <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" aria-hidden="true" />
-        {seconds ? `Rate limited (${seconds}s)` : 'Rate limited'}
-      </span>
-    )
-  }
-
+export function ConnectionBadge({ status }: { status: ConnectionStatus }): ReactElement {
   const s = STATUS_MAP[status]
   return (
     <Tooltip content={s.tooltip}>

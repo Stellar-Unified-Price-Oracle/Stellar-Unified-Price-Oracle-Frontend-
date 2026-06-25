@@ -9,6 +9,7 @@ import { PriceTableView } from '../components/PriceTableView'
 import { AlertModal } from '../components/AlertModal'
 import { AlertBadge } from '../components/AlertBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
+import { sanitizeSearchInput } from '../utils/sanitize'
 import type { AlertFormData, LivePriceEntry, PriceData } from '../types'
 
 const SKELETON_COUNT = 8
@@ -16,7 +17,7 @@ const SKELETON_COUNT = 8
 function mergePrices(
   restPrices: PriceData[],
   livePrices: Map<string, LivePriceEntry>,
-) {
+): PriceData[] {
   return restPrices.map((p) => {
     const live = livePrices.get(p.assetPair)
     if (live && live.data.timestamp >= p.timestamp) {
@@ -127,7 +128,7 @@ export function Dashboard() {
             placeholder="Search by asset pair..."
             value={search}
             onChange={(e) => {
-              const value = e.target.value
+              const value = sanitizeSearchInput(e.target.value)
               const params = new URLSearchParams(searchParams)
               if (value) params.set('search', value)
               else params.delete('search')
