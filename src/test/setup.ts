@@ -33,7 +33,7 @@ if (typeof SVGPathElement !== 'undefined' && !SVGPathElement.prototype.getTotalL
 }
 
 // Mock fetch globally so components that call the REST API in unit tests
-// (e.g. useSparkline inside PriceCard) don't fail with "fetch is not defined".
+// don't fail with "fetch is not defined".
 // Individual tests can override this with vi.spyOn(global, 'fetch') as needed.
 global.fetch = vi.fn().mockResolvedValue({
   ok: true,
