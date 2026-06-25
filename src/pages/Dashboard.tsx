@@ -86,9 +86,11 @@ export function Dashboard() {
           if (next.has(pair)) { next.delete(pair) } else { next.add(pair) }
           return next
         })
+      } else {
+        navigate(`/prices/${encodeURIComponent(pair)}`)
       }
     },
-    [selectMode],
+    [selectMode, navigate],
   )
 
   const handleAlertClick = useCallback((e: React.MouseEvent, pair: string) => {
