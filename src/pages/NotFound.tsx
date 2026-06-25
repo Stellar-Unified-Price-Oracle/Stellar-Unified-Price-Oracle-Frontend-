@@ -1,6 +1,7 @@
+import { type ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 
-export function NotFound() {
+export function NotFound(): ReactElement {
   return (
     <div className="flex flex-col items-center justify-center py-32 text-center">
       <h1 className="text-6xl font-bold text-gray-200 dark:text-gray-800 mb-4">404</h1>

@@ -1,44 +1,39 @@
+import { Suspense, type ReactElement } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Dashboard } from './pages/Dashboard'
+import { PriceDetail } from './pages/PriceDetail'
+import { ApiDocs } from './pages/ApiDocs'
 import { NotFound } from './pages/NotFound'
-import { OpsPage } from './pages/OpsPage'
-import { useWebVitals } from './hooks/useWebVitals'
-import { useAccessibility } from './hooks/useAccessibility'
-import { PreferencesProvider } from './preferences/PreferencesContext'
-import { ToastProvider } from './context/ToastContext'
-import { ToastContainer } from './components/ToastContainer'
+import { AlertsProvider } from './hooks/useAlerts'
 
 const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
 
-function AppContent() {
+function AppContent(): ReactElement {
   const location = useLocation()
-  useAccessibility()
   return (
     <ErrorBoundary key={location.key}>
-      <PreferencesProvider>
+      <AlertsProvider>
         <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/ops" element={<OpsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/prices/:pair" element={<PriceDetail />} />
+              <Route path="/api-docs" element={<ApiDocs />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </Layout>
-      </PreferencesProvider>
+      </AlertsProvider>
     </ErrorBoundary>
   )
 }
 
-export default function App() {
-  useWebVitals()
-
+export default function App(): ReactElement {
   return (
     <BrowserRouter basename={BASENAME}>
-      <ToastProvider>
-        <AppContent />
-        <ToastContainer />
-      </ToastProvider>
+      <AppContent />
     </BrowserRouter>
   )
 }

@@ -1,3 +1,4 @@
+import { type ReactElement } from 'react'
 const SOURCE_INFO: Record<string, { label: string; color: string }> = {
   chainlink: { label: 'Chainlink', color: 'bg-blue-500' },
   redstone: { label: 'Redstone', color: 'bg-red-500' },
@@ -9,7 +10,7 @@ interface SourceHealthProps {
   sources: readonly string[]
 }
 
-export function SourceHealthBadge({ sources }: SourceHealthProps) {
+export function SourceHealthBadge({ sources }: SourceHealthProps): ReactElement {
   if (!sources.length) {
     return <span className="text-xs text-gray-400 dark:text-gray-500">No sources</span>
   }

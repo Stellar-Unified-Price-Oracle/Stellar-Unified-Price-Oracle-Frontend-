@@ -34,24 +34,54 @@ exports[`snapshots > default 1`] = `
       27h ago
     </span>
     <span
-      class="text-cyan-600 dark:text-cyan-400"
+      class="relative inline-flex items-center"
     >
-      98.8
-      % confidence
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="text-cyan-600 dark:text-cyan-400"
+        >
+          98.8
+          % confidence
+        </span>
+      </span>
     </span>
   </div>
   <div
     class="flex flex-wrap gap-1.5"
   >
     <span
-      class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+      class="relative inline-flex items-center"
     >
-      chainlink
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+        >
+          chainlink
+        </span>
+      </span>
     </span>
     <span
-      class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+      class="relative inline-flex items-center"
     >
-      redstone
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+        >
+          redstone
+        </span>
+      </span>
     </span>
   </div>
   <div
@@ -116,24 +146,54 @@ exports[`snapshots > hasAlert 1`] = `
       27h ago
     </span>
     <span
-      class="text-cyan-600 dark:text-cyan-400"
+      class="relative inline-flex items-center"
     >
-      98.8
-      % confidence
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="text-cyan-600 dark:text-cyan-400"
+        >
+          98.8
+          % confidence
+        </span>
+      </span>
     </span>
   </div>
   <div
     class="flex flex-wrap gap-1.5"
   >
     <span
-      class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+      class="relative inline-flex items-center"
     >
-      chainlink
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+        >
+          chainlink
+        </span>
+      </span>
     </span>
     <span
-      class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+      class="relative inline-flex items-center"
     >
-      redstone
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+        >
+          redstone
+        </span>
+      </span>
     </span>
   </div>
   <div
@@ -198,24 +258,54 @@ exports[`snapshots > isLive 1`] = `
       27h ago
     </span>
     <span
-      class="text-cyan-600 dark:text-cyan-400"
+      class="relative inline-flex items-center"
     >
-      98.8
-      % confidence
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="text-cyan-600 dark:text-cyan-400"
+        >
+          98.8
+          % confidence
+        </span>
+      </span>
     </span>
   </div>
   <div
     class="flex flex-wrap gap-1.5"
   >
     <span
-      class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+      class="relative inline-flex items-center"
     >
-      chainlink
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+        >
+          chainlink
+        </span>
+      </span>
     </span>
     <span
-      class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+      class="relative inline-flex items-center"
     >
-      redstone
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+        >
+          redstone
+        </span>
+      </span>
     </span>
   </div>
   <div
@@ -280,24 +370,54 @@ exports[`snapshots > isStale 1`] = `
       27h ago
     </span>
     <span
-      class="text-cyan-600 dark:text-cyan-400"
+      class="relative inline-flex items-center"
     >
-      98.8
-      % confidence
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="text-cyan-600 dark:text-cyan-400"
+        >
+          98.8
+          % confidence
+        </span>
+      </span>
     </span>
   </div>
   <div
     class="flex flex-wrap gap-1.5"
   >
     <span
-      class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+      class="relative inline-flex items-center"
     >
-      chainlink
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+        >
+          chainlink
+        </span>
+      </span>
     </span>
     <span
-      class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+      class="relative inline-flex items-center"
     >
-      redstone
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        role="button"
+        tabindex="0"
+      >
+        <span
+          class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+        >
+          redstone
+        </span>
+      </span>
     </span>
   </div>
   <div

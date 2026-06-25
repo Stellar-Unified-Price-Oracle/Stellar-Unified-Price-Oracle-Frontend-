@@ -1,6 +1,5 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ErrorBoundary } from './components/ErrorBoundary'
 import { PriceProvider } from './context/PriceContext'
 import App from './App'
 import './index.css'
@@ -10,10 +9,8 @@ installConsoleAggregator()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
-      <PriceProvider>
-        <App />
-      </PriceProvider>
-    </ErrorBoundary>
+    <PriceProvider>
+      <App />
+    </PriceProvider>
   </StrictMode>,
 )

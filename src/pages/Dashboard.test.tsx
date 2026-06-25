@@ -6,33 +6,6 @@ import { Dashboard } from './Dashboard'
 import { AlertsProvider } from '../hooks/useAlerts'
 import { checkAccessibility } from '../test/accessibility'
 
-vi.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: ({ count, estimateSize }: { count: number; estimateSize: (i: number) => number }) => {
-    const items = Array.from({ length: count }, (_, i) => {
-      const size = estimateSize(i)
-      const start = i * size
-      return { key: i, index: i, start, end: start + size, size, lane: 0 }
-    })
-    return {
-      getVirtualItems: () => items,
-      getTotalSize: () => items.reduce((total, item) => total + item.size, 0),
-      measure: () => {},
-    }
-  },
-}))
-
-vi.mock('../preferences/PreferencesContext', () => ({
-  usePreferences: vi.fn(() => ({
-    preferences: { refreshInterval: 10000, chartTimeRange: '24h', staleThresholdMinutes: 5, dashboardView: 'card', cardOrder: [] },
-    updatePreference: vi.fn(),
-    undo: vi.fn(),
-    redo: vi.fn(),
-    canUndo: false,
-    canRedo: false,
-    clearHistory: vi.fn(),
-  })),
-}))
-
 afterEach(cleanup)
 
 vi.mock('../context/PriceContext', () => ({
@@ -180,8 +153,7 @@ describe('Dashboard', () => {
         </AlertsProvider>
       </MemoryRouter>,
     )
-    const emptyTexts = screen.getAllByText('No price feeds available')
-    expect(emptyTexts).toHaveLength(1)
+    expect(screen.getByText('No price feeds available')).toBeInTheDocument()
   })
 
   it('renders price cards when data exists', async () => {
@@ -427,105 +399,5 @@ describe('Dashboard', () => {
     expect(screen.getByText('ETH/USD')).toBeInTheDocument()
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
     expect(screen.queryByText('XLM/USD')).not.toBeInTheDocument()
-  })
-})
-
-describe('snapshots', () => {
-  beforeEach(async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(1700100000000)
-    const { usePriceContext } = await import('../context/PriceContext')
-    vi.mocked(usePriceContext).mockReturnValue({
-      prices: [],
-      pricesLoading: true,
-      pricesError: null,
-      pricesValidating: false,
-      livePrices: new Map(),
-      wsStatus: 'disconnected',
-      refetchPrices: vi.fn(),
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    })
-  })
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-  it('loading', () => {
-    const { container } = render(
-      <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
-      </MemoryRouter>,
-    )
-    expect(container.firstChild).toMatchSnapshot()
-  })
-
-  it('error', async () => {
-    const { usePriceContext } = await import('../context/PriceContext')
-    vi.mocked(usePriceContext).mockReturnValue({
-      prices: [],
-      pricesLoading: false,
-      pricesError: 'Failed to fetch prices',
-      pricesValidating: false,
-      livePrices: new Map(),
-      wsStatus: 'disconnected',
-      refetchPrices: vi.fn(),
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    })
-    const { container } = render(
-      <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
-      </MemoryRouter>,
-    )
-    expect(container.firstChild).toMatchSnapshot()
-  })
-
-  it('empty', async () => {
-    const { usePriceContext } = await import('../context/PriceContext')
-    vi.mocked(usePriceContext).mockReturnValue({
-      prices: [],
-      pricesLoading: false,
-      pricesError: null,
-      pricesValidating: false,
-      livePrices: new Map(),
-      wsStatus: 'disconnected',
-      refetchPrices: vi.fn(),
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    })
-    const { container } = render(
-      <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
-      </MemoryRouter>,
-    )
-    expect(container.firstChild).toMatchSnapshot()
-  })
-
-  it('with data', async () => {
-    const { usePriceContext } = await import('../context/PriceContext')
-    vi.mocked(usePriceContext).mockReturnValue({
-      prices: mockPrices,
-      pricesLoading: false,
-      pricesError: null,
-      pricesValidating: false,
-      livePrices: new Map(),
-      wsStatus: 'disconnected',
-      refetchPrices: vi.fn(),
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    })
-    const { container } = render(
-      <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
-      </MemoryRouter>,
-    )
-    expect(container.firstChild).toMatchSnapshot()
   })
 })

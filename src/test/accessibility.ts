@@ -14,7 +14,7 @@ import type { ReactElement } from 'react'
 export async function checkAccessibility(
   ui: ReactElement,
   options?: Parameters<typeof axe>[1]
-) {
+): Promise<Awaited<ReturnType<typeof axe>>> {
   const { container } = render(ui)
   const results = await axe(container, options)
   expect(results).toHaveNoViolations()

@@ -10,3 +10,7 @@ e2e/test-results
 test-results/
 playwright-report
 plans
+test/visual/baselines/
+test/visual/diffs/
+test/visual/reports/
+e2e/visual/__snapshots__/
