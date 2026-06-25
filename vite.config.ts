@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
   try {
     origins.add(new URL(apiUrl).origin)
   } catch {
-    // ignore invalid URL
+    // ignore - URL may be invalid
   }
 
   try {
@@ -64,7 +64,7 @@ export default defineConfig(({ mode }) => {
       new URL(wsUrl.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')).origin,
     )
   } catch {
-    // ignore invalid URL
+    // ignore - URL may be invalid
   }
 
   for (const target of Object.values(proxyConfig)) {
@@ -72,7 +72,7 @@ export default defineConfig(({ mode }) => {
       try {
         origins.add(new URL(target.target).origin)
       } catch {
-        // ignore invalid URL
+        // ignore - URL may be invalid
       }
     }
   }
@@ -141,7 +141,7 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
       css: true,
-      exclude: ['node_modules/**'],
+      exclude: ['e2e/**', 'node_modules/**'],
     },
   }
 })

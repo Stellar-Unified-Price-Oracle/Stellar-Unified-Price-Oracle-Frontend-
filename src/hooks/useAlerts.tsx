@@ -19,6 +19,13 @@ function saveAlerts(alerts: Alert[]) {
 
 const AlertsContext = createContext<AlertsContextType | null>(null)
 
+/**
+ * Provides the {@link AlertsContextType} to its subtree.
+ *
+ * Persists alerts to `localStorage` and evaluates them against live prices from {@link usePriceContext}.
+ * Fires browser notifications when a threshold is crossed (if permission is granted).
+ * Must be rendered inside `PriceProvider`.
+ */
 export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -144,6 +151,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   return <AlertsContext.Provider value={value}>{children}</AlertsContext.Provider>
 }
 
+/**
+ * Returns the alerts context value.
+ * Must be called inside a component that is a descendant of {@link AlertsProvider}.
+ * Throws if called outside of that tree.
+ */
 export function useAlerts() {
   const context = useContext(AlertsContext)
   if (!context) {

@@ -10,7 +10,7 @@ export function validate<S extends ZodTypeAny>(schema: S, data: unknown): z.infe
   const result = schema.safeParse(data)
   if (!result.success) {
     const message = result.error.issues
-      .map((i) => `${i.path.join('.')}: ${i.message}`)
+      .map((i: { path: (string | number)[]; message: string }) => `${i.path.join('.')}: ${i.message}`)
       .join('; ')
     console.warn(`[API validation] Schema mismatch — ${message}`)
     // Return data anyway to avoid breaking the UI on unexpected server responses
