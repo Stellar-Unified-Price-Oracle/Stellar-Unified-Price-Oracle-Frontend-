@@ -58,6 +58,13 @@ exports[`snapshots > default 1`] = `
           >
             Dashboard
           </a>
+          <a
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+            data-discover="true"
+            href="/api-docs"
+          >
+            API Docs
+          </a>
         </div>
       </div>
       <div

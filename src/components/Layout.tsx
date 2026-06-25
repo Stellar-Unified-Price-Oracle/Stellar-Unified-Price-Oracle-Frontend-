@@ -5,6 +5,7 @@ import { AlertPanel } from './AlertPanel'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard' },
+  { path: '/api-docs', label: 'API Docs' },
 ]
 
 export function Layout({ children }: { children: ReactNode }) {
