@@ -5,20 +5,38 @@ import { fetchAllPrices, fetchPrice } from '../api/rest'
 import { config } from '../config'
 import type { LivePriceEntry, PriceData } from '../types'
 
+/** Value exposed by {@link PriceProvider} via React context. */
 export interface PriceContextValue {
+  /** Latest REST-fetched snapshot of all tracked asset pair prices. */
   prices: PriceData[]
+  /** `true` while the initial REST fetch has not yet resolved. */
   pricesLoading: boolean
+  /** Error message from the last failed REST fetch, or `null` on success. */
   pricesError: string | null
+  /** `true` whenever a background REST revalidation is in flight. */
   pricesValidating: boolean
+  /** Live price entries keyed by asset pair, updated optimistically on each WebSocket message. */
   livePrices: Map<string, LivePriceEntry>
+  /** Current WebSocket connection status. */
   wsStatus: ConnectionStatus
+  /** Trigger an immediate refetch of all prices outside the normal polling cycle. */
   refetchPrices: () => void
+  /** Subscribe to live WebSocket updates for the given asset pairs. */
   subscribe: (pairs: string[]) => void
+  /** Unsubscribe from WebSocket updates for the given asset pairs. */
   unsubscribe: (pairs: string[]) => void
 }
 
 const PriceContext = createContext<PriceContextValue | null>(null)
 
+/**
+ * Provides real-time price data and WebSocket lifecycle management to its subtree.
+ *
+ * On mount it opens a WebSocket connection, subscribes to all tracked pairs, and
+ * applies incoming price updates optimistically. Each update is confirmed against
+ * the REST API and rolled back if the values differ. REST polling runs in parallel
+ * as a fallback when the WebSocket is disconnected.
+ */
 export function PriceProvider({ children }: { children: ReactNode }) {
   const { data: prices = [], loading: pricesLoading, error: pricesError, isValidating: pricesValidating, refetch: refetchPrices } = useSwr<PriceData[]>(
     'prices',
@@ -192,6 +210,11 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * Returns the price context value.
+ * Must be called inside a component that is a descendant of {@link PriceProvider}.
+ * Throws if called outside of that tree.
+ */
 export function usePriceContext(): PriceContextValue {
   const ctx = useContext(PriceContext)
   if (!ctx) {

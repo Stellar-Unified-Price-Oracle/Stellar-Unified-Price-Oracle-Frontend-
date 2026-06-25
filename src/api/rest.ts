@@ -11,6 +11,7 @@ import { validate } from './validate'
 
 let rateLimitInfo: RateLimitInfo | null = null
 
+/** Returns the rate-limit metadata parsed from the most recent API response headers, or `null` if none has been received yet. */
 export function getRateLimitInfo(): RateLimitInfo | null {
   return rateLimitInfo
 }
@@ -124,17 +125,27 @@ async function _fetchHistoryDirect(
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/** Fetches the latest aggregated price for every tracked asset pair, or a filtered subset when `pairs` is provided. */
 export async function fetchAllPrices(pairs?: string[]): Promise<PriceData[]> {
   const params = pairs?.length ? `?pairs=${pairs.join(',')}` : ''
   const raw = await request<PriceData[]>(`/api/prices${params}`)
   return validate(PriceDataSchema.array(), raw)
 }
 
+/** Fetches the latest aggregated price for a single asset pair. */
 export async function fetchPrice(pair: string): Promise<PriceData> {
   const raw = await request<PriceData>(`/api/prices/${encodeURIComponent(pair)}`)
   return validate(PriceDataSchema, raw)
 }
 
+/**
+ * Fetches the price history for an asset pair.
+ *
+ * Requests from multiple callers within a 50 ms window are coalesced into a single
+ * batch POST to `/api/prices/history/batch`, reducing parallel round-trips when many
+ * cards mount simultaneously.
+ */
 export function fetchPriceHistory(
   pair: string,
   limit = 100,
@@ -157,6 +168,7 @@ export function fetchPriceHistory(
   })
 }
 
+/** Fetches price history for multiple asset pairs in a single POST request. */
 export async function fetchBatchHistory(pairs: string[]): Promise<PriceHistoryResponse[]> {
   const raw = await request<PriceHistoryResponse[]>('/api/prices/history/batch', {
     method: 'POST',
@@ -165,6 +177,7 @@ export async function fetchBatchHistory(pairs: string[]): Promise<PriceHistoryRe
   return validate(BatchHistoryResponseSchema, raw)
 }
 
+/** Checks the API server health endpoint. Returns the server status and uptime in seconds. */
 export async function fetchHealth(): Promise<{ status: string; uptime: number }> {
   const raw = await request('/health')
   return validate(HealthSchema, raw)

@@ -17,17 +17,29 @@ const SOURCE_DESCRIPTIONS: Record<string, string> = {
   reflector: 'Reflector is a Stellar-native oracle that publishes asset prices directly on the Stellar network.',
 }
 
+/** Props for {@link PriceCard}. */
 interface PriceCardProps {
+  /** The price data to display. */
   price: PriceData
+  /** Called when the card is clicked or activated via keyboard. */
   onClick?: () => void
+  /** Whether the price value is currently being updated over WebSocket (reserved for future flash animation). */
   isLive?: boolean
+  /** When `true` the card is rendered at reduced opacity to indicate the data may be outdated. */
   isStale?: boolean
+  /** Optimistic update sync state (reserved for future visual indicators). */
   syncState?: PriceSyncState
+  /** Increments on each WebSocket update to trigger CSS flash animations. */
   flashVersion?: number
+  /** Whether a background REST revalidation is in progress. */
   isValidating?: boolean
+  /** When `true` shows the alert button in its active (amber) state. */
   hasAlert?: boolean
+  /** Called when the alert button is clicked. Receives the raw mouse event so callers can stop propagation. */
   onAlertClick?: (e: React.MouseEvent) => void
+  /** When `true` the card renders in multi-select mode, showing a checkbox. */
   selectMode?: boolean
+  /** Whether this card is currently selected in multi-select mode. */
   isSelected?: boolean
 }
 

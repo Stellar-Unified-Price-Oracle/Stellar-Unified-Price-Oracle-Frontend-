@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+/** In-memory cache entry storing the last fetched value and the time it was stored. */
 interface CacheEntry {
   data: unknown
   timestamp: number
@@ -7,21 +8,43 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>()
 
+/** Configuration options for {@link useSwr}. */
 export interface SwrOptions {
+  /** Interval in ms between automatic background refetches. 0 disables polling. */
   refreshInterval?: number
+  /** Time in ms before a cached value is considered stale and triggers a background revalidation. */
   staleTime?: number
+  /** Number of additional attempts after the first failure before settling on an error state. */
   retryCount?: number
+  /** Set to false to skip fetching entirely (e.g. while a dependency is not yet ready). */
   enabled?: boolean
 }
 
+/** Return value of {@link useSwr}. */
 export interface SwrResult<T> {
+  /** The most recently fetched data, or `undefined` while loading for the first time. */
   data: T | undefined
+  /** Error message from the last failed fetch, or `null` when the last fetch succeeded. */
   error: string | null
+  /** `true` only on the initial fetch before any data is available. */
   loading: boolean
+  /** `true` whenever a background revalidation is in progress (data may already be visible). */
   isValidating: boolean
+  /** Trigger an immediate refetch outside of the normal polling cycle. */
   refetch: () => void
 }
 
+/**
+ * Minimal stale-while-revalidate hook for data fetching.
+ *
+ * Fetches data using `fetcher` and caches the result in a module-level Map keyed by `key`.
+ * On mount it immediately returns cached data (if available) while revalidating in the background.
+ * Supports optional polling via `refreshInterval`, exponential-back-off retries, and an `enabled` gate.
+ *
+ * @param key - Unique string key for this request. Changing the key resets state and re-fetches.
+ * @param fetcher - Async function that returns the data. Re-created each render; the hook always calls the latest version.
+ * @param options - Optional behaviour overrides (see {@link SwrOptions}).
+ */
 export function useSwr<T>(
   key: string,
   fetcher: () => Promise<T>,
