@@ -26,6 +26,7 @@ A real-time dashboard for the Stellar Unified Price Oracle & Aggregator. Display
 | Styling | Tailwind CSS v4 |
 | Charts | Recharts |
 | Routing | React Router v7 |
+| Virtualization | @tanstack/react-virtual |
 | Real-time | Native WebSocket |
 
 ## Getting Started
@@ -84,6 +85,20 @@ src/
 ├── pages/        # Route pages
 └── types/        # TypeScript definitions
 ```
+
+## Testing
+
+```bash
+npm run test:run     # Unit tests (Vitest, CI mode)
+npm test             # Unit tests (watch mode)
+npm run test:e2e     # End-to-end tests (Playwright)
+```
+
+## Contributing
+
+1. Fork the repo and create a branch from `main`
+2. Make your changes and ensure `npm run build` and `npm run test:run` pass
+3. Open a pull request describing your change
 
 ## License
 
