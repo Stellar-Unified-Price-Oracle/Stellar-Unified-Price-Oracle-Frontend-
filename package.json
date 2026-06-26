@@ -13,6 +13,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "build:analyze": "ANALYZE=true vite build",
+    "build:hash": "npm run build && node scripts/build-hash.js",
+    "build:verify": "node scripts/build-hash.js --verify",
+    "sbom": "node scripts/generate-sbom.js",
     "size-limit": "size-limit",
     "preview": "vite preview",
     "prepare": "husky || true"
