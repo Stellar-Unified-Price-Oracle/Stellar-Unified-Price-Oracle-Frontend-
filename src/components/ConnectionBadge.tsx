@@ -1,3 +1,4 @@
+import { type ReactElement } from 'react'
 import type { ConnectionStatus } from '../api/websocket'
 import { Tooltip } from './Tooltip'
 
@@ -8,7 +9,7 @@ const STATUS_MAP: Record<ConnectionStatus, { label: string; color: string; toolt
   disconnected: { label: 'Offline', color: 'bg-red-500', tooltip: 'WebSocket is offline. Prices are updated via REST polling only.' },
 }
 
-export function ConnectionBadge({ status }: { status: ConnectionStatus }) {
+export function ConnectionBadge({ status }: { status: ConnectionStatus }): ReactElement {
   const s = STATUS_MAP[status]
   return (
     <Tooltip content={s.tooltip}>

@@ -1,5 +1,6 @@
 import { config } from '../config'
 import type { WsMessage, WsSubscribeMessage, WsUnsubscribeMessage } from '../types'
+import { wsAnalytics } from '../utils/wsAnalytics'
 
 type MessageHandler = (msg: WsMessage) => void
 type StatusHandler = (status: ConnectionStatus) => void
@@ -41,6 +42,7 @@ export class WebSocketClient {
   private messageHandlers = new Set<MessageHandler>()
   private statusHandlers = new Set<StatusHandler>()
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private reconnectAttempt = 0
   private destroyed = false
   private subscribedPairs = new Set<string>()
   private useCompression = false
@@ -68,6 +70,7 @@ export class WebSocketClient {
     this.ws.binaryType = 'blob'
 
     this.ws.onopen = () => {
+      this.reconnectAttempt = 0
       this.setStatus('connected')
       if (this.subscribedPairs.size > 0) {
         this.send({
@@ -95,11 +98,13 @@ export class WebSocketClient {
 
     this.ws.onclose = () => {
       this.useCompression = false
+      wsAnalytics.recordDisconnect()
       this.setStatus('disconnected')
       this.scheduleReconnect()
     }
 
     this.ws.onerror = () => {
+      wsAnalytics.recordError()
       this.ws?.close()
     }
   }
@@ -107,15 +112,18 @@ export class WebSocketClient {
   private scheduleReconnect() {
     if (this.destroyed || this.reconnectTimer) return
     this.setStatus('reconnecting')
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempt), 8000)
+    this.reconnectAttempt++
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
       this.connect()
-    }, config.wsReconnectDelay)
+    }, delay)
   }
 
   /** Permanently closes the connection and cancels any pending reconnect timer. Calling {@link connect} again after this is a no-op. */
   disconnect() {
     this.destroyed = true
+    this.reconnectAttempt = 0
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     this.ws?.close()
     this.ws = null

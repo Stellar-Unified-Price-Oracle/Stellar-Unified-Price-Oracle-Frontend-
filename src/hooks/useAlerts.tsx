@@ -13,7 +13,7 @@ function loadAlerts(): Alert[] {
   }
 }
 
-function saveAlerts(alerts: Alert[]) {
+function saveAlerts(alerts: Alert[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts))
 }
 

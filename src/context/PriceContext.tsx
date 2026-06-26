@@ -50,7 +50,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const requestIdsRef = useRef<Map<string, number>>(new Map())
   const cleanupTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
-  const clearCleanupTimer = (pair: string) => {
+  const clearCleanupTimer = (pair: string): void => {
     const timer = cleanupTimersRef.current.get(pair)
     if (timer) {
       clearTimeout(timer)
@@ -189,8 +189,8 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     }
   }, [prices])
 
-  const subscribe = (pairs: string[]) => wsRef.current?.subscribe(pairs)
-  const unsubscribe = (pairs: string[]) => wsRef.current?.unsubscribe(pairs)
+  const subscribe = (pairs: string[]): void => wsRef.current?.subscribe(pairs)
+  const unsubscribe = (pairs: string[]): void => wsRef.current?.unsubscribe(pairs)
 
   const value: PriceContextValue = {
     prices,

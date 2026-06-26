@@ -74,27 +74,7 @@ function keyToLimitOffset(key: string): { limit: number; offset: number } {
   return { limit: Number(parts[parts.length - 2]), offset: Number(parts[parts.length - 1]) }
 }
 
-function notifyWaiters(waiters: Waiter[], result: PriceHistoryResponse) {
-  for (const w of waiters) {
-    if (w.signal?.aborted) {
-      w.reject(new DOMException('Aborted', 'AbortError'))
-    } else {
-      w.resolve(result)
-    }
-  }
-}
-
-function rejectWaiters(waiters: Waiter[], err: unknown) {
-  for (const w of waiters) {
-    if (w.signal?.aborted) {
-      w.reject(new DOMException('Aborted', 'AbortError'))
-    } else {
-      w.reject(err)
-    }
-  }
-}
-
-function flushCoalesced() {
+function flushCoalesced(): void {
   coalesceTimer = null
   if (pending.size === 0) return
 

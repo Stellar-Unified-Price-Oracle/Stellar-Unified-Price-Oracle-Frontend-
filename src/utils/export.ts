@@ -6,7 +6,7 @@ function isoTs(ts: number): string {
 
 /** Serialises an array of plain objects to a CSV string. Values containing commas, quotes, or newlines are quoted and escaped. */
 export function toCsv(rows: Array<Record<string, unknown>>, headers: string[]): string {
-  const escape = (v: unknown) => {
+  const escape = (v: unknown): string => {
     const s = String(v ?? '')
     return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
   }

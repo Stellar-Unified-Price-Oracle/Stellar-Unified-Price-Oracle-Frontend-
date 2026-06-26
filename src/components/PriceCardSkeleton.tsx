@@ -1,4 +1,5 @@
-export function PriceCardSkeleton() {
+import { type ReactElement } from 'react'
+export function PriceCardSkeleton(): ReactElement {
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 animate-pulse" aria-hidden="true">
       <div className="flex items-center justify-between mb-3">
