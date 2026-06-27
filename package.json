@@ -15,10 +15,14 @@
     "build:analyze": "ANALYZE=true vite build",
     "size-limit": "size-limit",
     "preview": "vite preview",
-    "test:e2e": "playwright test",
     "prepare": "husky || true",
-    "storybook": "storybook dev -p 6006",
-    "build:storybook": "storybook build"
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "seed": "node ./scripts/seed.js",
+    "generate:openapi": "npx openapi-typescript ${BACKEND_OPENAPI_URL:-http://localhost:3000/openapi.json} --output src/api/openapi-types.ts"
   },
   "size-limit": [
     {
@@ -44,7 +48,10 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.0",
-    "zod": "^3.24.4"
+    "zod": "^3.24.4",
+    "recharts": "^2.15.3",
+    "web-vitals": "^4.2.4",
+    "minimist": "^1.2.8"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.1.0",
@@ -83,6 +90,7 @@
     "vitest": "^3.1.2",
     "vitest-axe": "^0.1.0"
   },
+ 
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix",

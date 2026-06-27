@@ -7,11 +7,16 @@ import { PriceDetail } from './pages/PriceDetail'
 import { ApiDocs } from './pages/ApiDocs'
 import { NotFound } from './pages/NotFound'
 import { AlertsProvider } from './hooks/useAlerts'
+import { useWebVitals } from './hooks/useWebVitals'
+import { useAccessibility } from './hooks/useAccessibility'
+import { initAnalytics, trackPageview } from './hooks/useAnalytics'
 
 const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 function AppContent(): ReactElement {
   const location = useLocation()
+  useAccessibility()
+  trackPageview(location.pathname)
   return (
     <ErrorBoundary key={location.key}>
       <AlertsProvider>
@@ -31,6 +36,9 @@ function AppContent(): ReactElement {
 }
 
 export default function App(): ReactElement {
+  useWebVitals()
+  initAnalytics()
+
   return (
     <BrowserRouter basename={BASENAME}>
       <AppContent />

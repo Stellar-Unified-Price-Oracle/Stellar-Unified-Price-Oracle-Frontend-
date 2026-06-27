@@ -1,0 +1,42 @@
+name: API Compatibility Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  openapi-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install tools
+        run: |
+          npm ci
+          npm install -g openapi-typescript@14.1.0 || true
+
+      - name: Fetch spec and generate types
+        env:
+          OPENAPI_URL: ${{ secrets.BACKEND_OPENAPI_URL || 'http://localhost:3000/openapi.json' }}
+        run: |
+          echo "Fetching $OPENAPI_URL"
+          npx openapi-typescript "$OPENAPI_URL" --output /tmp/generated-openapi.ts
+          echo "Generated types at /tmp/generated-openapi.ts"
+
+      - name: Diff against committed types
+        run: |
+          if ! git --no-pager diff --no-index --exit-code src/api/openapi-types.ts /tmp/generated-openapi.ts; then
+            echo "API types differ from committed types."
+            echo "If these changes are intentional, update src/api/openapi-types.ts by running: npx openapi-typescript $OPENAPI_URL --output src/api/openapi-types.ts"
+            exit 1
+          else
+            echo "No differences detected between generated and committed API types."
+          fi

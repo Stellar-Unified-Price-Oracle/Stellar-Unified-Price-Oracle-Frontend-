@@ -15,3 +15,4 @@ test/visual/baselines/
 test/visual/diffs/
 test/visual/reports/
 e2e/visual/__snapshots__/
+__snapshots__

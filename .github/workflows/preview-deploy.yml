@@ -1,0 +1,84 @@
+name: PR Preview Deploy
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to Netlify (if configured)
+        if: github.event_name == 'pull_request' && github.event.action != 'closed' && env.NETLIFY_AUTH_TOKEN
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          npx netlify deploy --dir=dist --site="$NETLIFY_SITE_ID" --auth="$NETLIFY_AUTH_TOKEN" --json > netlify-deploy.json || true
+          if [ -f netlify-deploy.json ]; then cat netlify-deploy.json; fi
+          PREVIEW_URL=$(jq -r '.url' netlify-deploy.json)
+          if [ "$PREVIEW_URL" != "null" ]; then echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT; fi
+
+      - name: Deploy to Vercel (if configured)
+        if: github.event_name == 'pull_request' && github.event.action != 'closed' && env.VERCEL_TOKEN
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel --token "$VERCEL_TOKEN" --confirm --prod --log-level error --scope ${{ secrets.VERCEL_ORG_ID }} || true
+
+      - name: Comment preview URL on PR
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs')
+            let url = core.getInput('preview_url')
+            if (!url && fs.existsSync('netlify-deploy.json')) {
+              try { url = JSON.parse(fs.readFileSync('netlify-deploy.json','utf8')).url } catch(e){}
+            }
+            if (!url) {
+              // fallback message
+              await github.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: 'Preview deployment created (no public URL available from the selected provider).'
+              })
+            } else {
+              await github.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `Preview URL: ${url}`
+              })
+            }
+
+      - name: Teardown preview on close (Netlify)
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && env.NETLIFY_AUTH_TOKEN
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          # Try to find deploys for this PR branch and delete them
+          PR_BRANCH=${{ github.event.pull_request.head.ref }}
+          DEPLOYS=$(curl -s -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys")
+          IDS=$(echo "$DEPLOYS" | jq -r ".[] | select(.context==\"deploy-preview\" and .meta.branch==\"$PR_BRANCH\") | .id")
+          for id in $IDS; do
+            curl -s -X DELETE -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys/$id" || true
+          done
+          echo "Attempted to remove preview deploys for branch $PR_BRANCH"
