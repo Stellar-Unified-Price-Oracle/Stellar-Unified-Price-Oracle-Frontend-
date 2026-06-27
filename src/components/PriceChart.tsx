@@ -40,6 +40,9 @@ interface PriceChartProps {
   data: PriceHistoryEntry[]
   pair: string
   loading?: boolean
+  loadingMore?: boolean
+  hasMore?: boolean
+  onLoadMore?: () => Promise<void>
   timeRange?: TimeRange
   onTimeRangeChange?: (range: TimeRange) => void
 }
@@ -52,6 +55,9 @@ function ChartContent({
   fullScreen,
   onToggleFullScreen,
   dark,
+  loadingMore,
+  hasMore,
+  onLoadMore,
 }: {
   data: PriceHistoryEntry[]
   pair: string
@@ -60,6 +66,9 @@ function ChartContent({
   fullScreen: boolean
   onToggleFullScreen: () => void
   dark: boolean
+  loadingMore: boolean
+  hasMore: boolean
+  onLoadMore?: () => Promise<void>
 }) {
   // Zoom/pan state
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null)
@@ -139,6 +148,17 @@ function ChartContent({
 
   const visibleData = chartData.slice(activeDomain[0], activeDomain[1] + 1)
 
+  // Check if user scrolled near the start to trigger load more
+  useEffect(() => {
+    if (!hasMore || !onLoadMore || loadingMore) return
+    
+    const [lo] = activeDomain
+    // If user zoomed/panned to show first 25% of data, load more
+    if (lo < Math.max(5, totalPoints * 0.25)) {
+      onLoadMore()
+    }
+  }, [activeDomain, hasMore, onLoadMore, loadingMore, totalPoints])
+
   const rangeBar = (
     <div className="flex items-center gap-1" role="group" aria-label="Time range selector">
       {TIME_RANGES.map((r) => (
@@ -163,7 +183,15 @@ function ChartContent({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
-        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{pair} Price History</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{pair} Price History</h3>
+          {loadingMore && (
+            <div className="flex items-center gap-1 text-xs text-blue-500">
+              <div className="animate-spin w-3 h-3 border border-blue-500 border-t-transparent rounded-full" />
+              Loading more...
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           {rangeBar}
           {zoomDomain && (
@@ -204,7 +232,7 @@ function ChartContent({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         role="img"
-        aria-label={`${pair} price chart`}
+        aria-label={`${pair} price chart with ${chartData.length} data points`}
       >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={visibleData}>
@@ -253,11 +281,17 @@ function ChartContent({
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      {fullScreen && (
-        <p className="text-xs text-gray-600 dark:text-gray-600 mt-2 text-center flex-shrink-0">
-          Scroll to zoom · Drag to pan · Press Esc to close
-        </p>
-      )}
+      <div className="flex items-center justify-between mt-2 flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">
+        <div>
+          {chartData.length > 0 && `${chartData.length} price points`}
+          {hasMore && ' • More data available'}
+        </div>
+        {fullScreen && (
+          <p className="text-gray-600 dark:text-gray-600">
+            Scroll to zoom · Drag to pan · Press Esc to close
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -266,6 +300,9 @@ export const PriceChart = memo(function PriceChart({
   data,
   pair,
   loading,
+  loadingMore = false,
+  hasMore = false,
+  onLoadMore,
   timeRange: externalRange,
   onTimeRangeChange: externalOnChange,
 }: PriceChartProps) {
@@ -331,6 +368,9 @@ export const PriceChart = memo(function PriceChart({
         fullScreen={false}
         onToggleFullScreen={() => setFullScreen(true)}
         dark={dark}
+        loadingMore={loadingMore}
+        hasMore={hasMore}
+        onLoadMore={onLoadMore}
       />
     </div>
   )
@@ -352,6 +392,9 @@ export const PriceChart = memo(function PriceChart({
               fullScreen={true}
               onToggleFullScreen={() => setFullScreen(false)}
               dark={dark}
+              loadingMore={loadingMore}
+              hasMore={hasMore}
+              onLoadMore={onLoadMore}
             />
           </div>
         </div>,
