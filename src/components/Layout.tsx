@@ -1,5 +1,5 @@
 import { useState, type ReactNode, type ReactElement } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useAlerts } from '../hooks/useAlerts'
 import { AlertPanel } from './AlertPanel'
 
@@ -8,8 +8,21 @@ const NAV_ITEMS = [
   { path: '/api-docs', label: 'API Docs' },
 ]
 
+const navClass = ({ isActive }: { isActive: boolean }) =>
+  `px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+    isActive
+      ? 'bg-gray-100 dark:bg-gray-800 text-cyan-600 dark:text-cyan-400'
+      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+  }`
+
+const mobileNavClass = ({ isActive }: { isActive: boolean }) =>
+  `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+    isActive
+      ? 'bg-gray-100 dark:bg-gray-800 text-cyan-600 dark:text-cyan-400'
+      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+  }`
+
 export function Layout({ children }: { children: ReactNode }): ReactElement {
-  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const { activeCount, togglePanel } = useAlerts()
 
@@ -28,28 +41,25 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
               </svg>
             </button>
 
-            <Link to="/" className="flex items-center gap-3">
+            <NavLink to="/" end className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-xs font-bold text-white">
                 O
               </div>
               <span className="font-semibold text-lg hidden sm:block text-gray-900 dark:text-white">
                 Stellar Oracle
               </span>
-            </Link>
+            </NavLink>
 
             <div className="hidden sm:flex items-center gap-1">
               {NAV_ITEMS.map((item) => (
-                <Link
+                <NavLink
                   key={item.path}
                   to={item.path}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    location.pathname === item.path
-                      ? 'bg-gray-100 dark:bg-gray-800 text-cyan-600 dark:text-cyan-400'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50'
-                  }`}
+                  end
+                  className={navClass}
                 >
                   {item.label}
-                </Link>
+                </NavLink>
               ))}
             </div>
           </div>
@@ -73,18 +83,15 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
         {menuOpen && (
           <div className="sm:hidden pb-3">
             {NAV_ITEMS.map((item) => (
-              <Link
+              <NavLink
                 key={item.path}
                 to={item.path}
+                end
                 onClick={() => setMenuOpen(false)}
-                className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  location.pathname === item.path
-                    ? 'bg-gray-100 dark:bg-gray-800 text-cyan-600 dark:text-cyan-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
+                className={mobileNavClass}
               >
                 {item.label}
-              </Link>
+              </NavLink>
             ))}
           </div>
         )}
