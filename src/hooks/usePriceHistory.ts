@@ -108,7 +108,6 @@ export function usePriceHistory(
         setLoadingMore(false)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pair, pageSize, onError])
 
   // Initial fetch and refresh interval
