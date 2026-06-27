@@ -1,6 +1,8 @@
 node_modules
 dist
 reports
+sbom.json
+build-attestation.json
 .env
 .env.local
 *.tsbuildinfo
