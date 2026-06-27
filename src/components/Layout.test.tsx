@@ -100,6 +100,26 @@ describe('Layout', () => {
     const buttons = screen.getAllByLabelText('Toggle menu')
     expect(buttons.length).toBeGreaterThanOrEqual(1)
   })
+
+  it('highlights the active nav link based on current route', () => {
+    render(
+      <MemoryRouter initialEntries={['/api-docs']}>
+        <AlertsProvider>
+          <Layout>
+            <div />
+          </Layout>
+        </AlertsProvider>
+      </MemoryRouter>,
+    )
+    const activeLinks = screen.getAllByRole('link', { name: 'API Docs' })
+    activeLinks.forEach((link) => {
+      expect(link.className).toMatch(/text-cyan/)
+    })
+    const inactiveLinks = screen.getAllByRole('link', { name: 'Dashboard' })
+    inactiveLinks.forEach((link) => {
+      expect(link.className).not.toMatch(/text-cyan/)
+    })
+  })
 })
 
 describe('snapshots', () => {
