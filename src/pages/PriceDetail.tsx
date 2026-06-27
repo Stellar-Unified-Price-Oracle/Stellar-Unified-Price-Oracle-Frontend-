@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSwr } from '../hooks/useSwr'
-import { fetchPrice, fetchPriceHistory } from '../api/rest'
+import { usePriceHistory } from '../hooks/usePriceHistory'
+import { fetchPrice } from '../api/rest'
 import { PriceDetailSkeleton } from '../components/PriceDetailSkeleton'
 import { CsvImportZone } from '../components/CsvImportZone'
-import { CanvasChart } from '../chart/CanvasChart'
-import { formatPrice, timeAgo, formatTimestamp, formatChartTime } from '../utils/format'
-import type { ChartSeries } from '../chart/ChartEngine'
+import { PriceChart } from '../components/PriceChart'
+import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import type { CsvRow } from '../components/CsvImportZone'
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -29,36 +29,13 @@ export function PriceDetail() {
     { staleTime: 5000, retryCount: 2 },
   )
 
-  const { data: historyResponse, loading: historyLoading } = useSwr(
-    `history:${decodedPair}`,
-    () => fetchPriceHistory(decodedPair, 100),
-    { staleTime: 30000, retryCount: 2 },
+  // Use paginated history hook with configurable page size
+  const { history, loading: historyLoading, loadingMore, hasMore, error: historyError, loadMore } = usePriceHistory(
+    decodedPair || null,
+    { pageSize: 100 },
   )
 
-  const loading = priceLoading || historyLoading
-
-  const chartSeries = useMemo<ChartSeries[]>(() => {
-    const series: ChartSeries[] = []
-    if (historyResponse && historyResponse.history.length >= 2) {
-      series.push({
-        id: 'oracle',
-        label: decodedPair,
-        points: historyResponse.history.map((h) => ({ x: h.timestamp, y: h.price })),
-        color: '#06b6d4',
-        style: 'area',
-      })
-    }
-    if (importedData && importedData.length >= 2) {
-      series.push({
-        id: 'imported',
-        label: 'Imported CSV',
-        points: importedData.map((r) => ({ x: r.timestamp, y: r.price })),
-        color: '#f59e0b',
-        style: 'dashed-line',
-      })
-    }
-    return series
-  }, [historyResponse, importedData, decodedPair])
+  const loading = priceLoading || (historyLoading && history.length === 0)
 
   return (
     <div>
@@ -118,20 +95,22 @@ export function PriceDetail() {
             </div>
           </div>
 
-          {/* History chart */}
+          {/* Paginated History chart */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Price History</p>
-            {chartSeries.length > 0 ? (
-              <CanvasChart
-                series={chartSeries}
-                className="w-full h-48"
-                formatX={formatChartTime}
-                formatY={formatPrice}
-              />
-            ) : (
-              <div className="h-48 flex items-center justify-center text-gray-600 text-sm">
-                No history available
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Price History (Paginated)</p>
+            {historyError ? (
+              <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400" role="alert">
+                Failed to load price history: {historyError.message}
               </div>
+            ) : (
+              <PriceChart
+                data={history}
+                pair={decodedPair}
+                loading={historyLoading && history.length === 0}
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+              />
             )}
           </div>
 
