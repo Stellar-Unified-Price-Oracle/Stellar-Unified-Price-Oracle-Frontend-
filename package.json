@@ -57,8 +57,15 @@
     "minimist": "^1.2.8"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.1.0",
+    "@commitlint/config-conventional": "^21.1.0",
     "@eslint/js": "^9.24.0",
+    "@playwright/test": "1.52.0",
     "@size-limit/file": "^12.1.0",
+    "@storybook/addon-a11y": "^8.6.18",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/react": "^8.6.18",
+    "@storybook/react-vite": "^8.6.18",
     "@tailwindcss/vite": "^4.1.4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -74,9 +81,11 @@
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
     "lint-staged": "^15.5.1",
+    "msw": "^2.14.6",
     "prettier": "^3.5.3",
     "rollup-plugin-visualizer": "^7.0.1",
     "size-limit": "^12.1.0",
+    "storybook": "^8.6.18",
     "tailwindcss": "^4.1.4",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.29.1",
@@ -92,6 +101,11 @@
     ],
     "*.{css,json,md}": [
       "prettier --write"
+    ]
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
     ]
   }
 }

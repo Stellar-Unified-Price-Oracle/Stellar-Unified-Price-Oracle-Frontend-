@@ -47,7 +47,7 @@ export interface SwrResult<T> {
  */
 export function useSwr<T>(
   key: string,
-  fetcher: () => Promise<T>,
+  fetcher: (signal?: AbortSignal) => Promise<T>,
   options: SwrOptions = {},
 ): SwrResult<T> {
   const {
@@ -83,7 +83,7 @@ export function useSwr<T>(
     setIsValidating(true)
 
     try {
-      const result = await fetcherRef.current()
+      const result = await fetcherRef.current(controller.signal)
       if (!mountedRef.current || controller.signal.aborted) return
 
       cache.set(keyRef.current, { data: result as unknown, timestamp: Date.now() })
@@ -92,6 +92,7 @@ export function useSwr<T>(
       retries.current = 0
     } catch (e) {
       if (!mountedRef.current || controller.signal.aborted) return
+      if (e instanceof Error && e.name === 'AbortError') return
 
       if (retries.current < retryCount) {
         retries.current++
