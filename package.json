@@ -13,9 +13,19 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "build:analyze": "ANALYZE=true vite build",
+    "build:hash": "npm run build && node scripts/build-hash.js",
+    "build:verify": "node scripts/build-hash.js --verify",
+    "sbom": "node scripts/generate-sbom.js",
     "size-limit": "size-limit",
     "preview": "vite preview",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "seed": "node ./scripts/seed.js",
+    "generate:openapi": "npx openapi-typescript ${BACKEND_OPENAPI_URL:-http://localhost:3000/openapi.json} --output src/api/openapi-types.ts"
   },
   "size-limit": [
     {
@@ -41,11 +51,21 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.0",
-    "zod": "^3.24.4"
+    "zod": "^3.24.4",
+    "recharts": "^2.15.3",
+    "web-vitals": "^4.2.4",
+    "minimist": "^1.2.8"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.1.0",
+    "@commitlint/config-conventional": "^21.1.0",
     "@eslint/js": "^9.24.0",
+    "@playwright/test": "1.52.0",
     "@size-limit/file": "^12.1.0",
+    "@storybook/addon-a11y": "^8.6.18",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/react": "^8.6.18",
+    "@storybook/react-vite": "^8.6.18",
     "@tailwindcss/vite": "^4.1.4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -61,9 +81,11 @@
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
     "lint-staged": "^15.5.1",
+    "msw": "^2.14.6",
     "prettier": "^3.5.3",
     "rollup-plugin-visualizer": "^7.0.1",
     "size-limit": "^12.1.0",
+    "storybook": "^8.6.18",
     "tailwindcss": "^4.1.4",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.29.1",
@@ -71,6 +93,7 @@
     "vitest": "^3.1.2",
     "vitest-axe": "^0.1.0"
   },
+ 
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix",
@@ -78,6 +101,11 @@
     ],
     "*.{css,json,md}": [
       "prettier --write"
+    ]
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
     ]
   }
 }

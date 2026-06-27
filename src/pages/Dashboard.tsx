@@ -9,6 +9,8 @@ import { PriceTableView } from '../components/PriceTableView'
 import { AlertModal } from '../components/AlertModal'
 import { AlertBadge } from '../components/AlertBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
+import { NotificationChannelsModal } from '../components/NotificationChannelsModal'
+import { FilterPanel, readFilterState, countActiveFilters } from '../components/FilterPanel'
 import { sanitizeSearchInput } from '../utils/sanitize'
 import type { AlertFormData, LivePriceEntry, PriceData } from '../types'
 
@@ -46,29 +48,59 @@ export function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPair, setModalPair] = useState('')
   const [dashboardView, setDashboardView] = useState<'card' | 'table'>('card')
+  const [notifModalOpen, setNotifModalOpen] = useState(false)
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false)
 
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const search = searchParams.get('search') || ''
-  const confidence = searchParams.get('confidence') || 'all'
-  const source = searchParams.get('source') || 'all'
-  const sort = searchParams.get('sort') || ''
+  const filterState = readFilterState(searchParams)
+  const activeFilterCount = countActiveFilters(filterState)
+  const { sources, minConf, maxConf, minPrice, maxPrice, updatedWithin, sort, sortDir } = filterState
+
+  // Legacy params kept for backward compatibility
+  const legacyConfidence = searchParams.get('confidence') || 'all'
+  const legacySource = searchParams.get('source') || 'all'
 
   const merged = mergePrices(prices, livePrices)
 
   const filtered = useMemo(() => {
     let result = merged
     if (search) result = result.filter((p) => p.assetPair.toLowerCase().includes(search.toLowerCase()))
-    if (confidence === 'high') result = result.filter((p) => p.confidence > 0.8)
-    else if (confidence === 'medium') result = result.filter((p) => p.confidence > 0.5)
-    if (source !== 'all') result = result.filter((p) => p.sources.some((s) => s.toLowerCase() === source.toLowerCase()))
+
+    // Source filter: new 'sources' param takes precedence over legacy 'source'
+    if (sources.length > 0) {
+      result = result.filter((p) => p.sources.some((s) => sources.includes(s)))
+    } else if (legacySource !== 'all') {
+      result = result.filter((p) => p.sources.some((s) => s.toLowerCase() === legacySource.toLowerCase()))
+    }
+
+    // Confidence filter: new minConf/maxConf take precedence over legacy 'confidence'
+    if (minConf > 0 || maxConf < 100) {
+      if (minConf > 0) result = result.filter((p) => p.confidence * 100 >= minConf)
+      if (maxConf < 100) result = result.filter((p) => p.confidence * 100 <= maxConf)
+    } else if (legacyConfidence === 'high') {
+      result = result.filter((p) => p.confidence > 0.8)
+    } else if (legacyConfidence === 'medium') {
+      result = result.filter((p) => p.confidence > 0.5)
+    }
+
+    if (minPrice) result = result.filter((p) => p.price >= Number(minPrice))
+    if (maxPrice) result = result.filter((p) => p.price <= Number(maxPrice))
+    if (updatedWithin !== 'all') {
+      const ms = updatedWithin === '1h' ? 3_600_000 : updatedWithin === '6h' ? 21_600_000 : updatedWithin === '24h' ? 86_400_000 : 604_800_000
+      const cutoff = Date.now() - ms
+      result = result.filter((p) => p.timestamp >= cutoff)
+    }
+    const desc = sortDir === 'desc'
     if (sort === 'price-high') result = [...result].sort((a, b) => b.price - a.price)
     else if (sort === 'price-low') result = [...result].sort((a, b) => a.price - b.price)
-    else if (sort === 'confidence') result = [...result].sort((a, b) => b.confidence - a.confidence)
-    else if (sort === 'recent') result = [...result].sort((a, b) => b.timestamp - a.timestamp)
+    else if (sort === 'confidence') result = [...result].sort((a, b) => desc ? b.confidence - a.confidence : a.confidence - b.confidence)
+    else if (sort === 'recent') result = [...result].sort((a, b) => desc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp)
+    else if (sort === 'pair') result = [...result].sort((a, b) => desc ? b.assetPair.localeCompare(a.assetPair) : a.assetPair.localeCompare(b.assetPair))
     return result
-  }, [merged, search, confidence, source, sort])
+  }, [merged, search, sources, minConf, maxConf, minPrice, maxPrice, updatedWithin, sort, sortDir, legacyConfidence, legacySource])
 
   const handleCardClick = useCallback(
     (pair: string) => {
@@ -138,6 +170,28 @@ export function Dashboard() {
             aria-label="Search by asset pair"
           />
 
+          <button
+            type="button"
+            onClick={() => setFilterPanelOpen((o) => !o)}
+            className={`relative flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+              filterPanelOpen
+                ? 'bg-cyan-600 border-cyan-500 text-white'
+                : 'border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+            }`}
+            aria-pressed={filterPanelOpen}
+            aria-label="Toggle filter panel"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+            </svg>
+            Filter
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-cyan-500 text-gray-900 rounded-full px-1">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
           {!pricesLoading && prices.length > 0 && (
             <button
               type="button"
@@ -189,9 +243,28 @@ export function Dashboard() {
             </div>
           )}
           <AlertBadge count={activeCount} alerts={alerts} />
-          <ConnectionBadge status={wsStatus} rateLimitStatus={rateLimitStatus} retryAfterMs={rateLimitRetryAfterMs} />
+          <button
+            type="button"
+            onClick={() => setNotifModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+            aria-label="Configure notification channels"
+            title="Notification channels"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            Alerts
+          </button>
+          <ConnectionBadge status={wsStatus} />
         </div>
       </div>
+
+      {filterPanelOpen && (
+        <FilterPanel availableSources={[...new Set(prices.flatMap((p) => p.sources))].length > 0
+          ? [...new Set(prices.flatMap((p) => p.sources))]
+          : undefined}
+        />
+      )}
 
       {selectMode && (
         <div className="mb-4 p-3 bg-gray-900 border border-cyan-800 rounded-xl flex flex-wrap items-center gap-3">
@@ -287,8 +360,10 @@ export function Dashboard() {
 
       {!pricesLoading && merged.length > 0 && filtered.length === 0 && (
         <div className="text-center py-16 text-gray-500">
-          <p className="text-lg mb-2">No results for "{search}"</p>
-          <p className="text-sm">Try a different search term.</p>
+          <p className="text-lg mb-2">No results{search ? ` for "${search}"` : ''}</p>
+          <p className="text-sm">
+            {activeFilterCount > 0 ? 'Try adjusting your filters.' : 'Try a different search term.'}
+          </p>
         </div>
       )}
 
@@ -308,6 +383,8 @@ export function Dashboard() {
             : undefined
         }
       />
+
+      <NotificationChannelsModal isOpen={notifModalOpen} onClose={() => setNotifModalOpen(false)} />
     </div>
   )
 }

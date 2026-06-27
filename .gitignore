@@ -1,6 +1,9 @@
 node_modules
 dist
+storybook-static
 reports
+sbom.json
+build-attestation.json
 .env
 .env.local
 *.tsbuildinfo

@@ -28,6 +28,8 @@ jobs:
       - run: npm run lint
 
       - run: npm run build
+        env:
+          VITE_USE_MOCK: 'true'
 
       - run: npm run test:run
 
@@ -36,5 +38,43 @@ jobs:
         with:
           name: build
           path: dist/
+
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx commitlint --from ${{ github.event.pull_request.base.sha || 'HEAD~1' }} --to HEAD --verbose
+
+  e2e:
+    needs: [frontend, commitlint]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist/
+
+      - run: npx playwright install --with-deps chromium firefox webkit
+
+      - run: npm run test:e2e
 
 

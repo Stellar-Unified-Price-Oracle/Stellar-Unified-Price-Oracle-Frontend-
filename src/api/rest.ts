@@ -34,18 +34,11 @@ function setRateLimitInfo(response: Response): void {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  // Block request if currently rate limited (prevent cascading)
-  if (rateLimitManager.checkAndClear()) {
-    throw new RateLimitError(
-      `Rate limited. Retry in ${Math.ceil(rateLimitManager.retryAfterMs / 1000)}s`,
-      rateLimitManager.retryAfterMs,
-    )
-  }
-
+async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal): Promise<T> {
   const url = `${config.apiUrl}${path}`
   const res = await fetchWithRetry(url, {
     ...init,
+    signal,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   })
 
@@ -65,6 +58,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 interface Waiter {
   resolve: (value: PriceHistoryResponse) => void
   reject: (reason: unknown) => void
+  signal?: AbortSignal
 }
 
 const pending = new Map<string, Waiter[]>()
@@ -81,12 +75,33 @@ function keyToLimitOffset(key: string): { limit: number; offset: number } {
   return { limit: Number(parts[parts.length - 2]), offset: Number(parts[parts.length - 1]) }
 }
 
+function notifyWaiters(waiters: Waiter[], value: PriceHistoryResponse): void {
+  for (const w of waiters) w.resolve(value)
+}
+
+function rejectWaiters(waiters: Waiter[], reason: unknown): void {
+  for (const w of waiters) w.reject(reason)
+}
+
 function flushCoalesced(): void {
   coalesceTimer = null
   if (pending.size === 0) return
 
   const snapshot = new Map(pending)
   pending.clear()
+
+  // Drop keys where all waiters already aborted
+  for (const [key, waiters] of snapshot) {
+    const active = waiters.filter((w) => !w.signal?.aborted)
+    if (active.length === 0) {
+      for (const w of waiters) w.reject(new DOMException('Aborted', 'AbortError'))
+      snapshot.delete(key)
+    } else {
+      snapshot.set(key, active)
+    }
+  }
+
+  if (snapshot.size === 0) return
 
   const keys = [...snapshot.keys()]
   const pairs = keys.map(keyToPair)
@@ -98,12 +113,12 @@ function flushCoalesced(): void {
         const pair = keyToPair(key)
         const result = byPair.get(pair)
         if (result) {
-          waiters.forEach((w) => w.resolve(result))
+          notifyWaiters(waiters, result)
         } else {
           const { limit, offset } = keyToLimitOffset(key)
           _fetchHistoryDirect(pair, limit, offset).then(
-            (r) => waiters.forEach((w) => w.resolve(r)),
-            (e) => waiters.forEach((w) => w.reject(e)),
+            (r) => notifyWaiters(waiters, r),
+            (e) => rejectWaiters(waiters, e),
           )
         }
       }
@@ -113,8 +128,8 @@ function flushCoalesced(): void {
         const pair = keyToPair(key)
         const { limit, offset } = keyToLimitOffset(key)
         _fetchHistoryDirect(pair, limit, offset).then(
-          (r) => waiters.forEach((w) => w.resolve(r)),
-          (e) => waiters.forEach((w) => w.reject(e)),
+          (r) => notifyWaiters(waiters, r),
+          (e) => rejectWaiters(waiters, e),
         )
       }
     })
@@ -124,9 +139,12 @@ async function _fetchHistoryDirect(
   pair: string,
   limit: number,
   offset: number,
+  signal?: AbortSignal,
 ): Promise<PriceHistoryResponse> {
   const raw = await request<PriceHistoryResponse>(
     `/api/prices/${encodeURIComponent(pair)}/history?limit=${limit}&offset=${offset}`,
+    undefined,
+    signal,
   )
   return validate(PriceHistoryResponseSchema, raw)
 }
@@ -136,9 +154,9 @@ async function _fetchHistoryDirect(
 // ---------------------------------------------------------------------------
 
 /** Fetches the latest aggregated price for every tracked asset pair, or a filtered subset when `pairs` is provided. */
-export async function fetchAllPrices(pairs?: string[]): Promise<PriceData[]> {
+export async function fetchAllPrices(pairs?: string[], signal?: AbortSignal): Promise<PriceData[]> {
   const params = pairs?.length ? `?pairs=${pairs.join(',')}` : ''
-  const raw = await request<PriceData[]>(`/api/prices${params}`)
+  const raw = await request<PriceData[]>(`/api/prices${params}`, undefined, signal)
   return validate(PriceDataSchema.array(), raw)
 }
 
@@ -161,28 +179,38 @@ export function fetchPriceHistory(
   offset = 0,
   _startTs?: number,
   _endTs?: number,
+  signal?: AbortSignal,
 ): Promise<PriceHistoryResponse> {
   const key = `${pair}:${limit}:${offset}`
 
   return new Promise<PriceHistoryResponse>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+
     const existing = pending.get(key)
     if (existing) {
-      existing.push({ resolve, reject })
+      existing.push({ resolve, reject, signal })
     } else {
-      pending.set(key, [{ resolve, reject }])
+      pending.set(key, [{ resolve, reject, signal }])
     }
     if (!coalesceTimer) {
       coalesceTimer = setTimeout(flushCoalesced, COALESCE_WINDOW_MS)
     }
+
+    signal?.addEventListener('abort', () => {
+      reject(new DOMException('Aborted', 'AbortError'))
+    }, { once: true })
   })
 }
 
 /** Fetches price history for multiple asset pairs in a single POST request. */
-export async function fetchBatchHistory(pairs: string[]): Promise<PriceHistoryResponse[]> {
+export async function fetchBatchHistory(pairs: string[], signal?: AbortSignal): Promise<PriceHistoryResponse[]> {
   const raw = await request<PriceHistoryResponse[]>('/api/prices/history/batch', {
     method: 'POST',
     body: JSON.stringify({ pairs }),
-  })
+  }, signal)
   return validate(BatchHistoryResponseSchema, raw)
 }
 

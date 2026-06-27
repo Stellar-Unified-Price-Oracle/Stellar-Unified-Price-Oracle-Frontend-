@@ -1,5 +1,6 @@
 import { config } from '../config'
 import type { WsMessage, WsSubscribeMessage, WsUnsubscribeMessage } from '../types'
+import { wsAnalytics } from '../utils/wsAnalytics'
 
 type MessageHandler = (msg: WsMessage) => void
 type StatusHandler = (status: ConnectionStatus) => void
@@ -97,11 +98,13 @@ export class WebSocketClient {
 
     this.ws.onclose = () => {
       this.useCompression = false
+      wsAnalytics.recordDisconnect()
       this.setStatus('disconnected')
       this.scheduleReconnect()
     }
 
     this.ws.onerror = () => {
+      wsAnalytics.recordError()
       this.ws?.close()
     }
   }
