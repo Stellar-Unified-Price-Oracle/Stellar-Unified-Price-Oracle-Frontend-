@@ -30,7 +30,16 @@ function mergePrices(
 }
 
 export function Dashboard() {
-  const { prices, pricesLoading, pricesError, pricesValidating, livePrices, wsStatus } = usePriceContext()
+  const {
+    prices,
+    pricesLoading,
+    pricesError,
+    pricesValidating,
+    livePrices,
+    wsStatus,
+    rateLimitStatus,
+    rateLimitRetryAfterMs,
+  } = usePriceContext()
   const navigate = useNavigate()
   const { alerts, addAlert, removeAlert, hasAlertsForPair, activeCount } = useAlerts()
   const { exportCSV } = useExport()

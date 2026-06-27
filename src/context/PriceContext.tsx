@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useSwr } from '../hooks/useSwr'
 import { WebSocketClient, type ConnectionStatus } from '../api/websocket'
 import { fetchAllPrices, fetchPrice } from '../api/rest'
+import { rateLimitManager, type RateLimitStatus } from '../api/rateLimit'
 import { config } from '../config'
 import type { LivePriceEntry, PriceData } from '../types'
 
@@ -46,6 +47,12 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
   const [livePrices, setLivePrices] = useState<Map<string, LivePriceEntry>>(new Map())
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('disconnected')
+  const [rateLimitStatus, setRateLimitStatus] = useState<RateLimitStatus>(
+    rateLimitManager.status,
+  )
+  const [rateLimitRetryAfterMs, setRateLimitRetryAfterMs] = useState(
+    rateLimitManager.retryAfterMs,
+  )
   const wsRef = useRef<WebSocketClient | null>(null)
   const requestIdsRef = useRef<Map<string, number>>(new Map())
   const cleanupTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -199,6 +206,8 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     pricesValidating,
     livePrices,
     wsStatus,
+    rateLimitStatus,
+    rateLimitRetryAfterMs,
     refetchPrices,
     subscribe,
     unsubscribe,

@@ -48,6 +48,7 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
     const text = await res.text().catch(() => '')
     throw new Error(`${res.status} ${res.statusText}: ${text}`)
   }
+
   return res.json() as Promise<T>
 }
 
