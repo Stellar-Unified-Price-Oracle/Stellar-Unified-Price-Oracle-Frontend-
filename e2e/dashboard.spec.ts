@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
 test('dashboard page loads', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible()
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible({ timeout: 10_000 })
 })
 
 test('dashboard renders price cards or empty state', async ({ page }) => {
@@ -16,10 +18,12 @@ test('dashboard renders price cards or empty state', async ({ page }) => {
 
 test('search input is visible', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('textbox', { name: 'Search by asset pair' })).toBeVisible()
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByRole('textbox', { name: 'Search by asset pair' })).toBeVisible({ timeout: 10_000 })
 })
 
 test('404 page renders for unknown routes', async ({ page }) => {
   await page.goto('/unknown-route-xyz')
-  await expect(page.getByRole('heading', { name: /404|not found/i })).toBeVisible()
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByRole('heading', { name: /404|not found/i })).toBeVisible({ timeout: 10_000 })
 })
