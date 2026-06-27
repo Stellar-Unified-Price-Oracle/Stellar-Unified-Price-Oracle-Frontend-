@@ -7,6 +7,9 @@ import { PriceDetail } from './pages/PriceDetail'
 import { ApiDocs } from './pages/ApiDocs'
 import { NotFound } from './pages/NotFound'
 import { AlertsProvider } from './hooks/useAlerts'
+import { PriceProvider } from './context/PriceContext'
+import { ToastProvider } from './context/ToastContext'
+import { PreferencesProvider } from './preferences/PreferencesContext'
 import { useWebVitals } from './hooks/useWebVitals'
 import { useAccessibility } from './hooks/useAccessibility'
 import { initAnalytics, trackPageview } from './hooks/useAnalytics'
@@ -19,18 +22,20 @@ function AppContent(): ReactElement {
   trackPageview(location.pathname)
   return (
     <ErrorBoundary key={location.key}>
-      <AlertsProvider>
-        <Layout>
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/prices/:pair" element={<PriceDetail />} />
-              <Route path="/api-docs" element={<ApiDocs />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </Layout>
-      </AlertsProvider>
+      <PriceProvider>
+        <AlertsProvider>
+          <Layout>
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/prices/:pair" element={<PriceDetail />} />
+                <Route path="/api-docs" element={<ApiDocs />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </Layout>
+        </AlertsProvider>
+      </PriceProvider>
     </ErrorBoundary>
   )
 }
@@ -41,7 +46,11 @@ export default function App(): ReactElement {
 
   return (
     <BrowserRouter basename={BASENAME}>
-      <AppContent />
+      <PreferencesProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </PreferencesProvider>
     </BrowserRouter>
   )
 }

@@ -74,6 +74,18 @@ function keyToLimitOffset(key: string): { limit: number; offset: number } {
   return { limit: Number(parts[parts.length - 2]), offset: Number(parts[parts.length - 1]) }
 }
 
+function notifyWaiters(waiters: Waiter[], result: PriceHistoryResponse): void {
+  for (const w of waiters) {
+    if (!w.signal?.aborted) w.resolve(result)
+  }
+}
+
+function rejectWaiters(waiters: Waiter[], reason: unknown): void {
+  for (const w of waiters) {
+    if (!w.signal?.aborted) w.reject(reason)
+  }
+}
+
 function flushCoalesced(): void {
   coalesceTimer = null
   if (pending.size === 0) return
