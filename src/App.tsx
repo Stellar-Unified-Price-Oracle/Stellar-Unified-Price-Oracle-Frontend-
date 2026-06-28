@@ -45,6 +45,14 @@ function AppContent(): ReactElement {
               }
             />
             <Route
+              path="/price/:pair"
+              element={
+                <RouteSuspense fallback={<PriceDetailSkeleton />}>
+                  <PriceDetail />
+                </RouteSuspense>
+              }
+            />
+            <Route
               path="/api-docs"
               element={
                 <RouteSuspense fallback={<ApiDocsSkeleton />}>
