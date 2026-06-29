@@ -41,9 +41,9 @@ export function PriceDetail() {
     <div>
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/dashboard')}
         className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 mb-6 transition-colors"
-        aria-label="Go back"
+        aria-label="Go back to dashboard"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
