@@ -20,6 +20,10 @@ export interface PriceContextValue {
   livePrices: Map<string, LivePriceEntry>
   /** Current WebSocket connection status. */
   wsStatus: ConnectionStatus
+  /** Current API rate-limit status. */
+  rateLimitStatus: RateLimitStatus
+  /** Remaining retry window for rate limiting in milliseconds. */
+  rateLimitRetryAfterMs: number
   /** Trigger an immediate refetch of all prices outside the normal polling cycle. */
   refetchPrices: () => void
   /** Subscribe to live WebSocket updates for the given asset pairs. */
@@ -64,6 +68,15 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       cleanupTimersRef.current.delete(pair)
     }
   }
+
+  useEffect(() => {
+    const unsubscribeFromRateLimit = rateLimitManager.onStatusChange((status, retryAfterMs) => {
+      setRateLimitStatus(status)
+      setRateLimitRetryAfterMs(retryAfterMs)
+    })
+
+    return unsubscribeFromRateLimit
+  }, [])
 
   useEffect(() => {
     const timers = cleanupTimersRef.current
