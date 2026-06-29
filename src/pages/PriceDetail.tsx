@@ -36,6 +36,7 @@ export function PriceDetail() {
   )
 
   const loading = priceLoading || (historyLoading && history.length === 0)
+  const showEmptyState = !loading && !priceError && !price
 
   return (
     <div>
@@ -123,6 +124,11 @@ export function PriceDetail() {
               onClear={() => setImportedData(null)}
             />
           </div>
+        </div>
+      ) : showEmptyState ? (
+        <div className="p-8 border border-gray-800 bg-gray-900/70 rounded-xl text-center" role="status">
+          <h2 className="text-xl font-semibold text-gray-100 mb-2">No price data available</h2>
+          <p className="text-sm text-gray-400">No price data available for this pair.</p>
         </div>
       ) : null}
     </div>
