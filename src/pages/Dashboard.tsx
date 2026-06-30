@@ -255,7 +255,7 @@ export function Dashboard() {
             </svg>
             Alerts
           </button>
-          <ConnectionBadge status={wsStatus} />
+          <ConnectionBadge status={wsStatus} rateLimitStatus={rateLimitStatus} retryAfterMs={rateLimitRetryAfterMs} />
         </div>
       </div>
 
