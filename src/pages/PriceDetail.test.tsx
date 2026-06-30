@@ -1,70 +1,88 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { PriceDetail } from './PriceDetail'
-import { useSwr } from '../hooks/useSwr'
-import { usePriceHistory } from '../hooks/usePriceHistory'
 
-vi.mock('../hooks/useSwr', () => ({
-  useSwr: vi.fn(),
+afterEach(cleanup)
+
+const defaultHistory = {
+  history: [],
+  loading: false,
+  loadingMore: false,
+  error: null,
+  hasMore: false,
+  loadMore: vi.fn(),
+  refetch: vi.fn(),
+}
+
+vi.mock('../hooks/useSwr', () => ({ useSwr: vi.fn() }))
+vi.mock('../hooks/usePriceHistory', () => ({ usePriceHistory: vi.fn() }))
+vi.mock('../components/PriceChart', () => ({
+  PriceChart: () => <div data-testid="price-chart" />,
+}))
+vi.mock('../components/CsvImportZone', () => ({
+  CsvImportZone: () => null,
 }))
 
-vi.mock('../hooks/usePriceHistory', () => ({
-  usePriceHistory: vi.fn(),
-}))
-
-const mockedUseSwr = vi.mocked(useSwr)
-const mockedUsePriceHistory = vi.mocked(usePriceHistory)
+function renderWithPair(pair = 'BTC%2FUSD') {
+  return render(
+    <MemoryRouter initialEntries={[`/prices/${pair}`]}>
+      <Routes>
+        <Route path="/prices/:pair" element={<PriceDetail />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
 
 describe('PriceDetail', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
-    mockedUseSwr.mockReturnValue({
-      data: undefined,
-      error: null,
+    const { usePriceHistory } = await import('../hooks/usePriceHistory')
+    vi.mocked(usePriceHistory).mockReturnValue(defaultHistory)
+  })
+
+  it('shows loading skeleton while price is loading', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({ data: undefined, loading: true, error: null, isValidating: false, refetch: vi.fn() })
+
+    renderWithPair()
+    expect(screen.getByRole('status', { name: 'Loading price detail' })).toBeInTheDocument()
+  })
+
+  it('shows error state when price fetch fails', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({ data: undefined, loading: false, error: 'Failed to fetch', isValidating: false, refetch: vi.fn() })
+
+    renderWithPair()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText('Failed to fetch')).toBeInTheDocument()
+  })
+
+  it('renders pair name when data is loaded', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({
+      data: { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
       loading: false,
+      error: null,
       isValidating: false,
       refetch: vi.fn(),
     })
-    mockedUsePriceHistory.mockReturnValue({
-      history: [],
-      loading: false,
-      loadingMore: false,
-      hasMore: false,
-      error: null,
-      loadMore: vi.fn(),
-    })
+
+    renderWithPair()
+    expect(screen.getByRole('heading', { name: 'BTC/USD' })).toBeInTheDocument()
   })
 
-  it('shows an error message when the price request fails', () => {
-    mockedUseSwr.mockReturnValue({
-      data: undefined,
-      error: 'Failed to load price',
+  it('shows chart when data is loaded', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({
+      data: { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
       loading: false,
+      error: null,
       isValidating: false,
       refetch: vi.fn(),
     })
 
-    render(
-      <MemoryRouter initialEntries={['/price/BTC%2FUSD']}>
-        <Routes>
-          <Route path="/price/:pair" element={<PriceDetail />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-
-    expect(screen.getByText('Failed to load price')).toBeInTheDocument()
-  })
-
-  it('shows an empty state when no price data is available', () => {
-    render(
-      <MemoryRouter initialEntries={['/price/BTC%2FUSD']}>
-        <Routes>
-          <Route path="/price/:pair" element={<PriceDetail />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-
-    expect(screen.getByText('No price data available for this pair.')).toBeInTheDocument()
+    renderWithPair()
+    expect(screen.getByTestId('price-chart')).toBeInTheDocument()
   })
 })
