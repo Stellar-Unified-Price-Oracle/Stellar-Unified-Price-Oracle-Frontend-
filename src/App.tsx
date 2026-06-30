@@ -19,7 +19,7 @@ const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m
 
 const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
 
-function AppContent(): ReactElement {
+export function AppContent(): ReactElement {
   const location = useLocation()
   useAccessibility()
   trackPageview(location.pathname)
