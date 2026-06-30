@@ -16,6 +16,16 @@ const SOURCE_COLORS: Record<string, string> = {
   reflector: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
 }
 
+function getConfidenceColor(confidence: number): string {
+  if (confidence > 0.9) {
+    return 'bg-green-500/20 text-green-400 border-green-500/30'
+  }
+  if (confidence > 0.8) {
+    return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+  }
+  return 'bg-red-500/20 text-red-400 border-red-500/30'
+}
+
 export function PriceDetail() {
   const { pair } = useParams<{ pair: string }>()
   const navigate = useNavigate()
@@ -75,7 +85,9 @@ export function PriceDetail() {
             </p>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-400">Updated {timeAgo(price.timestamp)}</span>
-              <span className="text-cyan-400">{(price.confidence * 100).toFixed(1)}% confidence</span>
+              <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getConfidenceColor(price.confidence)}`}>
+                {(price.confidence * 100).toFixed(1)}% confidence
+              </span>
             </div>
             <p className="text-xs text-gray-600 mt-1">{formatTimestamp(price.timestamp)}</p>
           </div>
