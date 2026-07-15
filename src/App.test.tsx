@@ -85,7 +85,7 @@ describe('App routing', () => {
   it('renders the Price Detail page at /prices/:pair', async () => {
     renderRoute('/prices/BTC%2FUSD')
     // The "Go back" control is unique to the Price Detail page and always rendered.
-    expect(await screen.findByRole('button', { name: 'Go back' }, FIND)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Go back to dashboard' }, FIND)).toBeInTheDocument()
   })
 
   it('renders the 404 NotFound page for an unknown route', async () => {
@@ -121,6 +121,6 @@ describe('App routing', () => {
     const card = await screen.findByRole('button', { name: 'View details for BTC/USD' }, FIND)
 
     await user.click(card)
-    expect(await screen.findByRole('button', { name: 'Go back' }, FIND)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Go back to dashboard' }, FIND)).toBeInTheDocument()
   })
 })
