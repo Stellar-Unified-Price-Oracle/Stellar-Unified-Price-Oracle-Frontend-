@@ -34,15 +34,8 @@ function sendToAnalytics(report: WebVitalReport) {
   }
 
   if (import.meta.env.DEV) {
-    const ratingColor =
-      report.rating === 'good' ? '#4caf50' : report.rating === 'needs-improvement' ? '#ff9800' : '#f44336'
-
-    console.log(
-      `%c[Web Vitals]%c ${report.name} %c${report.rating} %c${report.value.toFixed(2)}`,
-      'color:#888',
-      'color:#fff;font-weight:bold',
-      `color:${ratingColor}`,
-      'color:#64b5f6',
+    console.info(
+      `[Web Vitals] ${report.name} ${report.rating} ${report.value.toFixed(2)}`,
       report,
     )
   }

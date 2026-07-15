@@ -7,7 +7,12 @@ const STORAGE_KEY = 'price-alerts'
 function loadAlerts(): Alert[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as Alert[]) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((a: unknown): a is Alert =>
+      typeof a === 'object' && a !== null && typeof (a as Alert).id === 'string' && typeof (a as Alert).assetPair === 'string'
+    )
   } catch {
     return []
   }
@@ -56,7 +61,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         changed = true
         
         // Show browser notification
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           new Notification('Price Alert Triggered', {
             body: `${alert.assetPair} has crossed your threshold! Current price: $${currentPrice}`,
           })
@@ -130,9 +135,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   const togglePanel = useCallback(() => setIsPanelOpen((p) => !p), [])
 
-  const markAsRead = useCallback((_id: string) => {
-    // In the new system, lastTriggeredAt marks it. We can just keep it as is,
-    // or maybe add an unread state if we wanted. For now, it's just a placeholder to resolve types.
+  const markAsRead = useCallback((id: string) => {
+    setAlerts((prev) => prev.map((a) =>
+      a.id === id ? { ...a, lastTriggeredAt: a.lastTriggeredAt ?? Date.now() } : a
+    ))
   }, [])
 
   const value = {

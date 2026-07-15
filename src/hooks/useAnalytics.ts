@@ -62,6 +62,4 @@ export function trackPageview(path?: string) {
   } catch { /* swallow */ }
 }
 
-export default function useAnalytics() {
-  // no-op hook, helpers exported
-}
+

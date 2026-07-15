@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import type { RateLimitStatus } from '../api/rateLimit'
 import type { ConnectionStatus } from '../api/websocket'
 import { Tooltip } from './Tooltip'
@@ -16,7 +16,7 @@ interface ConnectionBadgeProps {
   retryAfterMs?: number
 }
 
-export function ConnectionBadge({ status, rateLimitStatus, retryAfterMs }: ConnectionBadgeProps): ReactElement {
+export const ConnectionBadge = memo(function ConnectionBadge({ status, rateLimitStatus, retryAfterMs }: ConnectionBadgeProps): ReactElement {
   const s = STATUS_MAP[status]
   const isRateLimited = rateLimitStatus === 'limited'
   const label = isRateLimited
@@ -34,4 +34,4 @@ export function ConnectionBadge({ status, rateLimitStatus, retryAfterMs }: Conne
       </span>
     </Tooltip>
   )
-}
+})

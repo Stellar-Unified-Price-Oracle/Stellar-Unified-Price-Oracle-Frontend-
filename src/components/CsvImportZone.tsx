@@ -97,21 +97,17 @@ export function CsvImportZone({ onImport, onClear, hasImport }: Props) {
 
   return (
     <div>
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         aria-label="Upload CSV file for price data import"
         onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
-        }}
         onDragOver={(e) => {
           e.preventDefault()
           setIsDragging(true)
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+        className={`w-full flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
           isDragging
             ? 'border-cyan-500 bg-cyan-500/10'
             : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
@@ -124,7 +120,7 @@ export function CsvImportZone({ onImport, onClear, hasImport }: Props) {
           Drop a CSV file or <span className="text-cyan-400">browse</span>
         </p>
         <p className="text-xs text-gray-600">Columns: timestamp, price — max 5 MB</p>
-      </div>
+      </button>
       <input
         ref={inputRef}
         type="file"

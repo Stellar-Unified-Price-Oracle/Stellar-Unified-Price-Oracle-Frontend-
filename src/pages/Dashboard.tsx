@@ -144,6 +144,13 @@ export function Dashboard() {
 
   const selectAll = useCallback(() => setSelected(new Set(filtered.map((p) => p.assetPair))), [filtered])
   const deselectAll = useCallback(() => setSelected(new Set()), [])
+  const onToggleSelect = useCallback((pair: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(pair)) { next.delete(pair) } else { next.add(pair) }
+      return next
+    })
+  }, [])
 
   return (
     <div>
@@ -325,13 +332,7 @@ export function Dashboard() {
           hasAlertFn={hasAlertsForPair}
           selectMode={selectMode}
           selected={selected}
-          onToggleSelect={(pair) => {
-            setSelected((prev) => {
-              const next = new Set(prev)
-              if (next.has(pair)) { next.delete(pair) } else { next.add(pair) }
-              return next
-            })
-          }}
+          onToggleSelect={onToggleSelect}
         />
       ) : (
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" aria-label="Price feeds">
