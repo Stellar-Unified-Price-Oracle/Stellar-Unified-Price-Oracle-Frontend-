@@ -1,6 +1,5 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { PriceProvider } from './context/PriceContext'
 import App from './App'
 import './index.css'
 import { installConsoleAggregator } from './utils/consoleAggregator'
@@ -23,9 +22,7 @@ prepare().then(() => {
   if (!root) throw new Error('Root element #root not found')
   createRoot(root).render(
     <StrictMode>
-      <PriceProvider>
-        <App />
-      </PriceProvider>
+      <App />
     </StrictMode>,
   )
 })

@@ -8,6 +8,9 @@ import { PriceDetailSkeleton } from './components/PriceDetailSkeleton'
 import { ApiDocsSkeleton } from './components/Skeletons/ApiDocsSkeleton'
 import { NotFoundSkeleton } from './components/Skeletons/NotFoundSkeleton'
 import { AlertsProvider } from './hooks/useAlerts'
+import { PriceProvider } from './context/PriceContext'
+import { ToastProvider } from './context/ToastContext'
+import { PreferencesProvider } from './preferences/PreferencesContext'
 import { useWebVitals } from './hooks/useWebVitals'
 import { useAccessibility } from './hooks/useAccessibility'
 import { initAnalytics, trackPageview } from './hooks/useAnalytics'
@@ -81,7 +84,11 @@ export default function App(): ReactElement {
 
   return (
     <BrowserRouter basename={BASENAME}>
-      <AppContent />
+      <PreferencesProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </PreferencesProvider>
     </BrowserRouter>
   )
 }
