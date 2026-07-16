@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useSwr } from '../hooks/useSwr'
 import { WebSocketClient, type ConnectionStatus } from '../api/websocket'
 import { fetchAllPrices, fetchPrice } from '../api/rest'
+import { rateLimitManager, type RateLimitStatus } from '../api/rateLimit'
 import { config } from '../config'
 import type { LivePriceEntry, PriceData } from '../types'
 
@@ -19,6 +20,10 @@ export interface PriceContextValue {
   livePrices: Map<string, LivePriceEntry>
   /** Current WebSocket connection status. */
   wsStatus: ConnectionStatus
+  /** Current API rate-limit status. */
+  rateLimitStatus: RateLimitStatus
+  /** Remaining retry window for rate limiting in milliseconds. */
+  rateLimitRetryAfterMs: number
   /** Trigger an immediate refetch of all prices outside the normal polling cycle. */
   refetchPrices: () => void
   /** Subscribe to live WebSocket updates for the given asset pairs. */
@@ -46,6 +51,12 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
   const [livePrices, setLivePrices] = useState<Map<string, LivePriceEntry>>(new Map())
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('disconnected')
+  const [rateLimitStatus, setRateLimitStatus] = useState<RateLimitStatus>(
+    rateLimitManager.status,
+  )
+  const [rateLimitRetryAfterMs, setRateLimitRetryAfterMs] = useState(
+    rateLimitManager.retryAfterMs,
+  )
   const wsRef = useRef<WebSocketClient | null>(null)
   const requestIdsRef = useRef<Map<string, number>>(new Map())
   const cleanupTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -57,6 +68,15 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       cleanupTimersRef.current.delete(pair)
     }
   }
+
+  useEffect(() => {
+    const unsubscribeFromRateLimit = rateLimitManager.onStatusChange((status, retryAfterMs) => {
+      setRateLimitStatus(status)
+      setRateLimitRetryAfterMs(retryAfterMs)
+    })
+
+    return unsubscribeFromRateLimit
+  }, [])
 
   useEffect(() => {
     const timers = cleanupTimersRef.current
@@ -199,6 +219,8 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     pricesValidating,
     livePrices,
     wsStatus,
+    rateLimitStatus,
+    rateLimitRetryAfterMs,
     refetchPrices,
     subscribe,
     unsubscribe,

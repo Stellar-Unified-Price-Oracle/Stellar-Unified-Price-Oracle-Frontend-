@@ -104,7 +104,9 @@ export const idbCache = {
         return null
       }
       // Update access time for LRU (fire-and-forget)
-      idbPut(db, store, { ...entry, accessedAt: Date.now() }).catch(() => {})
+      idbPut(db, store, { ...entry, accessedAt: Date.now() }).catch(() => {
+        /* LRU access-time update is non-critical */
+      })
       return entry.value
     } catch {
       return null

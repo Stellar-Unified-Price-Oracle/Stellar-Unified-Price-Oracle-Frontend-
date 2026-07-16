@@ -1,4 +1,5 @@
-import { type ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
+import type { RateLimitStatus } from '../api/rateLimit'
 import type { ConnectionStatus } from '../api/websocket'
 import { Tooltip } from './Tooltip'
 
@@ -9,14 +10,28 @@ const STATUS_MAP: Record<ConnectionStatus, { label: string; color: string; toolt
   disconnected: { label: 'Offline', color: 'bg-red-500', tooltip: 'WebSocket is offline. Prices are updated via REST polling only.' },
 }
 
-export function ConnectionBadge({ status }: { status: ConnectionStatus }): ReactElement {
+interface ConnectionBadgeProps {
+  status: ConnectionStatus
+  rateLimitStatus?: RateLimitStatus
+  retryAfterMs?: number
+}
+
+export const ConnectionBadge = memo(function ConnectionBadge({ status, rateLimitStatus, retryAfterMs }: ConnectionBadgeProps): ReactElement {
   const s = STATUS_MAP[status]
+  const isRateLimited = rateLimitStatus === 'limited'
+  const label = isRateLimited
+    ? retryAfterMs && retryAfterMs > 0
+      ? `Rate limited (${Math.ceil(retryAfterMs / 1000)}s)`
+      : 'Rate limited'
+    : s.label
+  const ariaLabel = isRateLimited ? 'API rate limited' : `WebSocket ${s.label}`
+
   return (
-    <Tooltip content={s.tooltip}>
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300" role="status" aria-label={`WebSocket ${s.label}`}>
-        <span className={`w-2 h-2 rounded-full ${s.color} ${status === 'connected' ? 'animate-pulse' : ''}`} aria-hidden="true" />
-        {s.label}
+    <Tooltip content={isRateLimited ? 'The API is temporarily rate limited. Requests will resume after the retry window expires.' : s.tooltip}>
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300" role="status" aria-label={ariaLabel}>
+        <span className={`w-2 h-2 rounded-full ${isRateLimited ? 'bg-orange-500' : s.color} ${status === 'connected' && !isRateLimited ? 'animate-pulse' : ''}`} aria-hidden="true" />
+        {label}
       </span>
     </Tooltip>
   )
-}
+})

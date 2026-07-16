@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSwr } from '../hooks/useSwr'
-import { fetchPrice, fetchPriceHistory } from '../api/rest'
+import { usePriceHistory } from '../hooks/usePriceHistory'
+import { fetchPrice } from '../api/rest'
 import { PriceDetailSkeleton } from '../components/PriceDetailSkeleton'
 import { CsvImportZone } from '../components/CsvImportZone'
-import { CanvasChart } from '../chart/CanvasChart'
-import { formatPrice, timeAgo, formatTimestamp, formatChartTime } from '../utils/format'
-import type { ChartSeries } from '../chart/ChartEngine'
+import { PriceChart } from '../components/PriceChart'
+import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import type { CsvRow } from '../components/CsvImportZone'
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -14,6 +14,16 @@ const SOURCE_COLORS: Record<string, string> = {
   redstone: 'bg-red-500/20 text-red-400 border-red-500/30',
   band: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   reflector: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+}
+
+function getConfidenceColor(confidence: number): string {
+  if (confidence > 0.9) {
+    return 'bg-green-500/20 text-green-400 border-green-500/30'
+  }
+  if (confidence > 0.8) {
+    return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+  }
+  return 'bg-red-500/20 text-red-400 border-red-500/30'
 }
 
 export function PriceDetail() {
@@ -29,44 +39,22 @@ export function PriceDetail() {
     { staleTime: 5000, retryCount: 2 },
   )
 
-  const { data: historyResponse, loading: historyLoading } = useSwr(
-    `history:${decodedPair}`,
-    () => fetchPriceHistory(decodedPair, 100),
-    { staleTime: 30000, retryCount: 2 },
+  // Use paginated history hook with configurable page size
+  const { history, loading: historyLoading, loadingMore, hasMore, error: historyError, loadMore } = usePriceHistory(
+    decodedPair || null,
+    { pageSize: 100 },
   )
 
-  const loading = priceLoading || historyLoading
-
-  const chartSeries = useMemo<ChartSeries[]>(() => {
-    const series: ChartSeries[] = []
-    if (historyResponse && historyResponse.history.length >= 2) {
-      series.push({
-        id: 'oracle',
-        label: decodedPair,
-        points: historyResponse.history.map((h) => ({ x: h.timestamp, y: h.price })),
-        color: '#06b6d4',
-        style: 'area',
-      })
-    }
-    if (importedData && importedData.length >= 2) {
-      series.push({
-        id: 'imported',
-        label: 'Imported CSV',
-        points: importedData.map((r) => ({ x: r.timestamp, y: r.price })),
-        color: '#f59e0b',
-        style: 'dashed-line',
-      })
-    }
-    return series
-  }, [historyResponse, importedData, decodedPair])
+  const loading = priceLoading || (historyLoading && history.length === 0)
+  const showEmptyState = !loading && !priceError && !price
 
   return (
     <div>
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/dashboard')}
         className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 mb-6 transition-colors"
-        aria-label="Go back"
+        aria-label="Go back to dashboard"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -98,7 +86,9 @@ export function PriceDetail() {
             </p>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-400">Updated {timeAgo(price.timestamp)}</span>
-              <span className="text-cyan-400">{(price.confidence * 100).toFixed(1)}% confidence</span>
+              <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getConfidenceColor(price.confidence)}`}>
+                {(price.confidence * 100).toFixed(1)}% confidence
+              </span>
             </div>
             <p className="text-xs text-gray-600 mt-1">{formatTimestamp(price.timestamp)}</p>
           </div>
@@ -118,20 +108,22 @@ export function PriceDetail() {
             </div>
           </div>
 
-          {/* History chart */}
+          {/* Paginated History chart */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Price History</p>
-            {chartSeries.length > 0 ? (
-              <CanvasChart
-                series={chartSeries}
-                className="w-full h-48"
-                formatX={formatChartTime}
-                formatY={formatPrice}
-              />
-            ) : (
-              <div className="h-48 flex items-center justify-center text-gray-600 text-sm">
-                No history available
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Price History (Paginated)</p>
+            {historyError ? (
+              <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400" role="alert">
+                Failed to load price history: {historyError.message}
               </div>
+            ) : (
+              <PriceChart
+                data={history}
+                pair={decodedPair}
+                loading={historyLoading && history.length === 0}
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+              />
             )}
           </div>
 
@@ -144,6 +136,11 @@ export function PriceDetail() {
               onClear={() => setImportedData(null)}
             />
           </div>
+        </div>
+      ) : showEmptyState ? (
+        <div className="p-8 border border-gray-800 bg-gray-900/70 rounded-xl text-center" role="status">
+          <h2 className="text-xl font-semibold text-gray-100 mb-2">No price data available</h2>
+          <p className="text-sm text-gray-400">No price data available for this pair.</p>
         </div>
       ) : null}
     </div>

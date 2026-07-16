@@ -8,13 +8,19 @@ installConsoleAggregator()
 
 async function prepare(): Promise<void> {
   if (import.meta.env.VITE_USE_MOCK === 'true') {
-    const { worker } = await import('./mocks/browser')
-    await worker.start({ onUnhandledRequest: 'bypass' })
+    try {
+      const { worker } = await import('./mocks/browser')
+      await worker.start({ onUnhandledRequest: 'bypass' })
+    } catch (err) {
+      console.warn('MSW worker failed to start, continuing without mocks:', err)
+    }
   }
 }
 
 prepare().then(() => {
-  createRoot(document.getElementById('root')!).render(
+  const root = document.getElementById('root')
+  if (!root) throw new Error('Root element #root not found')
+  createRoot(root).render(
     <StrictMode>
       <App />
     </StrictMode>,

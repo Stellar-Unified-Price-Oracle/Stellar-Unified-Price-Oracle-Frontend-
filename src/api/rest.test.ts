@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { rateLimitManager } from './rateLimit'
 
 vi.mock('../config', () => ({
   config: {
@@ -34,14 +35,22 @@ afterEach(() => {
   vi.runAllTimers()
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  rateLimitManager.clearRateLimit()
 })
 
 function okResponse(data: unknown) {
   return { ok: true, json: () => Promise.resolve(data), text: () => Promise.resolve('') }
 }
 
-function errorResponse(status: number, text: string) {
-  return { ok: false, status, statusText: text, text: () => Promise.resolve(text) }
+function errorResponse(status: number, text: string, headers?: Record<string, string>) {
+  const headerMap = new Map(Object.entries(headers ?? {}))
+  return {
+    ok: false,
+    status,
+    statusText: text,
+    headers: { get: (name: string) => headerMap.get(name) ?? null },
+    text: () => Promise.resolve(text),
+  }
 }
 
 // ---------------------------------------------------------------------------

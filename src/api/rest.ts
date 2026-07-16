@@ -48,6 +48,7 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
     const text = await res.text().catch(() => '')
     throw new Error(`${res.status} ${res.statusText}: ${text}`)
   }
+
   return res.json() as Promise<T>
 }
 
@@ -74,16 +75,12 @@ function keyToLimitOffset(key: string): { limit: number; offset: number } {
   return { limit: Number(parts[parts.length - 2]), offset: Number(parts[parts.length - 1]) }
 }
 
-function notifyWaiters(waiters: Waiter[], result: PriceHistoryResponse): void {
-  for (const w of waiters) {
-    if (!w.signal?.aborted) w.resolve(result)
-  }
+function notifyWaiters(waiters: Waiter[], value: PriceHistoryResponse): void {
+  for (const w of waiters) w.resolve(value)
 }
 
 function rejectWaiters(waiters: Waiter[], reason: unknown): void {
-  for (const w of waiters) {
-    if (!w.signal?.aborted) w.reject(reason)
-  }
+  for (const w of waiters) w.reject(reason)
 }
 
 function flushCoalesced(): void {

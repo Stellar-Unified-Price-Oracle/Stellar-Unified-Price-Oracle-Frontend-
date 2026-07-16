@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { memo, useState, useRef, useEffect, type ReactNode } from 'react'
 
 interface TooltipProps {
   content: string
   children: ReactNode
 }
 
-export function Tooltip({ content, children }: TooltipProps) {
+export const Tooltip = memo(function Tooltip({ content, children }: TooltipProps) {
   const [visible, setVisible] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
 
@@ -53,4 +53,4 @@ export function Tooltip({ content, children }: TooltipProps) {
       )}
     </span>
   )
-}
+})

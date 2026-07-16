@@ -27,10 +27,24 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 })
 
-// SVGPathElement.getTotalLength is not implemented in jsdom (used by Recharts)
-if (typeof SVGPathElement !== 'undefined' && !SVGPathElement.prototype.getTotalLength) {
-  SVGPathElement.prototype.getTotalLength = () => 0
+// jsdom implements neither SVGPathElement nor getTotalLength, which Recharts calls on
+// its <path> nodes while animating lines and areas. Depending on the jsdom version a
+// <path> is an instance of SVGPathElement, SVGGeometryElement, or just the base
+// SVGElement (the current case — the more specific classes are `undefined`), so install
+// the stub on whichever prototypes exist. The previous guard keyed off SVGPathElement,
+// which is undefined here, so the mock never applied. (SVGElement's type does not declare
+// getTotalLength, hence the cast.)
+function mockGetTotalLength(ctor: { prototype: object } | undefined): void {
+  if (!ctor) return
+  const proto = ctor.prototype as { getTotalLength?: () => number }
+  if (typeof proto.getTotalLength !== 'function') {
+    proto.getTotalLength = () => 0
+  }
 }
+
+mockGetTotalLength(typeof SVGElement !== 'undefined' ? SVGElement : undefined)
+mockGetTotalLength(typeof SVGGeometryElement !== 'undefined' ? SVGGeometryElement : undefined)
+mockGetTotalLength(typeof SVGPathElement !== 'undefined' ? SVGPathElement : undefined)
 
 // Mock fetch globally so components that call the REST API in unit tests
 // don't fail with "fetch is not defined".
@@ -40,4 +54,3 @@ global.fetch = vi.fn().mockResolvedValue({
   json: async () => ({ pair: '', history: [] }),
   text: async () => '',
 } as unknown as Response)
-

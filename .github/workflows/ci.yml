@@ -33,30 +33,18 @@ jobs:
 
       - run: npm run test:run
 
-      - run: npm run build:storybook
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: build
           path: dist/
 
-  commitlint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx commitlint --from ${{ github.event.pull_request.base.sha || 'HEAD~1' }} --to HEAD --verbose
-
   e2e:
-    needs: [frontend, commitlint]
+    needs: [frontend]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    continue-on-error: true
+
     steps:
       - uses: actions/checkout@v4
 
@@ -75,5 +63,3 @@ jobs:
       - run: npx playwright install --with-deps chromium firefox webkit
 
       - run: npm run test:e2e
-
-

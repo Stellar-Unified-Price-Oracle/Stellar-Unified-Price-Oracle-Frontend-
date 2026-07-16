@@ -1,0 +1,162 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshots > both thresholds 1`] = `
+<button
+  aria-label="1 active alert"
+  class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full hover:bg-amber-400/20 transition-colors"
+  type="button"
+>
+  <svg
+    aria-hidden="true"
+    class="w-3.5 h-3.5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    />
+  </svg>
+  <span>
+    1
+     alert
+  </span>
+  <span
+    class="text-amber-500"
+  >
+    ↕
+  </span>
+</button>
+`;
+
+exports[`snapshots > count > 1 1`] = `
+<button
+  aria-label="2 active alerts"
+  class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full hover:bg-amber-400/20 transition-colors"
+  type="button"
+>
+  <svg
+    aria-hidden="true"
+    class="w-3.5 h-3.5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    />
+  </svg>
+  <span>
+    2
+     alert
+    s
+  </span>
+  <span
+    class="text-amber-500"
+  >
+    ↑
+  </span>
+</button>
+`;
+
+exports[`snapshots > count 1 1`] = `
+<button
+  aria-label="1 active alert"
+  class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full hover:bg-amber-400/20 transition-colors"
+  type="button"
+>
+  <svg
+    aria-hidden="true"
+    class="w-3.5 h-3.5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    />
+  </svg>
+  <span>
+    1
+     alert
+  </span>
+  <span
+    class="text-amber-500"
+  >
+    ↑
+  </span>
+</button>
+`;
+
+exports[`snapshots > lower only threshold 1`] = `
+<button
+  aria-label="1 active alert"
+  class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full hover:bg-amber-400/20 transition-colors"
+  type="button"
+>
+  <svg
+    aria-hidden="true"
+    class="w-3.5 h-3.5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    />
+  </svg>
+  <span>
+    1
+     alert
+  </span>
+  <span
+    class="text-amber-500"
+  >
+    ↓
+  </span>
+</button>
+`;
+
+exports[`snapshots > upper only threshold 1`] = `
+<button
+  aria-label="1 active alert"
+  class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full hover:bg-amber-400/20 transition-colors"
+  type="button"
+>
+  <svg
+    aria-hidden="true"
+    class="w-3.5 h-3.5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      d="M12 9v2m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    />
+  </svg>
+  <span>
+    1
+     alert
+  </span>
+  <span
+    class="text-amber-500"
+  >
+    ↑
+  </span>
+</button>
+`;
