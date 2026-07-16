@@ -9,6 +9,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   reducedMotion: false,
   highContrast: false,
   largeText: false,
+  analyticsOptOut: false,
 } as const
 
 export const MAX_UNDO_DEPTH = 20

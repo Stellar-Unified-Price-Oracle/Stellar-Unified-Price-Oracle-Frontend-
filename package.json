@@ -13,6 +13,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "build:analyze": "ANALYZE=true vite build",
+    "build:hash": "npm run build && node scripts/build-hash.js",
+    "build:verify": "node scripts/build-hash.js --verify",
+    "sbom": "node scripts/generate-sbom.js",
     "size-limit": "size-limit",
     "preview": "vite preview",
     "prepare": "husky || true",
@@ -20,7 +23,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:chromium": "playwright test --project=chromium",
     "test:e2e:firefox": "playwright test --project=firefox",
-    "test:e2e:webkit": "playwright test --project=webkit"
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "generate:openapi": "npx openapi-typescript ${BACKEND_OPENAPI_URL:-http://localhost:3000/openapi.json} --output src/api/openapi-types.ts"
   },
   "size-limit": [
     {
@@ -43,16 +47,16 @@
     }
   ],
   "dependencies": {
-    "@tanstack/react-virtual": "^3.14.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.0",
+    "zod": "^3.24.4",
     "recharts": "^2.15.3",
     "web-vitals": "^4.2.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
-    "@playwright/test": "^1.61.0",
+    "@playwright/test": "1.52.0",
     "@size-limit/file": "^12.1.0",
     "@tailwindcss/vite": "^4.1.4",
     "@testing-library/jest-dom": "^6.6.3",
@@ -69,6 +73,7 @@
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
     "lint-staged": "^15.5.1",
+    "msw": "^2.14.6",
     "prettier": "^3.5.3",
     "rollup-plugin-visualizer": "^7.0.1",
     "size-limit": "^12.1.0",
@@ -79,6 +84,7 @@
     "vitest": "^3.1.2",
     "vitest-axe": "^0.1.0"
   },
+ 
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix",
@@ -86,6 +92,11 @@
     ],
     "*.{css,json,md}": [
       "prettier --write"
+    ]
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
     ]
   }
 }

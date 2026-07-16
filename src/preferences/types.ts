@@ -11,4 +11,5 @@ export interface Preferences {
   reducedMotion: boolean
   highContrast: boolean
   largeText: boolean
+  analyticsOptOut?: boolean
 }

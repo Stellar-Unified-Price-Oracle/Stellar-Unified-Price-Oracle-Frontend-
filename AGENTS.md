@@ -14,7 +14,6 @@ WebSocket updates, configurable alerts, and export capabilities.
 | Build | Vite 6 |
 | Styling | Tailwind CSS v4 |
 | Charts | Recharts |
-| Virtualization | @tanstack/react-virtual |
 | Routing | react-router-dom v7 |
 | Testing | Vitest (unit) + Playwright (E2E) |
 | Linting | ESLint + Prettier |
@@ -28,11 +27,13 @@ WebSocket updates, configurable alerts, and export capabilities.
 public/               — Static assets (favicon, manifest, service worker)
 src/
   api/                — REST + WebSocket clients
+  chart/              — Canvas chart engine
   components/         — Reusable UI components (PriceCard, Layout, etc.)
   config/             — Runtime config (env vars, defaults)
   context/            — React context providers (PriceContext, ToastContext)
-  hooks/              — Custom hooks (usePrices, useAlerts, useExport, etc.)
-  pages/              — Route-level page components (Dashboard, NotFound)
+  hooks/              — Custom hooks (useSwr, useAlerts, useExport, etc.)
+  mocks/              — MSW handlers for dev/testing
+  pages/              — Route-level page components (Dashboard, NotFound, PriceDetail)
   preferences/        — User preferences system (IndexedDB-backed, undo/redo)
   selectors/          — Memoized selectors
   test/               — Test helpers (FakeWebSocket, a11y utilities)

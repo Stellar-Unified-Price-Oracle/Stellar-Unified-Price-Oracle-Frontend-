@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type ReactElement } from 'react'
 import type { Alert, AlertFormData } from '../types'
 
 interface AlertModalProps {
@@ -48,7 +48,7 @@ function validate(form: AlertFormData): ValidationErrors {
   return errors
 }
 
-export function AlertModal({ isOpen, onClose, onSave, onDelete, alert, currentPrice, defaultAssetPair }: AlertModalProps) {
+export function AlertModal({ isOpen, onClose, onSave, onDelete, alert, currentPrice, defaultAssetPair }: AlertModalProps): ReactElement | null {
   const [form, setForm] = useState<AlertFormData>({
     assetPair: '',
     upperThreshold: '',
@@ -122,7 +122,7 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, alert, currentPr
 
   if (!isOpen) return null
 
-  const fieldError = (field: keyof AlertFormData) => errors[field]
+  const fieldError = (field: keyof AlertFormData): string | undefined => errors[field]
 
   return (
     <div

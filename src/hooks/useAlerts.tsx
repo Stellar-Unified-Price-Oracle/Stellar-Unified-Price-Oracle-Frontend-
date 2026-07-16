@@ -7,18 +7,30 @@ const STORAGE_KEY = 'price-alerts'
 function loadAlerts(): Alert[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as Alert[]) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((a: unknown): a is Alert =>
+      typeof a === 'object' && a !== null && typeof (a as Alert).id === 'string' && typeof (a as Alert).assetPair === 'string'
+    )
   } catch {
     return []
   }
 }
 
-function saveAlerts(alerts: Alert[]) {
+function saveAlerts(alerts: Alert[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts))
 }
 
 const AlertsContext = createContext<AlertsContextType | null>(null)
 
+/**
+ * Provides the {@link AlertsContextType} to its subtree.
+ *
+ * Persists alerts to `localStorage` and evaluates them against live prices from {@link usePriceContext}.
+ * Fires browser notifications when a threshold is crossed (if permission is granted).
+ * Must be rendered inside `PriceProvider`.
+ */
 export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -49,7 +61,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         changed = true
         
         // Show browser notification
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           new Notification('Price Alert Triggered', {
             body: `${alert.assetPair} has crossed your threshold! Current price: $${currentPrice}`,
           })
@@ -123,9 +135,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   const togglePanel = useCallback(() => setIsPanelOpen((p) => !p), [])
 
-  const markAsRead = useCallback((_id: string) => {
-    // In the new system, lastTriggeredAt marks it. We can just keep it as is,
-    // or maybe add an unread state if we wanted. For now, it's just a placeholder to resolve types.
+  const markAsRead = useCallback((id: string) => {
+    setAlerts((prev) => prev.map((a) =>
+      a.id === id ? { ...a, lastTriggeredAt: a.lastTriggeredAt ?? Date.now() } : a
+    ))
   }, [])
 
   const value = {
@@ -144,6 +157,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   return <AlertsContext.Provider value={value}>{children}</AlertsContext.Provider>
 }
 
+/**
+ * Returns the alerts context value.
+ * Must be called inside a component that is a descendant of {@link AlertsProvider}.
+ * Throws if called outside of that tree.
+ */
 export function useAlerts() {
   const context = useContext(AlertsContext)
   if (!context) {

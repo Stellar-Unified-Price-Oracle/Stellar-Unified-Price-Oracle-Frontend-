@@ -1,3 +1,4 @@
+import { memo, type ReactElement } from 'react'
 import type { Alert } from '../types'
 
 interface AlertBadgeProps {
@@ -6,7 +7,7 @@ interface AlertBadgeProps {
   onClick?: () => void
 }
 
-export function AlertBadge({ count, alerts, onClick }: AlertBadgeProps) {
+export const AlertBadge = memo(function AlertBadge({ count, alerts, onClick }: AlertBadgeProps): ReactElement | null {
   if (count === 0) return null
 
   const hasUpper = alerts.some((a) => a.upperThreshold !== null)
@@ -39,4 +40,4 @@ export function AlertBadge({ count, alerts, onClick }: AlertBadgeProps) {
       )}
     </button>
   )
-}
+})

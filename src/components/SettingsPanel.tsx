@@ -157,6 +157,24 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
               />
             </div>
           </section>
+
+          {/* Privacy / Analytics */}
+          <section aria-labelledby="privacy-settings-heading">
+            <h3 id="privacy-settings-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+              Privacy
+            </h3>
+            <div className="space-y-4">
+              <AccessibilityToggle
+                label="Enable Analytics"
+                description="Allow privacy-focused analytics for feature usage (can be opted out)."
+                checked={!preferences.analyticsOptOut}
+                onChange={(val) => {
+                  updatePreference('analyticsOptOut', !val)
+                  try { localStorage.setItem('analyticsOptOut', !val ? '0' : '1') } catch { /* storage unavailable */ }
+                }}
+              />
+            </div>
+          </section>
         </div>
 
         <div className="border-t border-gray-800 px-6 py-4">

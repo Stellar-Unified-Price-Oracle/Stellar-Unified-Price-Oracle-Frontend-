@@ -86,3 +86,9 @@ export interface AlertsContextType {
   togglePanel: () => void
   markAsRead: (id: string) => void
 }
+
+export interface RateLimitInfo {
+  limit: number
+  remaining: number
+  reset: number
+}

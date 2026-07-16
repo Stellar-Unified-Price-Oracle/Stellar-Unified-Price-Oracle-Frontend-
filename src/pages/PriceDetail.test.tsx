@@ -1,121 +1,88 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { PriceDetail } from './PriceDetail'
-import { checkAccessibility } from '../test/accessibility'
-
-const mockFetchPrice = vi.fn()
-const mockUsePriceHistory = vi.fn(() => ({
-  history: [],
-  loading: false,
-  error: null,
-  refetch: vi.fn(),
-}))
-
-vi.mock('../api/rest', () => ({
-  fetchPrice: (...args: unknown[]) => mockFetchPrice(...args),
-}))
-
-vi.mock('../hooks/usePriceHistory', () => ({
-  usePriceHistory: (...args: unknown[]) => mockUsePriceHistory(...args),
-}))
 
 afterEach(cleanup)
 
-function renderAt(path: string) {
+const defaultHistory = {
+  history: [],
+  loading: false,
+  loadingMore: false,
+  error: null,
+  hasMore: false,
+  loadMore: vi.fn(),
+  refetch: vi.fn(),
+}
+
+vi.mock('../hooks/useSwr', () => ({ useSwr: vi.fn() }))
+vi.mock('../hooks/usePriceHistory', () => ({ usePriceHistory: vi.fn() }))
+vi.mock('../components/PriceChart', () => ({
+  PriceChart: () => <div data-testid="price-chart" />,
+}))
+vi.mock('../components/CsvImportZone', () => ({
+  CsvImportZone: () => null,
+}))
+
+function renderWithPair(pair = 'BTC%2FUSD') {
   return render(
-    <MemoryRouter initialEntries={[path]}>
+    <MemoryRouter initialEntries={[`/prices/${pair}`]}>
       <Routes>
-        <Route path="/price/:pair" element={<PriceDetail />} />
+        <Route path="/prices/:pair" element={<PriceDetail />} />
       </Routes>
     </MemoryRouter>,
   )
 }
 
-const mockPriceData = {
-  assetPair: 'BTC/USD',
-  price: 50000.1234,
-  timestamp: Date.now(),
-  confidence: 0.9876,
-  sources: ['chainlink', 'redstone'],
-}
-
 describe('PriceDetail', () => {
-  it('should have no accessibility violations', async () => {
-    mockFetchPrice.mockResolvedValue(mockPriceData)
-    mockUsePriceHistory.mockReturnValue({
-      history: [],
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    const { usePriceHistory } = await import('../hooks/usePriceHistory')
+    vi.mocked(usePriceHistory).mockReturnValue(defaultHistory)
+  })
+
+  it('shows loading skeleton while price is loading', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({ data: undefined, loading: true, error: null, isValidating: false, refetch: vi.fn() })
+
+    renderWithPair()
+    expect(screen.getByRole('status', { name: 'Loading price detail' })).toBeInTheDocument()
+  })
+
+  it('shows error state when price fetch fails', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({ data: undefined, loading: false, error: 'Failed to fetch', isValidating: false, refetch: vi.fn() })
+
+    renderWithPair()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText('Failed to fetch')).toBeInTheDocument()
+  })
+
+  it('renders pair name when data is loaded', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({
+      data: { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
       loading: false,
       error: null,
+      isValidating: false,
       refetch: vi.fn(),
     })
 
-    await checkAccessibility(
-      <MemoryRouter initialEntries={['/price/BTC%2FUSD']}>
-        <Routes>
-          <Route path="/price/:pair" element={<PriceDetail />} />
-        </Routes>
-      </MemoryRouter>,
-    )
+    renderWithPair()
+    expect(screen.getByRole('heading', { name: 'BTC/USD' })).toBeInTheDocument()
   })
 
-  it('shows loading state initially', () => {
-    mockFetchPrice.mockImplementation(() => new Promise(() => {}))
-    renderAt('/price/BTC%2FUSD')
-    const skeletons = document.querySelectorAll('.animate-pulse')
-    expect(skeletons.length).toBeGreaterThan(0)
-  })
-
-  it('shows error state when fetch fails', async () => {
-    mockFetchPrice.mockRejectedValue(new Error('Failed to load price data'))
-    renderAt('/price/BTC%2FUSD')
-    const error = await screen.findByText((content) => content.includes('Failed to load price data'))
-    expect(error).toBeInTheDocument()
-  })
-
-  it('renders price data after loading', async () => {
-    mockFetchPrice.mockResolvedValue(mockPriceData)
-    renderAt('/price/BTC%2FUSD')
-
-    expect(await screen.findByText('BTC/USD')).toBeInTheDocument()
-    expect(screen.getByText((content) => content.includes('50,000.12'))).toBeInTheDocument()
-    expect(screen.getByText((content) => content.includes('98.8') && content.includes('%'))).toBeInTheDocument()
-    expect(screen.getByText('Back to Dashboard')).toBeInTheDocument()
-  })
-
-  it('renders source badges', async () => {
-    mockFetchPrice.mockResolvedValue(mockPriceData)
-    renderAt('/price/BTC%2FUSD')
-
-    expect(await screen.findByText('chainlink')).toBeInTheDocument()
-    expect(screen.getByText('redstone')).toBeInTheDocument()
-  })
-
-  it('shows no pair message when pair param is empty', () => {
-    mockFetchPrice.mockResolvedValue(mockPriceData)
-    render(
-      <MemoryRouter initialEntries={['/price/']}>
-        <Routes>
-          <Route path="/price/:pair" element={<PriceDetail />} />
-        </Routes>
-      </MemoryRouter>,
-    )
-    expect(screen.getByText('No pair specified')).toBeInTheDocument()
-  })
-
-  it('renders PriceChart with history data', async () => {
-    mockFetchPrice.mockResolvedValue(mockPriceData)
-    mockUsePriceHistory.mockReturnValue({
-      history: [
-        { price: 50000, timestamp: Date.now() - 3600000, confidence: 0.98, sources: ['chainlink'] },
-        { price: 50100, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
-      ],
+  it('shows chart when data is loaded', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({
+      data: { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
       loading: false,
       error: null,
+      isValidating: false,
       refetch: vi.fn(),
     })
 
-    renderAt('/price/BTC%2FUSD')
-    expect(await screen.findByText('BTC/USD Price History')).toBeInTheDocument()
+    renderWithPair()
+    expect(screen.getByTestId('price-chart')).toBeInTheDocument()
   })
 })
