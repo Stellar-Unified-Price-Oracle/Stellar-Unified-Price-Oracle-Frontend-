@@ -28,52 +28,54 @@ export function AppContent(): ReactElement {
   trackPageview(location.pathname)
   return (
     <ErrorBoundary key={location.key}>
-      <AlertsProvider>
-        <Layout>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <RouteSuspense fallback={<DashboardSkeleton />}>
-                  <Dashboard />
-                </RouteSuspense>
-              }
-            />
-            <Route
-              path="/prices/:pair"
-              element={
-                <RouteSuspense fallback={<PriceDetailSkeleton />}>
-                  <PriceDetail />
-                </RouteSuspense>
-              }
-            />
-            <Route
-              path="/price/:pair"
-              element={
-                <RouteSuspense fallback={<PriceDetailSkeleton />}>
-                  <PriceDetail />
-                </RouteSuspense>
-              }
-            />
-            <Route
-              path="/api-docs"
-              element={
-                <RouteSuspense fallback={<ApiDocsSkeleton />}>
-                  <ApiDocs />
-                </RouteSuspense>
-              }
-            />
-            <Route
-              path="*"
-              element={
-                <RouteSuspense fallback={<NotFoundSkeleton />}>
-                  <NotFound />
-                </RouteSuspense>
-              }
-            />
-          </Routes>
-        </Layout>
-      </AlertsProvider>
+      <PriceProvider>
+        <AlertsProvider>
+          <Layout>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <RouteSuspense fallback={<DashboardSkeleton />}>
+                    <Dashboard />
+                  </RouteSuspense>
+                }
+              />
+              <Route
+                path="/prices/:pair"
+                element={
+                  <RouteSuspense fallback={<PriceDetailSkeleton />}>
+                    <PriceDetail />
+                  </RouteSuspense>
+                }
+              />
+              <Route
+                path="/price/:pair"
+                element={
+                  <RouteSuspense fallback={<PriceDetailSkeleton />}>
+                    <PriceDetail />
+                  </RouteSuspense>
+                }
+              />
+              <Route
+                path="/api-docs"
+                element={
+                  <RouteSuspense fallback={<ApiDocsSkeleton />}>
+                    <ApiDocs />
+                  </RouteSuspense>
+                }
+              />
+              <Route
+                path="*"
+                element={
+                  <RouteSuspense fallback={<NotFoundSkeleton />}>
+                    <NotFound />
+                  </RouteSuspense>
+                }
+              />
+            </Routes>
+          </Layout>
+        </AlertsProvider>
+      </PriceProvider>
     </ErrorBoundary>
   )
 }
