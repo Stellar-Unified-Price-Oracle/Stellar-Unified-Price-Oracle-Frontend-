@@ -20,7 +20,7 @@ vi.mock('../hooks/useIndexedDB', () => ({
 
 // Keep a reference to reset coalescing state between tests
 const restModule = await import('./rest')
-const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchBatchHistory, fetchHealth } =
+const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchBatchHistory, fetchHealth, ApiError } =
   restModule
 
 const mockFetch = vi.fn()
@@ -84,6 +84,63 @@ describe('fetchAllPrices', () => {
     }
     await expect(promise).rejects.toThrow('HTTP 500 Server error')
   }, 10_000)
+})
+
+// ---------------------------------------------------------------------------
+// ApiError
+// ---------------------------------------------------------------------------
+describe('ApiError', () => {
+  it('throws an ApiError (not a plain Error) for a non-retryable 4xx response', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('is still an instanceof Error for backward compatibility with existing catch blocks', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(Error)
+  })
+
+  it('carries the HTTP status on the error', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    try {
+      await fetchAllPrices()
+      expect.unreachable('fetchAllPrices should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as InstanceType<typeof ApiError>).status).toBe(404)
+    }
+  })
+
+  it.each([
+    [400, 'BAD_REQUEST'],
+    [401, 'UNAUTHORIZED'],
+    [403, 'FORBIDDEN'],
+    [404, 'NOT_FOUND'],
+    [418, 'UNKNOWN_ERROR'],
+  ] as const)('maps HTTP %i to code %s', async (status, code) => {
+    mockFetch.mockResolvedValue(errorResponse(status, 'error'))
+
+    try {
+      await fetchAllPrices()
+      expect.unreachable('fetchAllPrices should have thrown')
+    } catch (err) {
+      expect((err as InstanceType<typeof ApiError>).code).toBe(code)
+    }
+  })
+
+  it('preserves the status/statusText/body message format', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    try {
+      await fetchAllPrices()
+      expect.unreachable('fetchAllPrices should have thrown')
+    } catch (err) {
+      expect((err as InstanceType<typeof ApiError>).message).toBe('404 Not Found: Not Found')
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,50 @@ import {
 } from './schemas'
 import { validate } from './validate'
 
+/** Categorical classification of an {@link ApiError}, derived from the HTTP status. */
+export type ApiErrorCode =
+  | 'BAD_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'RATE_LIMITED'
+  | 'SERVER_ERROR'
+  | 'UNKNOWN_ERROR'
+
+/**
+ * Typed error thrown by {@link request} for non-ok, non-retryable HTTP responses
+ * (retryable statuses — 5xx and 429 exhausted after retrying — surface as
+ * {@link HttpRetryError} from `./retry` instead).
+ */
+export class ApiError extends Error {
+  readonly status: number
+  readonly code: ApiErrorCode
+
+  constructor(message: string, status: number, code: ApiErrorCode) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+  }
+}
+
+function statusToErrorCode(status: number): ApiErrorCode {
+  switch (status) {
+    case 400:
+      return 'BAD_REQUEST'
+    case 401:
+      return 'UNAUTHORIZED'
+    case 403:
+      return 'FORBIDDEN'
+    case 404:
+      return 'NOT_FOUND'
+    case 429:
+      return 'RATE_LIMITED'
+    default:
+      return status >= 500 ? 'SERVER_ERROR' : 'UNKNOWN_ERROR'
+  }
+}
+
 let rateLimitInfo: RateLimitInfo | null = null
 
 /** Returns the rate-limit metadata parsed from the most recent API response headers, or `null` if none has been received yet. */
@@ -46,7 +90,7 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`${res.status} ${res.statusText}: ${text}`)
+    throw new ApiError(`${res.status} ${res.statusText}: ${text}`, res.status, statusToErrorCode(res.status))
   }
 
   return res.json() as Promise<T>
