@@ -1,9 +1,21 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { AlertsProvider } from '../hooks/useAlerts'
 import { Layout } from './Layout'
 import { checkAccessibility } from '../test/accessibility'
+
+function renderLayout(children: ReactNode = <div>Test Content</div>) {
+  return render(
+    <MemoryRouter>
+      <AlertsProvider>
+        <Layout>{children}</Layout>
+      </AlertsProvider>
+    </MemoryRouter>,
+  )
+}
 
 afterEach(cleanup)
 
@@ -118,6 +130,74 @@ describe('Layout', () => {
     const inactiveLinks = screen.getAllByRole('link', { name: 'Dashboard' })
     inactiveLinks.forEach((link) => {
       expect(link.className).not.toMatch(/text-cyan/)
+    })
+  })
+
+  describe('desktop navigation', () => {
+    it('renders the desktop nav links to Dashboard and API Docs', () => {
+      renderLayout()
+
+      const nav = screen.getByRole('navigation', { name: 'Main navigation' })
+      const desktopNav = nav.querySelector('.hidden.sm\\:flex')
+      expect(desktopNav).not.toBeNull()
+
+      const { getByRole } = within(desktopNav as HTMLElement)
+      expect(getByRole('link', { name: 'Dashboard' })).toBeInTheDocument()
+      expect(getByRole('link', { name: 'API Docs' })).toBeInTheDocument()
+    })
+
+    it('does not render the mobile dropdown nav when the menu is closed', () => {
+      renderLayout()
+
+      expect(screen.getAllByRole('link', { name: 'Dashboard' })).toHaveLength(1)
+      expect(screen.getAllByRole('link', { name: 'API Docs' })).toHaveLength(1)
+    })
+  })
+
+  describe('mobile hamburger menu', () => {
+    it('opens the mobile dropdown nav when the hamburger button is clicked', async () => {
+      const user = userEvent.setup()
+      renderLayout()
+
+      expect(screen.getAllByRole('link', { name: 'Dashboard' })).toHaveLength(1)
+
+      await user.click(screen.getByLabelText('Toggle menu'))
+
+      // Once open, the mobile dropdown renders a second copy of each nav link
+      // alongside the always-present desktop copy.
+      expect(screen.getAllByRole('link', { name: 'Dashboard' })).toHaveLength(2)
+      expect(screen.getAllByRole('link', { name: 'API Docs' })).toHaveLength(2)
+    })
+
+    it('closes the mobile dropdown nav when a mobile nav link is clicked', async () => {
+      const user = userEvent.setup()
+      renderLayout()
+
+      await user.click(screen.getByLabelText('Toggle menu'))
+      const mobileDashboardLink = screen.getAllByRole('link', { name: 'Dashboard' })[1]
+
+      await user.click(mobileDashboardLink)
+
+      expect(screen.getAllByRole('link', { name: 'Dashboard' })).toHaveLength(1)
+    })
+  })
+
+  describe('children', () => {
+    it('renders children inside the main landmark', () => {
+      renderLayout(<div>Test Content</div>)
+
+      const main = screen.getByRole('main')
+      expect(within(main).getByText('Test Content')).toBeInTheDocument()
+    })
+  })
+
+  describe('accessibility landmarks', () => {
+    it('renders nav, main, and footer landmarks', () => {
+      renderLayout()
+
+      expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument()
+      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByRole('contentinfo')).toBeInTheDocument()
     })
   })
 })
