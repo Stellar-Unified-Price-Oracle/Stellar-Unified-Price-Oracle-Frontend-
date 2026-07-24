@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { PriceDetail } from './PriceDetail'
 
@@ -84,5 +84,48 @@ describe('PriceDetail', () => {
 
     renderWithPair()
     expect(screen.getByTestId('price-chart')).toBeInTheDocument()
+  })
+
+  it('shows a price history table alongside the chart when data is loaded', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({
+      data: { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
+      loading: false,
+      error: null,
+      isValidating: false,
+      refetch: vi.fn(),
+    })
+    const { usePriceHistory } = await import('../hooks/usePriceHistory')
+    vi.mocked(usePriceHistory).mockReturnValue({
+      ...defaultHistory,
+      history: [{ price: 49500, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] }],
+    })
+
+    renderWithPair()
+    expect(screen.getByTestId('price-chart')).toBeInTheDocument()
+    const table = screen.getByRole('table', { name: 'Price history table' })
+    expect(table).toBeInTheDocument()
+    expect(within(table).getByText('$49,500.00')).toBeInTheDocument()
+  })
+
+  it('shows an error message when price history fails to load', async () => {
+    const { useSwr } = await import('../hooks/useSwr')
+    vi.mocked(useSwr).mockReturnValue({
+      data: { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
+      loading: false,
+      error: null,
+      isValidating: false,
+      refetch: vi.fn(),
+    })
+    const { usePriceHistory } = await import('../hooks/usePriceHistory')
+    vi.mocked(usePriceHistory).mockReturnValue({
+      ...defaultHistory,
+      error: new Error('Network error'),
+    })
+
+    renderWithPair()
+    const alerts = screen.getAllByRole('alert')
+    expect(alerts.some((el) => el.textContent?.includes('Network error'))).toBe(true)
+    expect(screen.queryByRole('table', { name: 'Price history table' })).not.toBeInTheDocument()
   })
 })

@@ -6,6 +6,7 @@ import { fetchPrice } from '../api/rest'
 import { PriceDetailSkeleton } from '../components/PriceDetailSkeleton'
 import { CsvImportZone } from '../components/CsvImportZone'
 import { PriceChart } from '../components/PriceChart'
+import { PriceHistoryTable } from '../components/PriceHistoryTable'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import type { CsvRow } from '../components/CsvImportZone'
 
@@ -124,6 +125,18 @@ export function PriceDetail() {
                 hasMore={hasMore}
                 onLoadMore={loadMore}
               />
+            )}
+          </div>
+
+          {/* Price history table */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Price History (Table)</p>
+            {historyError ? (
+              <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400" role="alert">
+                Failed to load price history: {historyError.message}
+              </div>
+            ) : (
+              <PriceHistoryTable data={history} />
             )}
           </div>
 
