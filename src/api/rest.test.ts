@@ -20,7 +20,7 @@ vi.mock('../hooks/useIndexedDB', () => ({
 
 // Keep a reference to reset coalescing state between tests
 const restModule = await import('./rest')
-const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchBatchHistory, fetchHealth } =
+const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchBatchHistory, fetchHealth, ApiError } =
   restModule
 
 const mockFetch = vi.fn()
@@ -70,9 +70,19 @@ describe('fetchAllPrices', () => {
     expect(mockFetch.mock.calls[0][0]).toBe('/api/prices?pairs=BTC/USD')
   })
 
-  it('throws on error for non-retryable 4xx', async () => {
+  it('throws ApiError for non-retryable 4xx with code, message, and status', async () => {
     mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
-    await expect(fetchAllPrices()).rejects.toThrow('404 Not Found: Not Found')
+    await expect(fetchAllPrices()).rejects.toThrow(ApiError)
+    try {
+      await fetchAllPrices()
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      const apiErr = err as InstanceType<typeof ApiError>
+      expect(apiErr.code).toBe('NOT_FOUND')
+      expect(apiErr.status).toBe(404)
+      expect(apiErr.message).toBe('Not Found')
+      expect(apiErr.name).toBe('ApiError')
+    }
   })
 
   it('throws HttpRetryError after retrying transient 5xx failures', async () => {
@@ -134,9 +144,17 @@ describe('fetchBatchHistory', () => {
     expect(JSON.parse(init.body as string)).toEqual({ pairs: ['BTC/USD', 'ETH/USD'] })
   })
 
-  it('throws on batch endpoint error', async () => {
+  it('throws ApiError on batch endpoint error', async () => {
     mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
-    await expect(fetchBatchHistory(['BTC/USD'])).rejects.toThrow('404')
+    await expect(fetchBatchHistory(['BTC/USD'])).rejects.toThrow(ApiError)
+    try {
+      await fetchBatchHistory(['BTC/USD'])
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      const apiErr = err as InstanceType<typeof ApiError>
+      expect(apiErr.code).toBe('NOT_FOUND')
+      expect(apiErr.status).toBe(404)
+    }
   })
 })
 

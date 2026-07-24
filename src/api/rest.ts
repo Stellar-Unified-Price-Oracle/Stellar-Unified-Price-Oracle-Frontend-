@@ -9,6 +9,53 @@ import {
 } from './schemas'
 import { validate } from './validate'
 
+// ---------------------------------------------------------------------------
+// ApiError — typed API error
+// ---------------------------------------------------------------------------
+
+/** Machine-readable error codes for API failures. */
+export type ApiErrorCode =
+  | 'BAD_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'RATE_LIMITED'
+  | 'SERVER_ERROR'
+  | 'UNKNOWN'
+
+/**
+ * Maps an HTTP status code to a stable machine-readable {@link ApiErrorCode}.
+ * Callers can switch on `code` for fine-grained error handling.
+ */
+function statusToCode(status: number): ApiErrorCode {
+  if (status === 400) return 'BAD_REQUEST'
+  if (status === 401) return 'UNAUTHORIZED'
+  if (status === 403) return 'FORBIDDEN'
+  if (status === 404) return 'NOT_FOUND'
+  if (status === 429) return 'RATE_LIMITED'
+  if (status >= 500) return 'SERVER_ERROR'
+  return 'UNKNOWN'
+}
+
+/**
+ * Typed error thrown by the REST API client when a request fails with a
+ * non-ok HTTP response. Carries a machine-readable `code`, the original
+ * `status`, and a human-readable `message`.
+ */
+export class ApiError extends Error {
+  /** Machine-readable code identifying the error category. */
+  readonly code: ApiErrorCode
+  /** HTTP status code from the failed response. */
+  readonly status: number
+
+  constructor(code: ApiErrorCode, message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+    this.status = status
+  }
+}
+
 let rateLimitInfo: RateLimitInfo | null = null
 
 /** Returns the rate-limit metadata parsed from the most recent API response headers, or `null` if none has been received yet. */
@@ -46,7 +93,11 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
-    throw new Error(`${res.status} ${res.statusText}: ${text}`)
+    throw new ApiError(
+      statusToCode(res.status),
+      text || res.statusText || `HTTP ${res.status}`,
+      res.status,
+    )
   }
 
   return res.json() as Promise<T>
