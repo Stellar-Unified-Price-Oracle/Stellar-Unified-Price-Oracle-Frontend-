@@ -1,18 +1,26 @@
 import { z } from 'zod'
 
+/**
+ * Strict Zod schema for {@link import('../types/price').PriceData}.
+ * All fields are required. Extra properties are stripped.
+ */
 export const PriceDataSchema = z.object({
-  assetPair: z.string(),
-  price: z.number(),
-  timestamp: z.number(),
+  assetPair: z.string().min(1),
+  price: z.number().finite(),
+  timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
-  sources: z.array(z.string()),
+  sources: z.array(z.string().min(1)),
 })
 
+/**
+ * Strict Zod schema for {@link import('../types/price').PriceHistoryEntry}.
+ * All fields are required. Extra properties are stripped.
+ */
 export const PriceHistoryEntrySchema = z.object({
-  price: z.number(),
-  timestamp: z.number(),
+  price: z.number().finite(),
+  timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
-  sources: z.array(z.string()),
+  sources: z.array(z.string().min(1)),
 })
 
 export const PriceHistoryResponseSchema = z.object({
