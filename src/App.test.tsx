@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { AppContent } from './App'
 import type { PriceContextValue } from './context/PriceContext'
 
@@ -12,6 +13,9 @@ vi.mock('./hooks/useAccessibility', () => ({ useAccessibility: () => {} }))
 
 vi.mock('./context/PriceContext', () => ({
   usePriceContext: vi.fn(),
+  // AppContent renders the real PriceProvider (see #157 / #181); since usePriceContext
+  // itself is mocked above, this only needs to pass children through.
+  PriceProvider: ({ children }: { children: ReactNode }) => children,
 }))
 
 // Keep the real data hooks (useSwr, usePriceHistory) but stub the network so the

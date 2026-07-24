@@ -18,17 +18,31 @@ vi.mock('../hooks/useIndexedDB', () => ({
   idbCache: { get: vi.fn().mockResolvedValue(null), set: vi.fn() },
 }))
 
+vi.mock('../context/ToastContext', () => ({
+  showApiErrorToast: vi.fn(),
+}))
+
 // Keep a reference to reset coalescing state between tests
 const restModule = await import('./rest')
-const { fetchAllPrices, fetchPrice, fetchPriceHistory, fetchBatchHistory, fetchHealth } =
-  restModule
+const {
+  fetchAllPrices,
+  fetchPrice,
+  fetchPriceHistory,
+  fetchBatchHistory,
+  fetchHealth,
+  ApiError,
+  resetApiErrorToastState,
+} = restModule
+const { showApiErrorToast } = await import('../context/ToastContext')
 
 const mockFetch = vi.fn()
 
 beforeEach(() => {
   mockFetch.mockReset()
+  vi.mocked(showApiErrorToast).mockClear()
   vi.stubGlobal('fetch', mockFetch)
   vi.useFakeTimers()
+  resetApiErrorToastState()
 })
 
 afterEach(() => {
@@ -36,6 +50,7 @@ afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
   rateLimitManager.clearRateLimit()
+  resetApiErrorToastState()
 })
 
 function okResponse(data: unknown) {
@@ -84,6 +99,63 @@ describe('fetchAllPrices', () => {
     }
     await expect(promise).rejects.toThrow('HTTP 500 Server error')
   }, 10_000)
+})
+
+// ---------------------------------------------------------------------------
+// ApiError
+// ---------------------------------------------------------------------------
+describe('ApiError', () => {
+  it('throws an ApiError (not a plain Error) for a non-retryable 4xx response', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('is still an instanceof Error for backward compatibility with existing catch blocks', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(Error)
+  })
+
+  it('carries the HTTP status on the error', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    try {
+      await fetchAllPrices()
+      expect.unreachable('fetchAllPrices should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as InstanceType<typeof ApiError>).status).toBe(404)
+    }
+  })
+
+  it.each([
+    [400, 'BAD_REQUEST'],
+    [401, 'UNAUTHORIZED'],
+    [403, 'FORBIDDEN'],
+    [404, 'NOT_FOUND'],
+    [418, 'UNKNOWN_ERROR'],
+  ] as const)('maps HTTP %i to code %s', async (status, code) => {
+    mockFetch.mockResolvedValue(errorResponse(status, 'error'))
+
+    try {
+      await fetchAllPrices()
+      expect.unreachable('fetchAllPrices should have thrown')
+    } catch (err) {
+      expect((err as InstanceType<typeof ApiError>).code).toBe(code)
+    }
+  })
+
+  it('preserves the status/statusText/body message format', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    try {
+      await fetchAllPrices()
+      expect.unreachable('fetchAllPrices should have thrown')
+    } catch (err) {
+      expect((err as InstanceType<typeof ApiError>).message).toBe('404 Not Found: Not Found')
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -218,5 +290,72 @@ describe('schema validation', () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[API validation]'))
 
     warnSpy.mockRestore()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// API error toast notifications (#184)
+// ---------------------------------------------------------------------------
+describe('API error toasts', () => {
+  it('shows a toast with the error message on a non-retryable 4xx failure', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+
+    expect(showApiErrorToast).toHaveBeenCalledTimes(1)
+    expect(showApiErrorToast).toHaveBeenCalledWith('404 Not Found: Not Found')
+  })
+
+  it('does not show a toast for a cancelled (aborted) request', async () => {
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(fetchAllPrices(undefined, controller.signal)).rejects.toThrow()
+
+    expect(showApiErrorToast).not.toHaveBeenCalled()
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('de-duplicates identical error messages within the dedupe window', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+    await expect(fetchPrice('BTC/USD')).rejects.toBeInstanceOf(ApiError)
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+
+    // Same message, three failures in a row — only the first should toast.
+    expect(showApiErrorToast).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a new toast once the dedupe window has elapsed for the same message', async () => {
+    mockFetch.mockResolvedValue(errorResponse(404, 'Not Found'))
+
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+    expect(showApiErrorToast).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(5001)
+
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+    expect(showApiErrorToast).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows a toast immediately for a different error message even within the dedupe window', async () => {
+    mockFetch.mockResolvedValueOnce(errorResponse(404, 'Not Found'))
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+
+    mockFetch.mockResolvedValueOnce(errorResponse(403, 'Forbidden'))
+    await expect(fetchAllPrices()).rejects.toBeInstanceOf(ApiError)
+
+    expect(showApiErrorToast).toHaveBeenCalledTimes(2)
+    expect(showApiErrorToast).toHaveBeenNthCalledWith(1, '404 Not Found: Not Found')
+    expect(showApiErrorToast).toHaveBeenNthCalledWith(2, '403 Forbidden: Forbidden')
+  })
+
+  it('does not show a toast on success', async () => {
+    mockFetch.mockResolvedValue(okResponse([{ assetPair: 'BTC/USD' }]))
+
+    await fetchAllPrices()
+
+    expect(showApiErrorToast).not.toHaveBeenCalled()
   })
 })

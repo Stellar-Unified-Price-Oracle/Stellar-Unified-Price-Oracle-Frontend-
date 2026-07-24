@@ -1,5 +1,6 @@
 import { config } from '../config'
 import { fetchWithRetry } from './retry'
+import { showApiErrorToast } from '../context/ToastContext'
 import type { PriceData, PriceHistoryResponse, RateLimitInfo } from '../types'
 import {
   PriceDataSchema,
@@ -8,6 +9,82 @@ import {
   HealthSchema,
 } from './schemas'
 import { validate } from './validate'
+
+/** Categorical classification of an {@link ApiError}, derived from the HTTP status. */
+export type ApiErrorCode =
+  | 'BAD_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'RATE_LIMITED'
+  | 'SERVER_ERROR'
+  | 'UNKNOWN_ERROR'
+
+/**
+ * Typed error thrown by {@link request} for non-ok, non-retryable HTTP responses
+ * (retryable statuses — 5xx and 429 exhausted after retrying — surface as
+ * {@link HttpRetryError} from `./retry` instead).
+ */
+export class ApiError extends Error {
+  readonly status: number
+  readonly code: ApiErrorCode
+
+  constructor(message: string, status: number, code: ApiErrorCode) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+  }
+}
+
+function statusToErrorCode(status: number): ApiErrorCode {
+  switch (status) {
+    case 400:
+      return 'BAD_REQUEST'
+    case 401:
+      return 'UNAUTHORIZED'
+    case 403:
+      return 'FORBIDDEN'
+    case 404:
+      return 'NOT_FOUND'
+    case 429:
+      return 'RATE_LIMITED'
+    default:
+      return status >= 500 ? 'SERVER_ERROR' : 'UNKNOWN_ERROR'
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Error toast notifications
+// ---------------------------------------------------------------------------
+// useSwr retries failed fetches (with backoff) before settling into an error
+// state, and polls on refreshInterval — without de-duping, a single outage
+// would fire a new toast for every retry attempt and every poll cycle. Only
+// notify again once the message changes or the window has elapsed.
+const ERROR_TOAST_DEDUPE_WINDOW_MS = 5000
+let lastErrorToastMessage: string | null = null
+let lastErrorToastTime = 0
+
+function notifyApiError(message: string): void {
+  const now = Date.now()
+  if (message === lastErrorToastMessage && now - lastErrorToastTime < ERROR_TOAST_DEDUPE_WINDOW_MS) {
+    return
+  }
+  lastErrorToastMessage = message
+  lastErrorToastTime = now
+  showApiErrorToast(message)
+}
+
+/** Resets error-toast de-duplication state. Exposed for test isolation between cases. */
+export function resetApiErrorToastState(): void {
+  lastErrorToastMessage = null
+  lastErrorToastTime = 0
+}
+
+function apiErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  return 'An unexpected error occurred'
+}
 
 let rateLimitInfo: RateLimitInfo | null = null
 
@@ -36,20 +113,29 @@ function setRateLimitInfo(response: Response): void {
 
 async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal): Promise<T> {
   const url = `${config.apiUrl}${path}`
-  const res = await fetchWithRetry(url, {
-    ...init,
-    signal,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  })
 
-  setRateLimitInfo(res)
+  try {
+    const res = await fetchWithRetry(url, {
+      ...init,
+      signal,
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+    })
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`${res.status} ${res.statusText}: ${text}`)
+    setRateLimitInfo(res)
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new ApiError(`${res.status} ${res.statusText}: ${text}`, res.status, statusToErrorCode(res.status))
+    }
+
+    return (await res.json()) as T
+  } catch (err) {
+    // Cancelled requests (unmount, pair change, etc.) are not failures — don't toast them.
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
+
+    notifyApiError(apiErrorMessage(err))
+    throw err
   }
-
-  return res.json() as Promise<T>
 }
 
 // ---------------------------------------------------------------------------
