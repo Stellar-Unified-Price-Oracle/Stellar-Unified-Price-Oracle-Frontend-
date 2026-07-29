@@ -36,7 +36,7 @@ jobs:
         run: npm audit --json > npm-audit.json 2>&1 || true
 
       - name: Upload npm audit report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-audit-${{ github.run_id }}
           path: npm-audit.json
