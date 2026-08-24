@@ -206,3 +206,7 @@ Key architectural decisions are documented in [`docs/adr/`](docs/adr/):
 ## License
 
 MIT
+
+
+## Developer Reference #529
+Resolves issue #529: [Docs] Publish a bug bounty program scope document.
