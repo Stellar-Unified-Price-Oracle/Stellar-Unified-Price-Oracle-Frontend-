@@ -3,12 +3,33 @@
 [![Bundle CSS](https://img.shields.io/badge/CSS-%3C50%20kB-44cc11?logo=css3&labelColor=1a1a2e)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/Docs-API-blue)](docs/README.md)
 
 # Stellar Unified Price Oracle — Frontend
 
 **Developer Portal & Oracle Analytics Dashboard**
 
 A real-time dashboard for the Stellar Unified Price Oracle & Aggregator. Displays aggregated price feeds from Chainlink, Redstone, Band, and Reflector — powered by the [Aggregator API](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Aggregator-API).
+
+**Live Site:** https://stellar-price-oracle.example.com  
+**API Documentation:** [docs/README.md](docs/README.md)  
+**Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md)  
+**Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
+
+---
+
+## 📋 Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Architecture & Data Flow](#architecture--data-flow)
+3. [Prerequisites & Setup](#prerequisites--setup)
+4. [Development Workflow](#development-workflow)
+5. [Project Structure](#project-structure)
+6. [Available Scripts](#available-scripts)
+7. [Deployment](#deployment)
+8. [Contributing](#contributing)
+9. [Security](#security)
+10. [Support & Resources](#support--resources)
 
 ## Features
 

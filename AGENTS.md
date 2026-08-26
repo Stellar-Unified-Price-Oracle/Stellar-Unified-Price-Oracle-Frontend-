@@ -160,3 +160,59 @@ app owns.
 plain text and readable by any script on the origin, so one XSS bug leaks all of it.
 Secrets stay in memory for the session (see the webhook secret in
 `NotificationChannelsModal`) or move behind an httpOnly cookie set by the backend.
+
+
+## Security Practices
+
+### XSS Prevention
+
+1. **React auto-escaping is default** — All JSX content is auto-escaped by default.
+   Never use `dangerouslySetInnerHTML` without first sanitizing with DOMPurify (see below).
+
+2. **Input sanitization** — User search input is sanitized via `sanitizeSearchInput()` in `utils/sanitize.ts`.
+   All other user inputs (email, webhook URL, etc.) are validated by Zod before storage or use.
+
+3. **URL validation** — Use `sanitizeUrl()` from `utils/htmlSanitizer.ts` to block dangerous protocols
+   (javascript:, data:, vbscript:) when accepting user-provided URLs for `href` or `src` attributes.
+
+4. **Never persist secrets** — Webhook signing secrets are session-only (stored in React state,
+   not localStorage). Users must re-enter them after a reload.
+
+5. **Centralized storage access** — Use `src/utils/storage.ts` for all localStorage/sessionStorage.
+   Keys are namespaced (`supo:*`) and registered in `STORAGE_KEYS`.
+
+6. **Environment variable validation** — All env vars are validated by Zod at startup
+   (`src/config/validateEnv.ts`). URLs used in `href`, `src`, or API calls are safe.
+
+7. **JSON parsing** — All JSON parsing is wrapped with Zod schema validation
+   (`src/api/schemas.ts`). Invalid JSON is logged and replaced with safe defaults.
+
+### HTML Content
+
+If raw HTML ever needs to be rendered (e.g., Markdown, rich text):
+
+```tsx
+import { sanitizeHtml } from '../utils/htmlSanitizer'
+
+const clean = sanitizeHtml(userHtml)
+<div dangerouslySetInnerHTML={{ __html: clean }} />
+```
+
+For plain text only, use `stripHtml()` to remove all formatting:
+
+```tsx
+import { stripHtml } from '../utils/htmlSanitizer'
+
+const plainText = stripHtml(userInput)
+<p>{plainText}</p>
+```
+
+### Content Security Policy
+
+CSP headers enforce `script-src 'self'` (no inline scripts).
+Startup JavaScript lives in [`public/theme-init.js`](public/theme-init.js), not inline `<script>` tags.
+See [`vercel.json`](vercel.json) for the full security header list.
+
+### Security Resources
+
+- **XSS Audit:** See [`XSS_AUDIT_REPORT.md`](XSS_AUDIT_REPORT.md) for a comprehensive audit of all XSS vectors.
