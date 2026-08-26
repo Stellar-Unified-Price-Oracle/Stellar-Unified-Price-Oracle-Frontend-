@@ -82,13 +82,6 @@ function toUpperCase(input: string): string {
   return input.toUpperCase()
 }
 
-/**
- * Converts input to lowercase
- */
-function toLowerCase(input: string): string {
-  return input.toLowerCase()
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // ZOD VALIDATORS
 // ─────────────────────────────────────────────────────────────────────────────
