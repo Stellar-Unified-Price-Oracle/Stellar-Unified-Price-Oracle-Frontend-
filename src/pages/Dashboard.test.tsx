@@ -781,6 +781,7 @@ describe('Dashboard', () => {
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
       _emitPriceUpdate: vi.fn(),
+      _injectSimulatedMessage: vi.fn(),
     })
     render(
       <MemoryRouter>

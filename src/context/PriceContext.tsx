@@ -5,7 +5,7 @@ import { fetchAllPrices, fetchPricesBatched } from '../api/rest'
 import { rateLimitManager, type RateLimitStatus } from '../api/rateLimit'
 import { useOutboundQueue } from '../hooks/useOutboundQueue'
 import { config } from '../config'
-import type { LivePriceEntry, PriceData } from '../types'
+import type { LivePriceEntry, PriceData, WsMessage } from '../types'
 
 /**
  * Internal event emitter for per-pair live price updates.
@@ -79,6 +79,12 @@ export interface PriceContextValue {
   unsubscribe: (pairs: string[]) => void
   /** Internal: emit live price update for a specific pair (do not use directly). */
   _emitPriceUpdate: (pair: string, entry: LivePriceEntry) => void
+  /**
+   * Internal: injects a message straight into the live message pipeline as
+   * if it had arrived over the socket. Used only by the dev-only simulate
+   * panel's replay engine (#475) — do not use directly.
+   */
+  _injectSimulatedMessage: (msg: WsMessage) => void
 }
 
 const PriceContext = createContext<PriceContextValue | null>(null)
@@ -287,6 +293,9 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const emitPriceUpdate = useCallback((pair: string, entry: LivePriceEntry): void => {
     priceUpdateEmitter.emit(pair, entry)
   }, [])
+  const injectSimulatedMessage = useCallback((msg: WsMessage): void => {
+    wsRef.current?.injectMessage(msg)
+  }, [])
 
   const value: PriceContextValue = {
     prices,
@@ -304,6 +313,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     subscribe,
     unsubscribe,
     _emitPriceUpdate: emitPriceUpdate,
+    _injectSimulatedMessage: injectSimulatedMessage,
   }
 
   return (

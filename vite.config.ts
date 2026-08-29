@@ -156,6 +156,24 @@ export default defineConfig(({ mode }) => {
           ]
         : []),
     ],
+    resolve: {
+      alias: [
+        // #475 — production builds never see the real simulate panel (or its
+        // wsSimulator engine, which only it imports): every import of
+        // `dev/SimulatePanel` resolves to a no-op stub instead. This is a
+        // config-level guarantee independent of how well the bundler's dead
+        // code elimination handles the `import.meta.env.DEV` guard at the
+        // call site — see `dev/SimulatePanel.stub.tsx`.
+        ...(mode === 'production'
+          ? [
+              {
+                find: './dev/SimulatePanel',
+                replacement: path.resolve(__dirname, 'src/dev/SimulatePanel.stub.tsx'),
+              },
+            ]
+          : []),
+      ],
+    },
     base: '/Stellar-Unified-Price-Oracle-Frontend-/',
     build: {
       // Generate hidden source maps (not inlined into JS — kept as separate .map files).

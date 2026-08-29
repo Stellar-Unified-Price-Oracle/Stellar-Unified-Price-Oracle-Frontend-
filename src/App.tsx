@@ -20,6 +20,7 @@ import { useAnalyticsRouting } from './utils/analyticsRouting'
 import { usePerformanceMonitor } from './hooks/usePerformanceMonitor'
 import { useInitApiVersion } from './hooks/useApiVersion'
 import { PerformanceOverlay } from './components/PerformanceOverlay'
+import { SimulatePanel } from './dev/SimulatePanel'
 import { ApiVersionBanner } from './components/ApiVersionBanner'
 import { InstallPrompt } from './components/InstallPrompt'
 import { PwaUpdateBanner } from './components/PwaUpdateBanner'
@@ -129,6 +130,7 @@ export default function App(): ReactElement {
               <PriceProvider>
                 <AppContent />
                 {import.meta.env.DEV && <PerformanceOverlay />}
+                {import.meta.env.DEV && <SimulatePanel />}
               </PriceProvider>
             </WalletProvider>
           </ToastProvider>

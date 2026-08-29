@@ -6,6 +6,26 @@ import { WS_PROTOCOL_VERSION } from './version'
 import { rateLimitManager } from './rateLimit'
 import { WsMessageSchema } from './schemas'
 
+type MessageInterceptor = (msg: WsMessage, dispatch: (m: WsMessage) => void) => void
+
+/**
+ * Dev-only degradation simulator hook point (#475). `websocket.ts` never
+ * imports the simulator engine itself — not even dynamically — so there is
+ * no import-graph edge for a bundler to (mis-)resolve into a production
+ * chunk. Instead the dev-only `SimulatePanel` (reached only through
+ * `App.tsx`'s `import.meta.env.DEV &&` guard, which — like
+ * `PerformanceOverlay` — fully tree-shakes out of a production build)
+ * registers itself here at runtime via {@link setDevMessageInterceptor}.
+ * `null` (a plain passthrough) whenever no dev panel is mounted, which is
+ * unconditionally true in production.
+ */
+let devMessageInterceptor: MessageInterceptor | null = null
+
+/** Registers (or clears, with `null`) the dev-only message interceptor. Not for application use. */
+export function setDevMessageInterceptor(fn: MessageInterceptor | null): void {
+  devMessageInterceptor = fn
+}
+
 type MessageHandler = (msg: WsMessage) => void
 type StatusHandler = (status: ConnectionStatus) => void
 
@@ -308,7 +328,14 @@ export class WebSocketClient {
           return
         }
 
-        messageHandlersRef.forEach((h) => h(msg))
+        // #475 – dev-only degradation simulator, if the dev panel has
+        // registered one (see the top-of-file comment); a no-op passthrough
+        // otherwise, which is always the case in production.
+        if (devMessageInterceptor) {
+          devMessageInterceptor(msg, (m) => messageHandlersRef.forEach((h) => h(m)))
+        } else {
+          messageHandlersRef.forEach((h) => h(msg))
+        }
 
         // Record end-to-end processing time for this message
         recordWsMessageTiming(messageStart, typeof raw['type'] === 'string' ? raw['type'] : undefined)
@@ -417,6 +444,18 @@ export class WebSocketClient {
   onMessage(handler: MessageHandler): () => void {
     this.messageHandlersRef.add(handler)
     return () => this.messageHandlersRef.delete(handler)
+  }
+
+  /**
+   * Dispatches `msg` straight to registered message handlers, bypassing the
+   * socket, sequence-dedup, and analytics entirely. Used by the dev-only
+   * simulate panel's replay engine (#475) to inject a recorded/canned
+   * sequence into the live UI. A plain passthrough with no simulation logic
+   * of its own, so it's safe to keep unconditional — nothing here needs to
+   * be stripped from production, only its (dev-gated) caller.
+   */
+  injectMessage(msg: WsMessage): void {
+    this.messageHandlersRef.forEach((h) => h(msg))
   }
 
   /**
