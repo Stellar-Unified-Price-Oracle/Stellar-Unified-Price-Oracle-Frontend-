@@ -189,7 +189,7 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
           escalationSteps: alert.escalationPolicy?.steps ?? [],
         })
       } else {
-        setForm(emptyForm())
+        setForm({ ...emptyForm(), assetPair: defaultAssetPair ?? '' })
       }
       setErrors({})
 

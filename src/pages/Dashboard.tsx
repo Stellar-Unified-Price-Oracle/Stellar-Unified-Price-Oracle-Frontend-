@@ -23,6 +23,8 @@ import { useSwipeGesture } from '../hooks/useSwipeGesture'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
 import { DraggablePriceGrid } from '../components/DraggablePriceGrid'
+import { MarketOverviewStatsRow } from '../components/MarketOverviewStatsRow'
+import { useMarketOverviewStats, isOverviewFilterKey, type OverviewFilterKey } from '../hooks/useMarketOverviewStats'
 import { AlertModal } from '../components/AlertModal'
 import { AlertBadge } from '../components/AlertBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
@@ -121,8 +123,27 @@ export function Dashboard() {
   const scheduledExports = useScheduledExports(merged)
   const [scheduledExportsOpen, setScheduledExportsOpen] = useState(false)
 
+  // Market overview stats row (#476): derived from the full live price list
+  // (before any grid filtering) so tiles always reflect the whole market.
+  const overviewStats = useMarketOverviewStats(merged)
+  const overviewParam = searchParams.get('overview')
+  const overviewFilter = isOverviewFilterKey(overviewParam) ? overviewParam : null
+  const handleToggleOverviewFilter = useCallback(
+    (key: OverviewFilterKey) => {
+      const params = new URLSearchParams(searchParams)
+      if (params.get('overview') === key) params.delete('overview')
+      else params.set('overview', key)
+      navigate({ search: params.toString() }, { replace: true })
+    },
+    [searchParams, navigate],
+  )
+
   const filtered = useMemo(() => {
     let result = merged
+    if (overviewFilter) {
+      const allowed = new Set(overviewStats.pairsByFilter[overviewFilter])
+      result = result.filter((p) => allowed.has(p.assetPair))
+    }
     if (search) result = result.filter((p) => p.assetPair.toLowerCase().includes(search.toLowerCase()))
 
     if (sources.length > 0) {
@@ -154,7 +175,7 @@ export function Dashboard() {
     else if (sort === 'recent') result = [...result].sort((a, b) => desc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp)
     else if (sort === 'pair') result = [...result].sort((a, b) => desc ? b.assetPair.localeCompare(a.assetPair) : a.assetPair.localeCompare(b.assetPair))
     return result
-  }, [merged, search, sources, minConf, maxConf, minPrice, maxPrice, updatedWithin, sort, sortDir, legacyConfidence, legacySource])
+  }, [merged, overviewFilter, overviewStats, search, sources, minConf, maxConf, minPrice, maxPrice, updatedWithin, sort, sortDir, legacyConfidence, legacySource])
 
   const handleCardClick = useCallback(
     (pair: string) => {
@@ -388,6 +409,17 @@ export function Dashboard() {
           <ConnectionBadge status={wsStatus} rateLimitStatus={rateLimitStatus} retryAfterMs={rateLimitRetryAfterMs} />
         </div>
       </div>
+
+      {!pricesError && (merged.length > 0 || pricesLoading) && (
+        <ErrorBoundary boundaryId="market-overview-stats" featureLabel="Market Overview">
+          <MarketOverviewStatsRow
+            stats={overviewStats}
+            loading={pricesLoading && prices.length === 0}
+            activeFilter={overviewFilter}
+            onToggleFilter={handleToggleOverviewFilter}
+          />
+        </ErrorBoundary>
+      )}
 
       {filterPanelOpen && (
         <ErrorBoundary boundaryId="filter-panel" featureLabel="Filter Panel">

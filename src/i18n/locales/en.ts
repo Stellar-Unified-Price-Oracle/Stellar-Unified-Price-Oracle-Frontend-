@@ -61,6 +61,32 @@ const en = {
       release: 'Release to refresh',
       refreshing: 'Refreshing…',
     },
+    // ── Market overview stats row (#476) ────────────────────────────────
+    overview: {
+      ariaLabel: 'Market overview',
+      tileAriaLabel: '{{label}}: {{value}}. Click to filter the grid.',
+      change: {
+        label: '24h Change',
+        hint: 'avg across pairs',
+        sessionHint: 'since tracking started',
+      },
+      high: {
+        label: '24h High',
+        hint: '{{count}} at high',
+      },
+      low: {
+        label: '24h Low',
+        hint: '{{count}} at low',
+      },
+      confidence: {
+        label: 'Avg Confidence',
+        hint: 'click for lowest',
+      },
+      freshness: {
+        label: 'Avg Freshness',
+        hint: 'click for stalest',
+      },
+    },
   },
 
   // ── FilterPanel ──────────────────────────────────────────────────────────

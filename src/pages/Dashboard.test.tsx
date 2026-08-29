@@ -3,6 +3,8 @@ import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/re
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AlertsProvider } from '../hooks/useAlerts'
+import { ToastProvider } from '../context/ToastContext'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { checkAccessibility } from '../test/accessibility'
 import { Dashboard } from './Dashboard'
 
@@ -53,9 +55,13 @@ describe('Dashboard', () => {
   it('should have no accessibility violations when loading', async () => {
     await checkAccessibility(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
       {
         rules: {
@@ -82,9 +88,13 @@ describe('Dashboard', () => {
     })
     await checkAccessibility(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
       {
         rules: {
@@ -97,9 +107,13 @@ describe('Dashboard', () => {
   it('renders the title', () => {
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Price Oracle Dashboard')).toBeInTheDocument()
@@ -108,9 +122,13 @@ describe('Dashboard', () => {
   it('shows loading skeletons when loading and no prices', () => {
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(document.querySelectorAll('.skeleton-offscreen').length).toBeGreaterThan(0)
@@ -133,9 +151,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Something broke')).toBeInTheDocument()
@@ -158,9 +180,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('No price feeds available')).toBeInTheDocument()
@@ -183,9 +209,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getAllByText('BTC/USD').length).toBeGreaterThanOrEqual(1)
@@ -210,9 +240,13 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
@@ -238,9 +272,13 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
@@ -269,9 +307,13 @@ describe('Dashboard', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
 
@@ -306,9 +348,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?search=btc']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -318,7 +364,7 @@ describe('Dashboard', () => {
   it('filters by confidence from URL params', async () => {
     const { usePriceContext } = await import('../context/PriceContext')
     const pricesWithConfidence = [
-      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.90, sources: ['chainlink'] },
+      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.9, sources: ['chainlink'] },
       { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 0.45, sources: ['redstone'] },
     ]
     vi.mocked(usePriceContext).mockReturnValue({
@@ -336,9 +382,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?confidence=high']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -362,9 +412,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?source=chainlink']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -388,9 +442,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?sort=price-high']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
@@ -400,9 +458,9 @@ describe('Dashboard', () => {
   it('applies multiple filters and sort from URL params', async () => {
     const { usePriceContext } = await import('../context/PriceContext')
     const manyPrices = [
-      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.90, sources: ['chainlink'] },
+      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.9, sources: ['chainlink'] },
       { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 0.85, sources: ['chainlink'] },
-      { assetPair: 'XLM/USD', price: 0.1, timestamp: Date.now(), confidence: 0.70, sources: ['redstone'] },
+      { assetPair: 'XLM/USD', price: 0.1, timestamp: Date.now(), confidence: 0.7, sources: ['redstone'] },
     ]
     vi.mocked(usePriceContext).mockReturnValue({
       prices: manyPrices,
@@ -419,9 +477,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?source=chainlink&confidence=high&sort=price-low']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('ETH/USD')).toBeInTheDocument()
@@ -438,7 +500,7 @@ describe('Dashboard', () => {
     vi.mocked(usePriceContext).mockReturnValue({
       prices: [],
       pricesLoading: false,
-      pricesError: 'Failed to fetch prices',
+      pricesError: new Error('Failed to fetch prices'),
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
@@ -450,9 +512,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     const alert = screen.getByRole('alert')
@@ -464,7 +530,7 @@ describe('Dashboard', () => {
     vi.mocked(usePriceContext).mockReturnValue({
       prices: mockPrices,
       pricesLoading: false,
-      pricesError: 'Background sync failed',
+      pricesError: new Error('Background sync failed'),
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
@@ -476,9 +542,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     // Error banner is visible
@@ -505,9 +575,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -518,7 +592,7 @@ describe('Dashboard', () => {
     vi.mocked(usePriceContext).mockReturnValue({
       prices: [],
       pricesLoading: false,
-      pricesError: 'Network failure',
+      pricesError: new Error('Network failure'),
       pricesValidating: false,
       livePrices: new Map(),
       wsStatus: 'disconnected',
@@ -530,9 +604,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     // Error is visible
@@ -562,9 +640,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?search=nonexistentpair']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('No results for "nonexistentpair"')).toBeInTheDocument()
@@ -588,9 +670,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter initialEntries={['/?minPrice=75000&maxPrice=80000']}>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('No results')).toBeInTheDocument()
@@ -614,9 +700,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     // Shows the empty state (merged.length === 0), not the filtered-empty state
@@ -645,9 +735,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.queryByLabelText('Toggle selection mode')).not.toBeInTheDocument()
@@ -670,9 +764,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.queryByLabelText('View toggle')).not.toBeInTheDocument()
@@ -695,9 +793,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     // Should render 8 skeletons (SKELETON_COUNT = 8)
@@ -723,9 +825,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     expect(screen.getByLabelText('Toggle selection mode')).toBeInTheDocument()
@@ -749,9 +855,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     // Should show price cards, not skeletons, since prices.length > 0
@@ -784,9 +894,13 @@ describe('Dashboard', () => {
     })
     render(
       <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <AlertsProvider>
+              <Dashboard />
+            </AlertsProvider>
+          </ToastProvider>
+        </PreferencesProvider>
       </MemoryRouter>,
     )
     // Price cards still render during validation
