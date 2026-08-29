@@ -232,8 +232,17 @@ export class WebSocketClient {
     this.ws.onopen = () => {
       this.reconnectAttempt = 0
       this._retryCount = 0
+      // A prior disconnection means this open is a reconnect (automatic or
+      // manual); distinguished so wsAnalytics' connect/reconnect counters —
+      // and the diagnostics panel built on them (#473) — stay accurate.
+      const isReconnect = this._totalDisconnections > 0
       this._lastConnectedAt = Date.now()
       this.setStatus('connected')
+      if (isReconnect) {
+        wsAnalytics.recordReconnect()
+      } else {
+        wsAnalytics.recordConnect()
+      }
 
       // #472 – perform the protocol handshake. Reset any previously-negotiated
       // version so a fresh session re-negotiates from scratch.
@@ -281,11 +290,18 @@ export class WebSocketClient {
           text = e.data as string
         }
 
+        // Wire byte size (#473) — the Blob's compressed size when applicable,
+        // otherwise the decoded text's real UTF-8 byte length.
+        const sizeBytes = e.data instanceof Blob ? e.data.size : new TextEncoder().encode(text).length
+
         const raw = JSON.parse(text) as Record<string, unknown>
 
         // Discard duplicate / out-of-order messages using monotonic seq
         if (typeof raw['seq'] === 'number') {
-          if (raw['seq'] <= this.lastSeq) return
+          if (raw['seq'] <= this.lastSeq) {
+            wsAnalytics.recordDrop('duplicate-or-out-of-order-seq')
+            return
+          }
           this.lastSeq = raw['seq']
         }
 
@@ -296,6 +312,7 @@ export class WebSocketClient {
         const parsed = WsMessageSchema.safeParse(raw)
         if (!parsed.success) {
           console.warn('[WebSocket] Unknown or malformed message', raw)
+          wsAnalytics.recordDrop('malformed')
           return
         }
 
@@ -308,12 +325,17 @@ export class WebSocketClient {
           return
         }
 
+        // Receive-to-parse latency (#473) — measured up to this point, before
+        // handler dispatch, so it reflects decode+validate cost only.
+        wsAnalytics.recordMessage(sizeBytes, performance.now() - messageStart)
+
         messageHandlersRef.forEach((h) => h(msg))
 
         // Record end-to-end processing time for this message
         recordWsMessageTiming(messageStart, typeof raw['type'] === 'string' ? raw['type'] : undefined)
       } catch {
-        // ignore malformed messages
+        // Malformed JSON or a decompression failure — count as a dropped frame (#473).
+        wsAnalytics.recordDrop('parse-error')
       }
     }
 
