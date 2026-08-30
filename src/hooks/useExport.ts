@@ -68,48 +68,15 @@ export function useExport(): UseExportReturn {
 
   const exportData = useCallback(
     (format: ExportFormat, items: PriceData[], columns?: string[]) => {
-      // Consume a single token for the aggregated exportData call so callers
-      // using exportData directly are also rate-limited.
-      if (!consume()) return
-      const {
-        downloadBinaryFile,
-        downloadFile,
-        exportFilename,
-        priceDataToCsvRows,
-        priceDataToXlsx,
-        toCsv,
-      } = await loadExportUtils()
-
       if (format === 'json') {
-        const json = JSON.stringify(priceDataToJsonRows(items, columns), null, 2)
-        downloadFile(json, exportFilename('oracle-prices', 'json'), 'application/json')
+        exportJSON(items, columns)
       } else if (format === 'xlsx') {
-        const xlsx = priceDataToXlsx(items, columns)
-        downloadBinaryFile(
-          xlsx,
-          exportFilename('oracle-prices', 'xlsx'),
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        )
+        exportXLSX(items, columns)
       } else {
-        const { rows, headers } = priceDataToCsvRows(items, columns)
-        const csv = toCsv(rows, headers)
-        downloadFile(csv, exportFilename('oracle-prices', 'csv'), 'text/csv')
+        exportCSV(items, columns)
       }
     },
-    [consume],
-  )
-
-  const exportCSV = useCallback(
-    (items: PriceData[]) => exportData('csv', items),
-    [exportData],
-  )
-  const exportJSON = useCallback(
-    (items: PriceData[]) => exportData('json', items),
-    [exportData],
-  )
-  const exportXLSX = useCallback(
-    (items: PriceData[]) => exportData('xlsx', items),
-    [exportData],
+    [exportCSV, exportJSON, exportXLSX],
   )
 
   return { exportCSV, exportJSON, exportXLSX, exportData, exportAllowed, exportCooldownSec }

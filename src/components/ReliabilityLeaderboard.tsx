@@ -13,7 +13,7 @@
 import { memo, useState, useMemo, useCallback, type ReactElement } from 'react'
 import type { SourceHealth, PriceHistoryEntry } from '../types'
 import { SOURCE_COLORS } from '../utils/sourceColors'
-import { computeSourceMetrics, exportLeaderboardCsv } from '../utils/export'
+import { computeSourceMetrics, exportLeaderboardCsv, exportLeaderboardJson } from '../utils/export'
 import type { SourceReliabilityMetric } from '../utils/export'
 import { SourceHistoryDrilldown } from './SourceHistoryDrilldown'
 
@@ -42,6 +42,28 @@ const STATUS_STYLES: Record<SourceHealth['status'], string> = {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+interface ScoreBadgeProps {
+  score: number
+}
+
+const ScoreBadge = memo(function ScoreBadge({ score }: ScoreBadgeProps): ReactElement {
+  const color =
+    score >= 90
+      ? 'bg-green-500/20 text-green-400 border-green-500/40'
+      : score >= 70
+        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
+        : 'bg-red-500/20 text-red-400 border-red-500/40'
+
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold font-mono border ${color}`}
+      title={`Reliability Score: ${score}/100`}
+    >
+      {score}
+    </span>
+  )
+})
 
 interface TrendIconProps {
   trend: SourceReliabilityMetric['trend']
@@ -111,8 +133,12 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
     return map
   }, [sourceHealths])
 
-  const handleExport = useCallback(() => {
+  const handleExportCsv = useCallback(() => {
     exportLeaderboardCsv(metrics)
+  }, [metrics])
+
+  const handleExportJson = useCallback(() => {
+    exportLeaderboardJson(metrics)
   }, [metrics])
 
   const handleDrilldown = useCallback((source: string) => {
@@ -143,7 +169,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
               Reliability Leaderboard
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Ranked by uptime over the selected window
+              Ranked by reliability score & uptime over the selected window
             </p>
           </div>
 
@@ -172,29 +198,39 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
               ))}
             </div>
 
-            {/* Export button */}
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={metrics.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
+            {/* Export buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={metrics.length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"
-                />
-              </svg>
-              Export CSV
-            </button>
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"
+                  />
+                </svg>
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={handleExportJson}
+                disabled={metrics.length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                JSON
+              </button>
+            </div>
           </div>
         </div>
 
@@ -225,6 +261,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                   {[
                     'Rank',
                     'Source',
+                    'Score',
                     'Status',
                     'Uptime %',
                     'Mean Latency (ms)',
@@ -269,6 +306,11 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                         >
                           {capitalize(metric.source)}
                         </span>
+                      </td>
+
+                      {/* Score */}
+                      <td className="px-4 py-3">
+                        <ScoreBadge score={metric.reliabilityScore} />
                       </td>
 
                       {/* Status */}

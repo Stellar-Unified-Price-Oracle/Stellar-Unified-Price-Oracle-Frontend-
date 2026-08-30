@@ -182,8 +182,9 @@ export function logVersionInfo(): void {
  */
 export function exposeVersionInfo(): void {
   if (typeof window !== 'undefined') {
-    (window as any).__VERSION_INFO__ = getVersionInfo()
-    (window as any).__FORMAT_VERSION = formatVersionInfo
+    const w = window as unknown as Record<string, unknown>
+    w.__VERSION_INFO__ = getVersionInfo()
+    w.__FORMAT_VERSION = formatVersionInfo
   }
 }
 
@@ -287,6 +288,21 @@ export interface ApiVersionInfo {
  * Cached per session
  */
 let cachedApiVersionInfo: ApiVersionInfo | null = null
+type ApiVersionListener = (info: ApiVersionInfo | null) => void
+const versionListeners = new Set<ApiVersionListener>()
+
+export function subscribeApiVersion(listener: ApiVersionListener): () => void {
+  versionListeners.add(listener)
+  if (cachedApiVersionInfo) listener(cachedApiVersionInfo)
+  return () => versionListeners.delete(listener)
+}
+
+export async function initApiVersionDetection(signal?: AbortSignal): Promise<ApiVersionInfo | null> {
+  const info = await getApiVersionInfo()
+  if (signal?.aborted) return null
+  versionListeners.forEach((fn) => fn(info))
+  return info
+}
 
 export async function getApiVersionInfo(): Promise<ApiVersionInfo | null> {
   if (cachedApiVersionInfo) {

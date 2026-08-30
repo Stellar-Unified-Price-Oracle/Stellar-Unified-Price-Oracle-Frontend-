@@ -53,7 +53,7 @@ describe('ReliabilityLeaderboard', () => {
 
   it('renders an Export CSV button', () => {
     render(<ReliabilityLeaderboard sourceHealths={sourceHealths} />)
-    expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^CSV$/i })).toBeInTheDocument()
   })
 
   it('renders a Details button for each source', () => {
@@ -105,14 +105,18 @@ describe('ReliabilityLeaderboard', () => {
     const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test')
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     const clickSpy = vi.fn()
-    vi.spyOn(document, 'createElement').mockReturnValue({
-      href: '',
-      download: '',
-      click: clickSpy,
-    } as unknown as HTMLAnchorElement)
+    const origCreateElement = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName === 'a') {
+        const a = origCreateElement('a')
+        a.click = clickSpy
+        return a
+      }
+      return origCreateElement(tagName)
+    })
 
     render(<ReliabilityLeaderboard sourceHealths={sourceHealths} />)
-    fireEvent.click(screen.getByRole('button', { name: /export/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^CSV$/i }))
     expect(createObjectURLSpy).toHaveBeenCalled()
 
     vi.restoreAllMocks()
