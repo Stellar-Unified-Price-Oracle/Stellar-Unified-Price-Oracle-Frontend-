@@ -10,6 +10,7 @@ import { OnChainComparisonPanel } from '../components/OnChainComparisonPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
+import { DataQualityScorecard } from '../components/DataQualityScorecard'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
@@ -204,6 +205,13 @@ export function PriceDetail() {
             </div>
           </div>
 
+          {/* Data Quality Scorecard */}
+          <DataQualityScorecard
+            pair={price.assetPair}
+            latestTimestamp={price.timestamp}
+            history={history}
+          />
+
           {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Stellar Asset</p>
@@ -395,6 +403,13 @@ export function PriceDetail() {
                   ))}
                 </div>
               </div>
+
+              {/* Data Quality Scorecard */}
+              <DataQualityScorecard
+                pair={price.assetPair}
+                latestTimestamp={price.timestamp}
+                history={history}
+              />
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
