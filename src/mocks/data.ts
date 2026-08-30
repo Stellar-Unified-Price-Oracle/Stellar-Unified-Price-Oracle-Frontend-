@@ -1,5 +1,6 @@
 import type { PriceData, PriceHistoryResponse, PriceProof } from '../types'
 import { VALID_PAIRS } from '../types'
+import type { AggregationBreakdown, AggregationMode } from '../types/price'
 import type { OnChainPriceRecord, OracleNetwork } from '../types/onchain'
 import { getContractRegistryEntry } from '../lib/contractRegistry'
 
@@ -75,5 +76,81 @@ export function mockHistory(pair: string, count = 100): PriceHistoryResponse {
       confidence: 0.9 + Math.random() * 0.1,
       sources: SOURCES.slice(0, 2),
     })),
+  }
+}
+
+/**
+ * Derives a deterministic {@link AggregationBreakdown} from a {@link PriceData}
+ * snapshot (#459).
+ *
+ * Since the REST API does not expose per-source prices or weights, this
+ * function synthesises realistic values:
+ * - Each source receives a price that varies from the aggregate by ±2 %.
+ * - Weights are equal across all active sources (1 / n each), mirroring the
+ *   oracle's default weighted-mean algorithm.
+ * - When `mode === 'outlier_excluded'` the source whose synthesised price
+ *   deviates most from the mean is flagged as excluded and given zero weight.
+ *
+ * @param data   The aggregated price snapshot to expand.
+ * @param mode   Aggregation mode to simulate. Defaults to `'weighted_mean'`.
+ */
+export function computeAggregationBreakdown(
+  data: PriceData,
+  mode: AggregationMode = 'weighted_mean',
+): AggregationBreakdown {
+  const { assetPair, price: aggregatePrice, sources } = data
+  const n = sources.length
+
+  // Synthesise per-source prices with a small seeded variance so the values
+  // are stable across re-renders for the same snapshot.
+  const sourcePrices = sources.map((src, i) => {
+    // Use a simple deterministic hash of the source name + index for variance.
+    const hash = src.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), i * 31)
+    const variance = ((hash % 400) - 200) / 10_000 // –2 % to +2 %
+    return aggregatePrice * (1 + variance)
+  })
+
+  const params: Record<string, unknown> = {}
+  let excluded: boolean[] = sources.map(() => false)
+
+  if (mode === 'outlier_excluded') {
+    // z-score threshold: exclude the source furthest from the mean when its
+    // deviation exceeds the threshold.
+    const zScoreThreshold = 1.5
+    params['zScoreThreshold'] = zScoreThreshold
+    const mean = sourcePrices.reduce((s, p) => s + p, 0) / n
+    const stdDev = Math.sqrt(
+      sourcePrices.reduce((s, p) => s + (p - mean) ** 2, 0) / n,
+    )
+    if (stdDev > 0) {
+      const zScores = sourcePrices.map((p) => Math.abs((p - mean) / stdDev))
+      const maxZ = Math.max(...zScores)
+      if (maxZ > zScoreThreshold) {
+        const maxIdx = zScores.indexOf(maxZ)
+        excluded = sources.map((_, i) => i === maxIdx)
+      }
+    }
+  }
+
+  const activeCount = excluded.filter((e) => !e).length || 1
+  const equalWeight = 1 / activeCount
+
+  const items = sources.map((src, i) => ({
+    source: src,
+    price: sourcePrices[i],
+    weight: excluded[i] ? 0 : equalWeight,
+    contribution: excluded[i] ? 0 : sourcePrices[i] * equalWeight,
+    excluded: excluded[i],
+  }))
+
+  // Sort descending by weight (excluded items last).
+  items.sort((a, b) => b.weight - a.weight)
+
+  return {
+    assetPair,
+    mode,
+    params,
+    sources: items,
+    aggregatePrice,
   }
 }

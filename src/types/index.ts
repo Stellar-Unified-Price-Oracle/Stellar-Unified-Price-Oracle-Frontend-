@@ -13,6 +13,10 @@ export type {
   WsWelcomeMessage,
   WsPriceUpdate,
   WsMessage,
+  // Aggregation breakdown (#459)
+  AggregationMode,
+  SourceBreakdownItem,
+  AggregationBreakdown,
 } from './price'
 
 export { isPriceData } from './price'

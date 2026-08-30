@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSwr } from '../hooks/useSwr'
@@ -10,14 +10,17 @@ import { OnChainComparisonPanel } from '../components/OnChainComparisonPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
+import { AggregationBreakdownPanel } from '../components/AggregationBreakdownPanel'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
 import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
+import { computeAggregationBreakdown } from '../mocks/data'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
+import type { AggregationMode } from '../types/price'
 
 type DetailTab = 'overview' | 'proof'
 
@@ -75,6 +78,7 @@ export function PriceDetail() {
   const { preferences } = usePreferences()
   const [importedData, setImportedData] = useState<CsvRow[] | null>(null)
   const [activeTab, _setActiveTab] = useState<DetailTab>('overview')
+  const [aggregationMode, setAggregationMode] = useState<AggregationMode>('weighted_mean')
 
   // Benchmark state — persisted to localStorage
   const [benchmarkPair, setBenchmarkPair] = useState<string | null>(() => {
@@ -133,6 +137,12 @@ export function PriceDetail() {
 
   const loading = priceLoading || (historyLoading && history.length === 0)
   const showEmptyState = !loading && !priceError && !price
+
+  // Compute the aggregation breakdown whenever the price snapshot or mode changes (#459)
+  const aggregationBreakdown = useMemo(
+    () => (price ? computeAggregationBreakdown(price, aggregationMode) : null),
+    [price, aggregationMode],
+  )
 
   return (
     <div>
@@ -203,6 +213,38 @@ export function PriceDetail() {
               ))}
             </div>
           </div>
+
+          {/* Aggregation Breakdown (#459) */}
+          {aggregationBreakdown && (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <p
+                  id="aggregation-breakdown-heading"
+                  className="text-xs text-gray-500 uppercase tracking-wider"
+                >
+                  Aggregation Breakdown
+                </p>
+                {/* Mode selector */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="agg-mode-select" className="text-xs text-gray-500 whitespace-nowrap">
+                    Mode
+                  </label>
+                  <select
+                    id="agg-mode-select"
+                    value={aggregationMode}
+                    onChange={(e) => setAggregationMode(e.target.value as AggregationMode)}
+                    className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 cursor-pointer"
+                    aria-label="Select aggregation mode"
+                  >
+                    <option value="weighted_mean">Weighted Mean</option>
+                    <option value="median">Median</option>
+                    <option value="outlier_excluded">Outlier-Excluded Mean</option>
+                  </select>
+                </div>
+              </div>
+              <AggregationBreakdownPanel breakdown={aggregationBreakdown} />
+            </div>
+          )}
 
           {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
@@ -395,6 +437,37 @@ export function PriceDetail() {
                   ))}
                 </div>
               </div>
+
+              {/* Aggregation Breakdown (#459) */}
+              {aggregationBreakdown && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <p
+                      id="aggregation-breakdown-heading-tab"
+                      className="text-xs text-gray-500 uppercase tracking-wider"
+                    >
+                      Aggregation Breakdown
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="agg-mode-select-tab" className="text-xs text-gray-500 whitespace-nowrap">
+                        Mode
+                      </label>
+                      <select
+                        id="agg-mode-select-tab"
+                        value={aggregationMode}
+                        onChange={(e) => setAggregationMode(e.target.value as AggregationMode)}
+                        className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 cursor-pointer"
+                        aria-label="Select aggregation mode"
+                      >
+                        <option value="weighted_mean">Weighted Mean</option>
+                        <option value="median">Median</option>
+                        <option value="outlier_excluded">Outlier-Excluded Mean</option>
+                      </select>
+                    </div>
+                  </div>
+                  <AggregationBreakdownPanel breakdown={aggregationBreakdown} />
+                </div>
+              )}
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
