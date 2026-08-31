@@ -43,6 +43,22 @@ export interface PriceHistoryEntry {
   confidence: number
   /** Oracle sources active at this point in time. */
   sources: string[]
+  /**
+   * #461 – Oracle sources that were excluded by the aggregator at this tick
+   * (e.g. outlier rejection, confidence floor breach).
+   * Present only when the API includes exclusion metadata.
+   */
+  excludedSources?: ExcludedSourceTick[]
+}
+
+/** #461 – A single excluded source tick with its raw value and reason. */
+export interface ExcludedSourceTick {
+  /** Oracle source identifier (e.g. 'chainlink'). */
+  source: string
+  /** The raw price the source reported before exclusion. */
+  reportedPrice: number
+  /** Human-readable reason for exclusion. */
+  reason: string
 }
 
 /** Paginated price history response for a single asset pair. */

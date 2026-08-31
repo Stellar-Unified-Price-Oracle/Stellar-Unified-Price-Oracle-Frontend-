@@ -32,6 +32,7 @@ export const DEFAULT_PRIVACY_PREFERENCES: PrivacyPreferences = {
   analyticsOptOut: false,
   chartTimezone: 'UTC',
   formatLocale: 'auto',
+  showExcludedSources: false,
 } as const
 
 export const MAX_UNDO_DEPTH = 20

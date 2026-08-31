@@ -4,6 +4,7 @@ export type {
   PriceSyncState,
   LivePriceEntry,
   PriceHistoryEntry,
+  ExcludedSourceTick,
   PriceHistoryResponse,
   SourceName,
   SourceHealth,

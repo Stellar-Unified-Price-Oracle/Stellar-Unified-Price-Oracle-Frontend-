@@ -10,6 +10,8 @@ import { OnChainComparisonPanel } from '../components/OnChainComparisonPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
+import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
+import { AnomalyBanner } from '../components/AnomalyBanner'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
@@ -72,7 +74,7 @@ export function PriceDetail() {
   const { pair } = useParams<{ pair: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { preferences } = usePreferences()
+  const { preferences, updatePreference } = usePreferences()
   const [importedData, setImportedData] = useState<CsvRow[] | null>(null)
   const [activeTab, _setActiveTab] = useState<DetailTab>('overview')
 
@@ -339,6 +341,79 @@ export function PriceDetail() {
                   />
                 </VisibleSuspense>
               </ErrorBoundary>
+            )}
+          </div>
+
+          {/* #463 – Anomaly detection banner */}
+          {history.length > 0 && (
+            <AnomalyBanner history={history} pair={decodedPair} />
+          )}
+
+          {/* #462 – Confidence & deviation history charts */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
+              Confidence &amp; Deviation History
+            </p>
+            {history.length === 0 ? (
+              <div className="flex items-center justify-center h-40 rounded-lg border border-dashed border-gray-700 text-sm text-gray-500" role="status">
+                No history data available
+              </div>
+            ) : (
+              <ConfidenceDeviationChart history={history} pair={decodedPair} />
+            )}
+          </div>
+
+          {/* #461 – Excluded sources toggle */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Excluded Source Ticks</p>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={preferences.showExcludedSources}
+                  onChange={(e) => updatePreference('showExcludedSources', e.target.checked)}
+                  className="w-4 h-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-500/50 cursor-pointer"
+                  aria-label="Show excluded source ticks on price chart"
+                />
+                <span className="text-sm text-gray-400">Show excluded sources</span>
+              </label>
+            </div>
+            {preferences.showExcludedSources ? (
+              history.some((e) => e.excludedSources && e.excludedSources.length > 0) ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {history
+                    .filter((e) => e.excludedSources && e.excludedSources.length > 0)
+                    .slice(-20)
+                    .reverse()
+                    .map((e) =>
+                      e.excludedSources!.map((ex) => (
+                        <div
+                          key={`${e.timestamp}-${ex.source}`}
+                          className="flex items-center gap-3 text-xs px-3 py-2 rounded-lg bg-gray-800/60 border border-gray-700/50"
+                        >
+                          <span className="font-mono text-gray-500 shrink-0">
+                            {new Date(e.timestamp).toLocaleTimeString()}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300 font-medium border border-gray-600 shrink-0">
+                            {ex.source}
+                          </span>
+                          <span className="font-mono text-amber-400 shrink-0">
+                            ${ex.reportedPrice.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                          </span>
+                          <span className="text-gray-500 truncate">{ex.reason}</span>
+                        </div>
+                      )),
+                    )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No excluded source data available — the API does not currently include exclusion metadata for this pair.
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-gray-500">
+                Enable the toggle above to audit which oracle sources were excluded by the aggregator and why.
+              </p>
             )}
           </div>
 
