@@ -2,6 +2,8 @@ import { memo, Fragment } from 'react'
 import type { PriceData, PriceSyncState } from '../types'
 import { formatPrice, timeAgo } from '../utils/format'
 import { useCardContextMenu, type CardContextMenuAction } from './CardContextMenu'
+import { DivergenceIndicator } from './DivergenceIndicator'
+import { computeDivergence, buildSourcePriceMap } from '../utils/divergence'
 
 const SOURCE_COLORS: Record<string, string> = {
   chainlink: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
@@ -33,10 +35,15 @@ interface PriceCardProps {
   isDragOver?: boolean
   selectMode?: boolean
   isSelected?: boolean
+  /** Divergence % at which the indicator turns amber. Default 1. */
+  divergenceWarnThreshold?: number
 }
 
-export const PriceCard = memo(function PriceCard({ price, onClick, isStale, hasAlert, onAlertClick, dragHandleProps, isDragOver, selectMode, isSelected }: PriceCardProps) {
+export const PriceCard = memo(function PriceCard({ price, onClick, isStale, hasAlert, onAlertClick, dragHandleProps, isDragOver, selectMode, isSelected, divergenceWarnThreshold = 1 }: PriceCardProps) {
   const confidencePct = (price.confidence * 100).toFixed(1)
+
+  const sourcePriceMap = buildSourcePriceMap(price.price, price.sources)
+  const divergence = computeDivergence(sourcePriceMap)
 
   const contextActions: CardContextMenuAction = {
     onSetAlert: () => {
@@ -120,6 +127,13 @@ export const PriceCard = memo(function PriceCard({ price, onClick, isStale, hasA
               {src}
             </span>
           ))}
+          {divergence.sourceCount >= 2 && (
+            <DivergenceIndicator
+              divergence={divergence}
+              warnThreshold={divergenceWarnThreshold}
+              compact
+            />
+          )}
         </div>
 
         <div className="mt-3 pt-3 border-t border-gray-800">

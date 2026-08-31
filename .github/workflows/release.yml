@@ -1,0 +1,77 @@
+name: Release
+
+# Runs semantic-release on every push to main AFTER the CI checks pass.
+# Semantic-release will:
+#   1. Analyse commit messages since the last tag using Conventional Commits.
+#   2. Determine the next version (major / minor / patch / no release).
+#   3. Generate / update CHANGELOG.md.
+#   4. Create a GitHub Release with the generated notes.
+#   5. Publish to npm (gated on a version tag being created by semantic-release).
+#   6. Commit the changelog and updated package.json back to main [skip ci].
+#
+# npm publish only happens when semantic-release determines a release is due AND
+# it has created the version tag.  No manual tagging is needed.
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false   # Never cancel in-flight releases
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    # Only run on the main repository, not on forks, to avoid accidental publishes.
+    if: github.repository == 'Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-'
+
+    permissions:
+      contents: write        # push changelog + version tag back to main
+      issues: write          # comment on related issues
+      pull-requests: write   # comment on PRs that triggered the release
+      id-token: write        # npm provenance (recommended for supply-chain security)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # semantic-release needs the full git history to compare tags
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          # Publish to the official npm registry
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Run the full frontend CI checks before cutting a release.
+      # This mirrors the checks in ci.yml to ensure we never release broken code.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit Tests
+        run: npm run test:run
+
+      - name: Semantic Release
+        env:
+          # GITHUB_TOKEN is provided automatically by Actions; no extra setup needed.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # NPM_TOKEN must be set as a repository secret.
+          # Generate at https://www.npmjs.com/settings/<user>/tokens (Automation token).
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release

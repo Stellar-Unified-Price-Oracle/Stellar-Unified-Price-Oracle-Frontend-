@@ -151,6 +151,7 @@ export function Dashboard() {
         assetPair: data.assetPair,
         upperThreshold: data.upperThreshold ? Number.parseFloat(data.upperThreshold) : null,
         lowerThreshold: data.lowerThreshold ? Number.parseFloat(data.lowerThreshold) : null,
+        divergenceThreshold: data.divergenceThreshold ? Number.parseFloat(data.divergenceThreshold) : null,
         triggerOnce: data.triggerOnce,
         active: true,
       })

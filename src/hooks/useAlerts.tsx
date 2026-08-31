@@ -1,13 +1,22 @@
 import { useState, useCallback, useEffect, createContext, useContext, ReactNode } from 'react'
 import type { Alert, AlertsContextType } from '../types'
 import { usePriceContext } from '../context/PriceContext'
+import { computeDivergence, buildSourcePriceMap } from '../utils/divergence'
 
 const STORAGE_KEY = 'price-alerts'
+/** Minimum ms between successive divergence alert fires for the same pair (5 minutes). */
+const DIVERGENCE_COOLDOWN_MS = 5 * 60 * 1000
 
 function loadAlerts(): Alert[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as Alert[]) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as Alert[]
+    // Back-fill divergenceThreshold for alerts created before #458
+    return parsed.map((a) => ({
+      ...a,
+      divergenceThreshold: a.divergenceThreshold ?? null,
+    }))
   } catch {
     return []
   }
@@ -22,53 +31,75 @@ const AlertsContext = createContext<AlertsContextType | null>(null)
 export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-  
+
   // Real-time price context
   const { livePrices } = usePriceContext()
 
-  // Evaluate alerts against live prices
+  // Evaluate alerts against live prices (price threshold + divergence threshold)
   useEffect(() => {
     let changed = false
+    const now = Date.now()
+
     const newAlerts = alerts.map((alert) => {
       if (!alert.active) return alert
 
       const livePriceData = livePrices.get(alert.assetPair)
       if (!livePriceData) return alert
-      
+
       const currentPrice = livePriceData.data.price
       let triggered = false
 
+      // --- Price threshold checks ---
       if (alert.upperThreshold !== null && currentPrice >= alert.upperThreshold) {
         triggered = true
       } else if (alert.lowerThreshold !== null && currentPrice <= alert.lowerThreshold) {
         triggered = true
       }
 
-      if (triggered && alert.lastTriggeredAt === null) {
-        // Just triggered now
-        changed = true
-        
-        // Show browser notification
-        if (Notification.permission === 'granted') {
-          new Notification('Price Alert Triggered', {
-            body: `${alert.assetPair} has crossed your threshold! Current price: $${currentPrice}`,
-          })
-        }
+      // --- Divergence threshold check ---
+      if (!triggered && alert.divergenceThreshold !== null) {
+        const sourceMap = buildSourcePriceMap(currentPrice, livePriceData.data.sources)
+        const { maxDeviationPct } = computeDivergence(sourceMap)
 
-        return {
-          ...alert,
-          lastTriggeredAt: Date.now(),
-          active: !alert.triggerOnce // Disable if triggerOnce is true
+        if (maxDeviationPct >= alert.divergenceThreshold) {
+          // Respect cooldown: only fire if enough time has elapsed since last trigger
+          const cooldownExpired =
+            alert.lastTriggeredAt === null ||
+            now - alert.lastTriggeredAt >= DIVERGENCE_COOLDOWN_MS
+
+          if (cooldownExpired) {
+            triggered = true
+          }
         }
       }
 
-      // Reset lastTriggeredAt if price falls back out of range (so it can trigger again later)
-      if (!triggered && alert.lastTriggeredAt !== null && !alert.triggerOnce) {
+      if (triggered && alert.lastTriggeredAt === null) {
+        // Just triggered now — fire browser notification
         changed = true
+
+        if (Notification.permission === 'granted') {
+          const body = alert.divergenceThreshold !== null
+            ? `${alert.assetPair} oracle divergence exceeded ${alert.divergenceThreshold}%! Current price: $${currentPrice}`
+            : `${alert.assetPair} has crossed your threshold! Current price: $${currentPrice}`
+          new Notification('Price Alert Triggered', { body })
+        }
+
         return {
           ...alert,
-          lastTriggeredAt: null
+          lastTriggeredAt: now,
+          active: !alert.triggerOnce,
         }
+      }
+
+      // Reset lastTriggeredAt if price falls back out of range (enables re-triggering)
+      if (!triggered && alert.lastTriggeredAt !== null && !alert.triggerOnce) {
+        // For divergence alerts honour cooldown before resetting
+        if (alert.divergenceThreshold !== null) {
+          const cooldownExpired = now - alert.lastTriggeredAt >= DIVERGENCE_COOLDOWN_MS
+          if (!cooldownExpired) return alert
+        }
+        changed = true
+        return { ...alert, lastTriggeredAt: null }
       }
 
       return alert
@@ -124,8 +155,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const togglePanel = useCallback(() => setIsPanelOpen((p) => !p), [])
 
   const markAsRead = useCallback((_id: string) => {
-    // In the new system, lastTriggeredAt marks it. We can just keep it as is,
-    // or maybe add an unread state if we wanted. For now, it's just a placeholder to resolve types.
+    // lastTriggeredAt already marks a triggered alert; kept as no-op for interface compat.
   }, [])
 
   const value = {
@@ -138,7 +168,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     activeCount,
     isPanelOpen,
     togglePanel,
-    markAsRead
+    markAsRead,
   }
 
   return <AlertsContext.Provider value={value}>{children}</AlertsContext.Provider>

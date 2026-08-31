@@ -44,12 +44,13 @@ describe('useAlerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
-        assetPair: 'ETH/USD',
-        upperThreshold: 4000,
-        lowerThreshold: 2000,
-        triggerOnce: true,
-        active: true,
-      })
+              assetPair: 'ETH/USD',
+              upperThreshold: 4000,
+              lowerThreshold: 2000,
+              divergenceThreshold: null,
+              triggerOnce: true,
+              active: true,
+            })
     })
     expect(result.current.alerts).toHaveLength(1)
     expect(result.current.alerts[0].assetPair).toBe('ETH/USD')
@@ -65,12 +66,13 @@ describe('useAlerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+              assetPair: 'BTC/USD',
+              upperThreshold: 60000,
+              lowerThreshold: null,
+              divergenceThreshold: null,
+              triggerOnce: false,
+              active: true,
+            })
     })
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
     expect(stored).toHaveLength(1)
@@ -82,12 +84,13 @@ describe('useAlerts', () => {
     let id: string
     act(() => {
       const alert = result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+              assetPair: 'BTC/USD',
+              upperThreshold: 60000,
+              lowerThreshold: null,
+              divergenceThreshold: null,
+              triggerOnce: false,
+              active: true,
+            })
       id = alert.id
     })
     act(() => {
@@ -103,12 +106,13 @@ describe('useAlerts', () => {
     let id: string
     act(() => {
       const alert = result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+              assetPair: 'BTC/USD',
+              upperThreshold: 60000,
+              lowerThreshold: null,
+              divergenceThreshold: null,
+              triggerOnce: false,
+              active: true,
+            })
       id = alert.id
     })
     expect(result.current.alerts).toHaveLength(1)
@@ -122,19 +126,21 @@ describe('useAlerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+              assetPair: 'BTC/USD',
+              upperThreshold: 60000,
+              lowerThreshold: null,
+              divergenceThreshold: null,
+              triggerOnce: false,
+              active: true,
+            })
       result.current.addAlert({
-        assetPair: 'ETH/USD',
-        upperThreshold: 4000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+              assetPair: 'ETH/USD',
+              upperThreshold: 4000,
+              lowerThreshold: null,
+              divergenceThreshold: null,
+              triggerOnce: false,
+              active: true,
+            })
     })
     const btcAlerts = result.current.getAlertsForPair('BTC/USD')
     expect(btcAlerts).toHaveLength(1)
@@ -146,12 +152,13 @@ describe('useAlerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+              assetPair: 'BTC/USD',
+              upperThreshold: 60000,
+              lowerThreshold: null,
+              divergenceThreshold: null,
+              triggerOnce: false,
+              active: true,
+            })
     })
     expect(result.current.hasAlertsForPair('BTC/USD')).toBe(true)
     expect(result.current.hasAlertsForPair('ETH/USD')).toBe(false)
@@ -161,19 +168,21 @@ describe('useAlerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
       result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: false,
-      })
+              assetPair: 'BTC/USD',
+              upperThreshold: 60000,
+              lowerThreshold: null,
+              divergenceThreshold: null,
+              triggerOnce: false,
+              active: false,
+            })
       result.current.addAlert({
-        assetPair: 'ETH/USD',
-        upperThreshold: 4000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+              assetPair: 'ETH/USD',
+              upperThreshold: 4000,
+              lowerThreshold: null,
+              divergenceThreshold: null,
+              triggerOnce: false,
+              active: true,
+            })
     })
     expect(result.current.activeCount).toBe(1)
   })

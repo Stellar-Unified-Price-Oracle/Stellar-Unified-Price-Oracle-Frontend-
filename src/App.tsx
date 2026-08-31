@@ -2,12 +2,14 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Dashboard } from './pages/Dashboard'
+import { ApiKeysPage } from './pages/ApiKeysPage'
 import { NotFound } from './pages/NotFound'
 import { useWebVitals } from './hooks/useWebVitals'
 import { useAccessibility } from './hooks/useAccessibility'
 import { PreferencesProvider } from './preferences/PreferencesContext'
 import { ToastProvider } from './context/ToastContext'
 import { ToastContainer } from './components/ToastContainer'
+import { ApiKeysProvider } from './context/ApiKeysContext'
 
 const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
 
@@ -20,6 +22,7 @@ function AppContent() {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/developer" element={<ApiKeysPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
@@ -34,8 +37,10 @@ export default function App() {
   return (
     <BrowserRouter basename={BASENAME}>
       <ToastProvider>
-        <AppContent />
-        <ToastContainer />
+        <ApiKeysProvider>
+          <AppContent />
+          <ToastContainer />
+        </ApiKeysProvider>
       </ToastProvider>
     </BrowserRouter>
   )

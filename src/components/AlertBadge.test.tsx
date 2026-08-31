@@ -12,6 +12,7 @@ const baseAlert = (overrides: Partial<Alert> = {}): Alert => ({
   assetPair: 'BTC/USD',
   upperThreshold: 60000,
   lowerThreshold: null,
+  divergenceThreshold: null,
   triggerOnce: false,
   active: true,
   createdAt: Date.now(),

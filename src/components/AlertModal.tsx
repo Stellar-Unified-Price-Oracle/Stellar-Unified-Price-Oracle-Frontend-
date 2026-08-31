@@ -22,8 +22,9 @@ function validate(form: AlertFormData): ValidationErrors {
 
   const upper = form.upperThreshold ? Number.parseFloat(form.upperThreshold) : null
   const lower = form.lowerThreshold ? Number.parseFloat(form.lowerThreshold) : null
+  const divergence = form.divergenceThreshold ? Number.parseFloat(form.divergenceThreshold) : null
 
-  if (!upper && !lower) {
+  if (!upper && !lower && divergence === null) {
     errors.upperThreshold = 'At least one threshold is required'
     errors.lowerThreshold = 'At least one threshold is required'
     return errors
@@ -45,6 +46,12 @@ function validate(form: AlertFormData): ValidationErrors {
     }
   }
 
+  if (divergence !== null) {
+    if (Number.isNaN(divergence) || divergence <= 0 || divergence > 100) {
+      errors.divergenceThreshold = 'Must be between 0.01 and 100'
+    }
+  }
+
   return errors
 }
 
@@ -53,6 +60,7 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, alert, currentPr
     assetPair: '',
     upperThreshold: '',
     lowerThreshold: '',
+    divergenceThreshold: '',
     triggerOnce: false,
   })
   const [errors, setErrors] = useState<ValidationErrors>({})
@@ -67,10 +75,11 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, alert, currentPr
           assetPair: alert.assetPair,
           upperThreshold: alert.upperThreshold !== null ? String(alert.upperThreshold) : '',
           lowerThreshold: alert.lowerThreshold !== null ? String(alert.lowerThreshold) : '',
+          divergenceThreshold: alert.divergenceThreshold !== null ? String(alert.divergenceThreshold) : '',
           triggerOnce: alert.triggerOnce,
         })
       } else {
-        setForm({ assetPair: defaultAssetPair ?? '', upperThreshold: '', lowerThreshold: '', triggerOnce: false })
+        setForm({ assetPair: defaultAssetPair ?? '', upperThreshold: '', lowerThreshold: '', divergenceThreshold: '', triggerOnce: false })
       }
       setErrors({})
 
@@ -258,6 +267,31 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, alert, currentPr
                 {fieldError('lowerThreshold')}
               </p>
             )}
+          </div>
+
+          <div className="mb-4">
+            <label htmlFor="alert-divergence" className="block text-sm font-medium text-gray-400 mb-1.5">
+              Divergence Threshold (%)
+            </label>
+            <input
+              id="alert-divergence"
+              type="number"
+              step="0.1"
+              min="0.01"
+              max="100"
+              value={form.divergenceThreshold}
+              onChange={(e) => setAndValidate('divergenceThreshold', e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              placeholder="e.g. 1.5 — alert when oracles disagree by this %"
+            />
+            {fieldError('divergenceThreshold') && (
+              <p className="mt-1 text-sm text-red-400" role="alert">
+                {fieldError('divergenceThreshold')}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Fires when the max spread between any two oracles exceeds this percentage. 5-minute cooldown between fires.
+            </p>
           </div>
 
           <div className="mb-6">
