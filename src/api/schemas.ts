@@ -188,6 +188,11 @@ export const WsPriceUpdateSchema = z.object({
   timestamp: z.number(),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string()),
+  /**
+   * Optional per-source prices provided by the server.
+   * Keys are source names; values are individual source prices.
+   */
+  sourcePrices: z.record(z.string(), z.number()).optional(),
   /** Optional monotonic sequence number for duplicate detection. */
   seq: z.number().optional(),
 })

@@ -13,9 +13,11 @@ export type {
   WsWelcomeMessage,
   WsPriceUpdate,
   WsMessage,
+  SourceDelta,
+  MoveAttribution,
 } from './price'
 
-export { isPriceData } from './price'
+export { isPriceData, ATTRIBUTION_RING_BUFFER_SIZE } from './price'
 
 // On-chain price / proof types — see src/types/onChainPrice.ts
 export type { OnChainPriceRecord, SourceContribution, PriceProof } from './onChainPrice'

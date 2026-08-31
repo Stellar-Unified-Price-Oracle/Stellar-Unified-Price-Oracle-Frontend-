@@ -33,6 +33,58 @@ export interface LivePriceEntry {
   flashVersion: number
 }
 
+// ---------------------------------------------------------------------------
+// Move attribution types
+// ---------------------------------------------------------------------------
+
+/**
+ * Price delta for a single oracle source on one WS tick.
+ * `prevPrice` is `null` on the very first tick seen for that source.
+ */
+export interface SourceDelta {
+  /** The oracle source identifier (e.g. "chainlink"). */
+  source: string
+  /** Source price on this tick (derived from the per-source field when present, otherwise the aggregate). */
+  price: number
+  /** Source price on the previous tick, or `null` if this is the first observed tick. */
+  prevPrice: number | null
+  /** Absolute price change (price − prevPrice), or `null` on the first tick. */
+  delta: number | null
+  /** Percentage change, or `null` when prevPrice is null or zero. */
+  deltaPercent: number | null
+}
+
+/**
+ * Attribution record for a single WS price update tick.
+ *
+ * Bounded to {@link ATTRIBUTION_RING_BUFFER_SIZE} entries per asset pair inside
+ * PriceContext — older entries are evicted when the buffer is full, so memory
+ * footprint is O(pairs × ATTRIBUTION_RING_BUFFER_SIZE).
+ */
+export interface MoveAttribution {
+  /** Asset pair this attribution record belongs to. */
+  assetPair: string
+  /** Unix timestamp (ms) of this tick. */
+  timestamp: number
+  /** Aggregate price for this tick. */
+  price: number
+  /** Aggregate delta vs previous tick, or `null` on the first tick. */
+  delta: number | null
+  /** Aggregate delta as a percentage, or `null` when prevPrice is null or zero. */
+  deltaPercent: number | null
+  /** Per-source breakdown for this tick. */
+  sources: SourceDelta[]
+  /** The source(s) with the largest absolute delta — the "leader(s)" of this move. */
+  leadingSources: string[]
+}
+
+/**
+ * Maximum number of attribution records retained per asset pair in PriceContext.
+ * At 50 entries × up to 4 pairs = 200 records in the worst case, well within
+ * acceptable memory bounds (each record is ~300 bytes).
+ */
+export const ATTRIBUTION_RING_BUFFER_SIZE = 50
+
 /** A single historical price data point. */
 export interface PriceHistoryEntry {
   /** Price at this point in time. */
@@ -109,6 +161,13 @@ export interface WsPriceUpdate {
   confidence: number
   /** Oracle sources that contributed to this update. */
   sources: string[]
+  /**
+   * Optional per-source prices provided by the server.
+   * When present, each key is a source name and the value is that source's
+   * individual price. When absent, all sources are assumed to report the
+   * same aggregate price (used for attribution delta computation).
+   */
+  sourcePrices?: Record<string, number>
 }
 
 /** Union of all possible WebSocket message types. */
