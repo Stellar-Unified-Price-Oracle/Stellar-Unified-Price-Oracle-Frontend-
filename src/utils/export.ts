@@ -1,4 +1,5 @@
 import type { AlertHistoryEntry, PriceData, PriceHistoryEntry, SourceHealth } from '../types'
+import type { AggregationBreakdown } from '../types/price'
 import { EXPORT_COLUMNS, sanitizeColumns } from './exportColumns'
 
 function isoTs(ts: number): string {
@@ -79,6 +80,39 @@ export function historyToCsvRows(
     timestamp: isoTs(h.timestamp),
     confidence: h.confidence,
     sources: h.sources.join(';'),
+  }))
+  return { rows, headers }
+}
+
+/**
+ * Converts an {@link AggregationBreakdown} to CSV-ready rows (#459).
+ *
+ * One row per source: assetPair, mode, source, sourcePrice, weight,
+ * contribution, excluded, aggregatePrice.
+ */
+export function aggregationBreakdownToCsvRows(breakdown: AggregationBreakdown): {
+  rows: Array<Record<string, unknown>>
+  headers: string[]
+} {
+  const headers = [
+    'assetPair',
+    'mode',
+    'source',
+    'sourcePrice',
+    'weight',
+    'contribution',
+    'excluded',
+    'aggregatePrice',
+  ]
+  const rows: Array<Record<string, unknown>> = breakdown.sources.map((item) => ({
+    assetPair: breakdown.assetPair,
+    mode: breakdown.mode,
+    source: item.source,
+    sourcePrice: item.price,
+    weight: item.weight,
+    contribution: item.contribution,
+    excluded: item.excluded ? 'true' : 'false',
+    aggregatePrice: breakdown.aggregatePrice,
   }))
   return { rows, headers }
 }

@@ -20,6 +20,66 @@ export interface PriceData {
   sources: string[]
 }
 
+// ---------------------------------------------------------------------------
+// Aggregation breakdown (#459)
+// ---------------------------------------------------------------------------
+
+/**
+ * Aggregation algorithm used to combine per-source prices into the final
+ * aggregate. The oracle supports weighted mean, median, and outlier-excluded
+ * weighted mean as documented in the Soroban oracle roadmap.
+ */
+export type AggregationMode = 'weighted_mean' | 'median' | 'outlier_excluded'
+
+/** A single oracle source's contribution to the aggregated price. */
+export interface SourceBreakdownItem {
+  /** The oracle source identifier (e.g. 'chainlink'). */
+  source: string
+  /** The price reported by this source before aggregation. */
+  price: number
+  /**
+   * Relative weight assigned to this source (0–1). All weights for a given
+   * aggregation sum to 1.0.
+   */
+  weight: number
+  /**
+   * This source's weighted contribution to the final aggregate price
+   * (`price * weight`).
+   */
+  contribution: number
+  /**
+   * Whether this source was excluded by the outlier-exclusion step when
+   * `mode === 'outlier_excluded'`. Always `false` for other modes.
+   */
+  excluded: boolean
+}
+
+/**
+ * Full aggregation breakdown for a single price snapshot: the per-source
+ * items, the algorithm used, and its parameters.
+ */
+export interface AggregationBreakdown {
+  /** The aggregated pair this breakdown belongs to. */
+  assetPair: string
+  /** The aggregation algorithm used. */
+  mode: AggregationMode
+  /**
+   * Algorithm-specific parameters:
+   * - `weighted_mean`: none (equal weights unless source count varies)
+   * - `median`: none
+   * - `outlier_excluded`: `{ zScoreThreshold: number }` — sources whose
+   *   deviation from the mean exceeds this z-score are excluded.
+   */
+  params: Record<string, unknown>
+  /** Per-source breakdown items, sorted descending by weight. */
+  sources: SourceBreakdownItem[]
+  /**
+   * The final aggregate price, equal to the sum of all non-excluded
+   * contributions (or the median, depending on `mode`).
+   */
+  aggregatePrice: number
+}
+
 /** Synchronisation state for a live price entry received via WebSocket. */
 export type PriceSyncState = 'optimistic' | 'confirmed' | 'rollback' | 'synced'
 

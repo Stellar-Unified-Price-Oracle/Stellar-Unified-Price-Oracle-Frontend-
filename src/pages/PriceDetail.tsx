@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSwr } from '../hooks/useSwr'
@@ -18,8 +18,10 @@ import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
+import { computeAggregationBreakdown } from '../mocks/data'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
+import type { AggregationMode } from '../types/price'
 
 type DetailTab = 'overview' | 'proof'
 
@@ -78,6 +80,7 @@ export function PriceDetail() {
   const { attributionHistory } = usePriceContext()
   const [importedData, setImportedData] = useState<CsvRow[] | null>(null)
   const [activeTab, _setActiveTab] = useState<DetailTab>('overview')
+  const [aggregationMode, setAggregationMode] = useState<AggregationMode>('weighted_mean')
 
   // Benchmark state — persisted to localStorage
   const [benchmarkPair, setBenchmarkPair] = useState<string | null>(() => {
@@ -136,6 +139,12 @@ export function PriceDetail() {
 
   const loading = priceLoading || (historyLoading && history.length === 0)
   const showEmptyState = !loading && !priceError && !price
+
+  // Compute the aggregation breakdown whenever the price snapshot or mode changes (#459)
+  const aggregationBreakdown = useMemo(
+    () => (price ? computeAggregationBreakdown(price, aggregationMode) : null),
+    [price, aggregationMode],
+  )
 
   return (
     <div>
