@@ -41,19 +41,25 @@ vi.mock('../api/rest', () => ({
 }))
 
 vi.mock('../api/websocket', () => ({
-  WebSocketClient: vi.fn(() => ({
-    status: 'connected',
-    connect: mockConnect,
-    disconnect: mockDisconnect,
-    onMessage: vi.fn((handler) => {
-      messageHandler = handler
-      return vi.fn()
-    }),
-    onStatusChange: vi.fn(() => vi.fn()),
-    subscribe: mockSubscribe,
-    unsubscribe: mockUnsubscribe,
-    send: vi.fn(),
-  })),
+  // A `vi.fn()` wrapping an arrow function can't be invoked with `new`
+  // (arrow functions have no `[[Construct]]`) — PriceContext calls
+  // `new WebSocketClient()`, so this must be a regular `function` that
+  // returns the mock instance (constructor return-value override).
+  WebSocketClient: vi.fn(function () {
+    return {
+      status: 'connected',
+      connect: mockConnect,
+      disconnect: mockDisconnect,
+      onMessage: vi.fn((handler) => {
+        messageHandler = handler
+        return vi.fn()
+      }),
+      onStatusChange: vi.fn(() => vi.fn()),
+      subscribe: mockSubscribe,
+      unsubscribe: mockUnsubscribe,
+      send: vi.fn(),
+    }
+  }),
 }))
 
 function makeQueryClient() {
@@ -196,6 +202,58 @@ describe('PriceProvider', () => {
       expect(screen.getByTestId('btc-live-state').textContent).toBe('rollback')
     })
     expect(screen.getByTestId('btc-live-price').textContent).toBe('49990')
+  })
+
+  // ── #474 — chaos: optimistic rollback after a dropped frame ──────────────
+  //
+  // A dropped frame is never delivered at all (WebSocketClient already
+  // filters malformed/out-of-order frames before they ever reach handlers —
+  // see websocket.chaos.test.ts). From PriceContext's perspective the only
+  // observable effect of a drop is: the correction that *should* have
+  // arrived next simply never does. This proves the REST revalidation path
+  // is the safety net for that case — a stale optimistic value never gets
+  // stuck forever just because its follow-up frame went missing.
+  it('rolls back to REST truth even when the correcting follow-up frame is dropped entirely', async () => {
+    // The optimistic WS value is stale (a real price move happened, but the
+    // frame carrying it never arrived) — REST revalidation disagrees.
+    vi.mocked(fetchPricesBatched).mockResolvedValueOnce({
+      assetPair: 'BTC/USD',
+      price: 48500,
+      timestamp: 1700000005000,
+      confidence: 0.96,
+      sources: ['band'],
+    })
+
+    render(<TestConsumer />, { wrapper: Wrapper })
+
+    act(() => {
+      messageHandler?.({
+        type: 'price_update',
+        assetPair: 'BTC/USD',
+        price: 50010,
+        timestamp: 1700000001000,
+        confidence: 0.99,
+        sources: ['chainlink'],
+      })
+    })
+
+    expect(screen.getByTestId('btc-live-state').textContent).toBe('optimistic')
+
+    // No second message ever arrives for this pair — simulating the
+    // correcting frame being silently dropped by an unstable connection.
+
+    await waitFor(() => {
+      expect(screen.getByTestId('btc-live-state').textContent).toBe('rollback')
+    })
+    expect(screen.getByTestId('btc-live-price').textContent).toBe('48500')
+
+    // And the rollback settles cleanly — it doesn't stay flagged forever.
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('btc-live-state').textContent).toBe('synced')
+      },
+      { timeout: 2000 },
+    )
   })
 })
 

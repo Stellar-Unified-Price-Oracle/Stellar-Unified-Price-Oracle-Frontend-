@@ -33,6 +33,13 @@ const envSchema = z.object({
   // Which Stellar network the on-chain oracle contract (and explorer links for
   // the price Proof tab) resolve against. See docs/adr/0001-onchain-soroban-price-oracle.md.
   VITE_STELLAR_NETWORK: z.enum(['testnet', 'mainnet']).default('testnet'),
+
+  // ── Developer portal SSO (#501) ────────────────────────────────────────────
+  // OAuth2/OIDC client IDs for the dev-portal sign-in. Public client IDs only —
+  // no client secret ever belongs in frontend code. Token exchange and session
+  // cookies are handled by the backend `/auth/*` endpoints. See src/auth/.
+  VITE_OAUTH_GITHUB_CLIENT_ID: z.string().default(''),
+  VITE_OAUTH_GOOGLE_CLIENT_ID: z.string().default(''),
 })
 
 export type Env = z.infer<typeof envSchema>

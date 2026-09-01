@@ -13,13 +13,13 @@ export type {
   WsWelcomeMessage,
   WsPriceUpdate,
   WsMessage,
-  // Aggregation breakdown (#459)
-  AggregationMode,
-  SourceBreakdownItem,
-  AggregationBreakdown,
+  WsPauseMessage,
+  WsResumeMessage,
+  WsPausedMessage,
+  WsResumedMessage,
 } from './price'
 
-export { isPriceData } from './price'
+export { isPriceData, ATTRIBUTION_RING_BUFFER_SIZE } from './price'
 
 // On-chain price / proof types — see src/types/onChainPrice.ts
 export type { OnChainPriceRecord, SourceContribution, PriceProof } from './onChainPrice'

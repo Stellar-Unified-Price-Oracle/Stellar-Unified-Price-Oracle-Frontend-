@@ -10,12 +10,13 @@ import { OnChainComparisonPanel } from '../components/OnChainComparisonPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
-import { AggregationBreakdownPanel } from '../components/AggregationBreakdownPanel'
+import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
 import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
+import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
 import { computeAggregationBreakdown } from '../mocks/data'
 import type { CsvRow } from '../components/CsvImportZone'
@@ -76,6 +77,7 @@ export function PriceDetail() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { preferences } = usePreferences()
+  const { attributionHistory } = usePriceContext()
   const [importedData, setImportedData] = useState<CsvRow[] | null>(null)
   const [activeTab, _setActiveTab] = useState<DetailTab>('overview')
   const [aggregationMode, setAggregationMode] = useState<AggregationMode>('weighted_mean')
@@ -214,37 +216,14 @@ export function PriceDetail() {
             </div>
           </div>
 
-          {/* Aggregation Breakdown (#459) */}
-          {aggregationBreakdown && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <p
-                  id="aggregation-breakdown-heading"
-                  className="text-xs text-gray-500 uppercase tracking-wider"
-                >
-                  Aggregation Breakdown
-                </p>
-                {/* Mode selector */}
-                <div className="flex items-center gap-2">
-                  <label htmlFor="agg-mode-select" className="text-xs text-gray-500 whitespace-nowrap">
-                    Mode
-                  </label>
-                  <select
-                    id="agg-mode-select"
-                    value={aggregationMode}
-                    onChange={(e) => setAggregationMode(e.target.value as AggregationMode)}
-                    className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 cursor-pointer"
-                    aria-label="Select aggregation mode"
-                  >
-                    <option value="weighted_mean">Weighted Mean</option>
-                    <option value="median">Median</option>
-                    <option value="outlier_excluded">Outlier-Excluded Mean</option>
-                  </select>
-                </div>
-              </div>
-              <AggregationBreakdownPanel breakdown={aggregationBreakdown} />
-            </div>
-          )}
+          {/* Move attribution — rendered whenever WS attribution data is available */}
+          {(() => {
+            const pairHistory = attributionHistory.get(decodedPair) ?? []
+            const latest = pairHistory[pairHistory.length - 1]
+            return latest ? (
+              <MoveAttributionPanel latest={latest} history={pairHistory} />
+            ) : null
+          })()}
 
           {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
@@ -438,36 +417,14 @@ export function PriceDetail() {
                 </div>
               </div>
 
-              {/* Aggregation Breakdown (#459) */}
-              {aggregationBreakdown && (
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <p
-                      id="aggregation-breakdown-heading-tab"
-                      className="text-xs text-gray-500 uppercase tracking-wider"
-                    >
-                      Aggregation Breakdown
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <label htmlFor="agg-mode-select-tab" className="text-xs text-gray-500 whitespace-nowrap">
-                        Mode
-                      </label>
-                      <select
-                        id="agg-mode-select-tab"
-                        value={aggregationMode}
-                        onChange={(e) => setAggregationMode(e.target.value as AggregationMode)}
-                        className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 cursor-pointer"
-                        aria-label="Select aggregation mode"
-                      >
-                        <option value="weighted_mean">Weighted Mean</option>
-                        <option value="median">Median</option>
-                        <option value="outlier_excluded">Outlier-Excluded Mean</option>
-                      </select>
-                    </div>
-                  </div>
-                  <AggregationBreakdownPanel breakdown={aggregationBreakdown} />
-                </div>
-              )}
+              {/* Move attribution — rendered whenever WS attribution data is available */}
+              {(() => {
+                const pairHistory = attributionHistory.get(decodedPair) ?? []
+                const latest = pairHistory[pairHistory.length - 1]
+                return latest ? (
+                  <MoveAttributionPanel latest={latest} history={pairHistory} />
+                ) : null
+              })()}
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">

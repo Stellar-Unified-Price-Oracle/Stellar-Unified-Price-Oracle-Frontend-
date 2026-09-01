@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   computeViewport,
   createAreaPlugin,
   createLinePlugin,
+  decimateSeries,
   toCanvasX,
   toCanvasY,
 } from './ChartEngine'
@@ -30,6 +31,11 @@ export function CanvasChart({ series, plugins = DEFAULT_PLUGINS, className = 'w-
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [crosshair, setCrosshair] = useState<Crosshair | null>(null)
 
+  // #505 — decimate large series with LTTB so rendering stays smooth at
+  // 10k+ history points, while keeping visual shape intact.
+  const decimation = useMemo(() => decimateSeries(series), [series])
+  const renderSeries = decimation.series
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -39,14 +45,14 @@ export function CanvasChart({ series, plugins = DEFAULT_PLUGINS, className = 'w-
     const { width, height } = canvas
     ctx.clearRect(0, 0, width, height)
 
-    const vp = computeViewport(series, width, height, 0, 8)
+    const vp = computeViewport(renderSeries, width, height, 0, 8)
 
     for (const plugin of plugins) {
       ctx.save()
-      plugin.render(ctx, series, vp)
+      plugin.render(ctx, renderSeries, vp)
       ctx.restore()
     }
-  }, [series, plugins])
+  }, [renderSeries, plugins])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -75,16 +81,16 @@ export function CanvasChart({ series, plugins = DEFAULT_PLUGINS, className = 'w-
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current
-      if (!canvas || series.length === 0) return
+      if (!canvas || renderSeries.length === 0) return
 
       const rect = canvas.getBoundingClientRect()
       const mouseX = e.clientX - rect.left
       const dpr = window.devicePixelRatio || 1
-      const vp = computeViewport(series, canvas.width / dpr, canvas.height / dpr, 0, 8)
+      const vp = computeViewport(renderSeries, canvas.width / dpr, canvas.height / dpr, 0, 8)
 
       // Find the closest point across all series
       let best: { dist: number; cx: number; cy: number; dataX: number; dataY: number; label: string } | null = null
-      for (const s of series) {
+      for (const s of renderSeries) {
         for (const pt of s.points) {
           const cx = toCanvasX(vp, pt.x)
           const cy = toCanvasY(vp, pt.y)
@@ -108,7 +114,7 @@ export function CanvasChart({ series, plugins = DEFAULT_PLUGINS, className = 'w-
         setCrosshair(null)
       }
     },
-    [series],
+    [renderSeries],
   )
 
   const defaultFormatX = useCallback((x: number) => {
@@ -127,6 +133,14 @@ export function CanvasChart({ series, plugins = DEFAULT_PLUGINS, className = 'w-
 
   return (
     <div className="relative">
+      {decimation.decimated && (
+        <div
+          className="absolute top-2 left-2 z-10 rounded bg-gray-800/80 border border-gray-700 px-2 py-0.5 text-[10px] font-mono text-gray-400"
+          title="Points are downsampled with LTTB to keep rendering smooth; the displayed shape matches the source data."
+        >
+          decimated {decimation.sourcePointCount.toLocaleString()} → {decimation.renderedPointCount.toLocaleString()} points
+        </div>
+      )}
       <canvas
         ref={canvasRef}
         className={className}
