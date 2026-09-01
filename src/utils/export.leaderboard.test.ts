@@ -5,6 +5,7 @@ import type { SourceHealth, PriceHistoryEntry } from '../types'
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const NOW = 1_700_000_000_000
+const WINDOW_MS = 24 * 60 * 60 * 1000 // 24 h
 
 function makeHealth(overrides: Partial<SourceHealth> = {}): SourceHealth {
   return {
@@ -174,9 +175,21 @@ describe('exportLeaderboardCsv', () => {
     vi.restoreAllMocks()
   })
 
+  it('computes 0-100 reliabilityScore correctly', () => {
+    const history: Record<string, PriceHistoryEntry[]> = {
+      'BTC/USD': [
+        makeEntry(['chainlink'], NOW - 1_000),
+      ],
+    }
+    const sourceHealths = [makeHealth({ source: 'chainlink', latency: 100, lastUpdate: NOW - 1000 })]
+    const [metric] = computeSourceMetrics(sourceHealths, history, WINDOW_MS)
+    expect(metric.reliabilityScore).toBeGreaterThanOrEqual(0)
+    expect(metric.reliabilityScore).toBeLessThanOrEqual(100)
+  })
+
   it('triggers a download', () => {
     exportLeaderboardCsv([
-      { source: 'chainlink', uptimePercent: 99, meanLatencyMs: 120, stalenessMs: 5000, trend: 'up' },
+      { source: 'chainlink', uptimePercent: 99, meanLatencyMs: 120, stalenessMs: 5000, reliabilityScore: 95, trend: 'up' },
     ])
     expect(createObjectURLSpy).toHaveBeenCalled()
     expect(clickSpy).toHaveBeenCalled()
@@ -191,7 +204,7 @@ describe('exportLeaderboardCsv', () => {
       return el as unknown as HTMLAnchorElement
     })
     exportLeaderboardCsv([
-      { source: 'redstone', uptimePercent: 80, meanLatencyMs: null, stalenessMs: 60000, trend: 'down' },
+      { source: 'redstone', uptimePercent: 80, meanLatencyMs: null, stalenessMs: 60000, reliabilityScore: 75, trend: 'down' },
     ])
     expect(anchors[0].download).toMatch(/reliability-leaderboard.*\.csv$/)
   })

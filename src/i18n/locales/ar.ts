@@ -17,6 +17,7 @@ const ar = {
   },
   footer: {
     text: 'Stellar Unified Price Oracle · بوابة المطورين ولوحة التحليلات',
+    securityLink: 'الأمان',
   },
 
   // ── Dashboard page ───────────────────────────────────────────────────────

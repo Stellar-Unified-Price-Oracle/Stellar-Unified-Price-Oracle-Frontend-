@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, createContext, useContext, ReactNode } from 'react'
+import { useState, useCallback, useEffect, useRef, createContext, useContext, ReactNode } from 'react'
 import type { Alert, AlertHistoryEntry, AlertsContextType, AlertSnoozeDuration, EscalationStep, PriceEvaluationState } from '../types'
 import { migrateLegacyAlertConditions } from '../types/alerts'
 import { usePriceContext } from '../context/PriceContext'
@@ -10,7 +10,8 @@ import { loadSoundPreferences } from '../utils/soundPreferences'
 import { evaluateCompoundCondition } from '../utils/alertEvaluator'
 import {
   loadAlertHistory,
-  saveAlertHistory,
+  saveAlertHistoryDebounced,
+  flushAlertHistory,
   buildTriggerHistoryEntry,
   buildEscalationHistoryEntry,
   appendHistoryEntries,
@@ -18,6 +19,7 @@ import {
 import { loadBotSecrets, sendTelegramMessage, sendDiscordMessage } from '../services/botNotifications'
 import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../services/notificationConfig'
 import { stepRetest, initialRetestState } from '../utils/retestDetector'
+import { registerMemoryProbe } from '../utils/memoryProfiler'
 import { useRateLimit } from './useRateLimit'
 
 const alertsChannel = createBroadcastChannel<Alert[]>('kiro-alerts')
@@ -221,6 +223,13 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
   const [history, setHistory] = useState<AlertHistoryEntry[]>(loadAlertHistory)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+
+  // #504 — report alert history length to the memory profiling harness.
+  // Registered once on mount; the ref keeps the probe reading the latest
+  // length without re-registering on every history change.
+  const historyRef = useRef(history)
+  historyRef.current = history
+  useEffect(() => registerMemoryProbe('alertHistory', () => historyRef.current.length), [])
 
   const { livePrices } = usePriceContext()
 
@@ -452,10 +461,18 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   }, [alerts])
 
   useEffect(() => {
-    saveAlertHistory(history)
+    // Debounced (#510) — coalesces write storms (e.g. escalation bursts,
+    // simulation replay) into a single persisted write per burst.
+    saveAlertHistoryDebounced(history)
     // Broadcast history change to other tabs
     alertsHistoryChannel.broadcast('alerts-history-update', history)
   }, [history])
+
+  // Flush any pending debounced history write on unmount so the last burst
+  // is never lost (e.g. navigating away right after an alert fires).
+  useEffect(() => {
+    return () => flushAlertHistory()
+  }, [])
 
   // Listen for alerts changes from other tabs
   useEffect(() => {

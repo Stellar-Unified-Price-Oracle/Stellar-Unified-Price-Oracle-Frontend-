@@ -60,6 +60,9 @@ export function useIdbQuery<T>(
 
 interface UseIdbMutationReturn {
   set: <T>(store: StoreName, key: string, value: T) => Promise<void>
+  /** Batches multiple writes into a single transaction (#510) — prefer this
+   * over calling `set` in a loop for bulk writes. */
+  setMany: <T>(store: StoreName, entries: Array<{ key: string; value: T }>) => Promise<void>
   remove: (store: StoreName, key: string) => Promise<void>
   clear: (store: StoreName) => Promise<void>
 }
@@ -75,6 +78,13 @@ export function useIdbMutation(): UseIdbMutationReturn {
     [],
   )
 
+  const setMany = useCallback(
+    async <T>(store: StoreName, entries: Array<{ key: string; value: T }>) => {
+      await idbCache.setMany(store, entries)
+    },
+    [],
+  )
+
   const remove = useCallback(async (store: StoreName, key: string) => {
     await idbCache.delete(store, key)
   }, [])
@@ -83,5 +93,5 @@ export function useIdbMutation(): UseIdbMutationReturn {
     await idbCache.clear(store)
   }, [])
 
-  return { set, remove, clear }
+  return { set, setMany, remove, clear }
 }

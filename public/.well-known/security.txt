@@ -1,0 +1,10 @@
+# Stellar Unified Price Oracle — Vulnerability Disclosure
+# https://www.rfc-editor.org/rfc/rfc9116
+
+Contact: https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/security/advisories/new
+Contact: https://stellar-price-oracle.example.com/security
+Policy: https://stellar-price-oracle.example.com/security
+Acknowledgments: https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/security/advisories
+Preferred-Languages: en
+Canonical: https://stellar-price-oracle.example.com/.well-known/security.txt
+Expires: 2027-08-31T00:00:00.000Z

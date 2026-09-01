@@ -56,16 +56,22 @@ vi.mock('./api/rest', async (importOriginal) => {
 })
 
 vi.mock('./api/websocket', () => ({
-  WebSocketClient: vi.fn(() => ({
-    status: 'connected',
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    onMessage: vi.fn(() => vi.fn()),
-    onStatusChange: vi.fn(() => vi.fn()),
-    subscribe: vi.fn(),
-    unsubscribe: vi.fn(),
-    send: vi.fn(),
-  })),
+  // A `vi.fn()` wrapping an arrow function can't be invoked with `new`
+  // (arrow functions have no `[[Construct]]`) — PriceProvider does
+  // `new WebSocketClient()`, so this must be a regular `function` that
+  // returns the mock instance (constructor return-value override).
+  WebSocketClient: vi.fn(function () {
+    return {
+      status: 'connected',
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      onMessage: vi.fn(() => vi.fn()),
+      onStatusChange: vi.fn(() => vi.fn()),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+      send: vi.fn(),
+    }
+  }),
 }))
 
 vi.mock('./preferences/PreferencesContext', () => ({

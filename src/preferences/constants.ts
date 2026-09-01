@@ -6,6 +6,43 @@ import type {
   PrivacyPreferences,
   LocaleCode,
 } from './types'
+import type { BacktestPreset } from '../utils/backtest'
+
+export const DEFAULT_BACKTEST_PRESETS: BacktestPreset[] = [
+  {
+    id: 'conservative-median',
+    name: 'Conservative Median',
+    config: {
+      mode: 'median',
+      outlierThresholdPercent: 1.5,
+      minSources: 2,
+      confidenceWeighting: true,
+      maxStalenessSec: 300,
+    },
+  },
+  {
+    id: 'strict-outlier',
+    name: 'Strict Outlier Filter',
+    config: {
+      mode: 'trimmed_mean',
+      outlierThresholdPercent: 0.8,
+      minSources: 3,
+      confidenceWeighting: true,
+      maxStalenessSec: 180,
+    },
+  },
+  {
+    id: 'confidence-weighted',
+    name: 'Weighted Confidence',
+    config: {
+      mode: 'weighted_mean',
+      outlierThresholdPercent: 2.0,
+      minSources: 2,
+      confidenceWeighting: true,
+      maxStalenessSec: 600,
+    },
+  },
+]
 
 /** Defaults grouped to match the slices in `slices.ts`. */
 export const DEFAULT_DATA_PREFERENCES: DataPreferences = {
@@ -14,6 +51,7 @@ export const DEFAULT_DATA_PREFERENCES: DataPreferences = {
   staleThresholdMinutes: 5,
   sourcePriority: ['chainlink', 'redstone', 'band', 'reflector'],
   onChainDivergenceThresholdPercent: 1,
+  backtestPresets: DEFAULT_BACKTEST_PRESETS,
 }
 
 export const DEFAULT_LAYOUT_PREFERENCES: LayoutPreferences = {

@@ -196,6 +196,11 @@ export const WsPriceUpdateSchema = z.object({
   timestamp: z.number(),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string()),
+  /**
+   * Optional per-source prices provided by the server.
+   * Keys are source names; values are individual source prices.
+   */
+  sourcePrices: z.record(z.string(), z.number()).optional(),
   /** Optional monotonic sequence number for duplicate detection. */
   seq: z.number().optional(),
 })
@@ -206,11 +211,20 @@ export const WsWelcomeMessageSchema = z.object({
   protocolVersion: z.number().int().min(0),
 })
 
+/** Server ack confirming inbound updates were paused/resumed for this connection (#469). */
+export const WsPausedMessageSchema = z.object({ type: z.literal('paused') })
+export const WsResumedMessageSchema = z.object({ type: z.literal('resumed') })
+
 /**
  * Discriminated union of all known WebSocket message types.
  * Add new variants here as the server protocol evolves.
  */
-export const WsMessageSchema = z.discriminatedUnion('type', [WsPriceUpdateSchema, WsWelcomeMessageSchema])
+export const WsMessageSchema = z.discriminatedUnion('type', [
+  WsPriceUpdateSchema,
+  WsWelcomeMessageSchema,
+  WsPausedMessageSchema,
+  WsResumedMessageSchema,
+])
 
 // ── Type inference from schemas ──────────────────────────────────────────────
 

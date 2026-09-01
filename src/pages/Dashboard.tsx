@@ -31,6 +31,7 @@ import { FilterPanel, readFilterState, countActiveFilters } from '../components/
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
+import { StaleDataWarningBanner } from '../components/StaleDataWarningBanner'
 import type { AlertFormData, LivePriceEntry, PriceData } from '../types'
 import { buildConditionGroupFromFormData } from '../utils/alertEvaluator'
 
@@ -57,9 +58,12 @@ export function Dashboard() {
     pricesValidating,
     livePrices,
     wsStatus,
+    diagnostics,
     rateLimitStatus,
     rateLimitRetryAfterMs,
     refetchPrices,
+    isOfflineSnapshot,
+    offlineSnapshotSavedAt,
   } = usePriceContext()
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -155,6 +159,22 @@ export function Dashboard() {
     else if (sort === 'pair') result = [...result].sort((a, b) => desc ? b.assetPair.localeCompare(a.assetPair) : a.assetPair.localeCompare(b.assetPair))
     return result
   }, [merged, search, sources, minConf, maxConf, minPrice, maxPrice, updatedWithin, sort, sortDir, legacyConfidence, legacySource])
+
+  const sourceHealths = useMemo<SourceHealth[]>(() => {
+    const knownSources = ['chainlink', 'redstone', 'band', 'reflector'] as const
+    const now = Date.now()
+    return knownSources.map((src) => {
+      const active = merged.filter((p) => p.sources.includes(src))
+      const lastUpdate = active.length > 0 ? Math.max(...active.map((p) => p.timestamp)) : null
+      const status: SourceHealth['status'] = active.length > 0 ? 'healthy' : 'down'
+      return {
+        source: src,
+        status,
+        lastUpdate,
+        latency: lastUpdate ? Math.max(12, Math.min(250, now - lastUpdate)) : null,
+      }
+    })
+  }, [merged])
 
   const handleCardClick = useCallback(
     (pair: string) => {
@@ -389,7 +409,12 @@ export function Dashboard() {
             </svg>
             {t('scheduledExports.button', { defaultValue: 'Schedule' })}
           </button>
-          <ConnectionBadge status={wsStatus} rateLimitStatus={rateLimitStatus} retryAfterMs={rateLimitRetryAfterMs} />
+          <ConnectionBadge
+            status={wsStatus}
+            rateLimitStatus={rateLimitStatus}
+            retryAfterMs={rateLimitRetryAfterMs}
+            diagnostics={diagnostics}
+          />
         </div>
       </div>
 
@@ -470,6 +495,13 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* Offline-first (#470): rendering the last persisted snapshot instead of a blank dashboard. */}
+      {isOfflineSnapshot && offlineSnapshotSavedAt != null && (
+        <StaleDataWarningBanner
+          thresholdMinutes={Math.max(1, Math.round((Date.now() - offlineSnapshotSavedAt) / 60_000))}
+        />
+      )}
+
       {pricesLoading && prices.length === 0 ? (
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" aria-label={t('dashboard.loadingAriaLabel')}>
           {Array.from({ length: SKELETON_COUNT }, (_, i) => (
@@ -537,6 +569,13 @@ export function Dashboard() {
           </p>
         </div>
       )}
+
+      {/* Source Reliability Leaderboard (#465) */}
+      <div className="mt-8">
+        <ErrorBoundary boundaryId="reliability-leaderboard" featureLabel="Reliability Leaderboard">
+          <ReliabilityLeaderboard sourceHealths={sourceHealths} />
+        </ErrorBoundary>
+      </div>
 
       <AlertModal
         isOpen={modalOpen}
