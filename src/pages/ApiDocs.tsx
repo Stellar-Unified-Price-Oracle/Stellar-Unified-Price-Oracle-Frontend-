@@ -14,6 +14,7 @@ interface Endpoint {
   description: string
   note?: string
   tryPath?: string
+  body?: string
 }
 
 const ENDPOINTS: Endpoint[] = [
@@ -39,6 +40,8 @@ const ENDPOINTS: Endpoint[] = [
     method: 'POST',
     path: '/api/prices/history/batch',
     description: 'Fetches price history for multiple asset pairs in a single request.',
+    tryPath: '/api/prices/history/batch',
+    body: '{"pairs":["XLM-USD","BTC-USD"]}',
   },
   {
     method: 'GET',
@@ -132,10 +135,27 @@ const LANG_LABELS: Record<SnippetLang, string> = {
   python: 'Python',
 }
 
+/**
+ * Response headers that carry cache status/CDN metadata, checked in priority
+ * order (#508). Different edge layers (Vercel, Cloudflare, a custom
+ * SWR-aware origin) name this header differently, so we surface whichever is
+ * present rather than assuming one CDN.
+ */
+const CACHE_STATUS_HEADERS = ['x-cache-status', 'cf-cache-status', 'x-vercel-cache', 'x-cache']
+
+function readCacheStatus(headers: Headers): string | null {
+  for (const name of CACHE_STATUS_HEADERS) {
+    const value = headers.get(name)
+    if (value) return value
+  }
+  return null
+}
+
 function TryItOut({ endpoint }: { endpoint: Endpoint }) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [cacheStatus, setCacheStatus] = useState<string | null>(null)
   const { t } = useTranslation()
 
   if (!endpoint.tryPath || endpoint.method === 'WS') return null
@@ -144,13 +164,18 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
     setLoading(true)
     setResult(null)
     setError(null)
+    setCacheStatus(null)
     try {
       const res = await fetch(`${config.apiUrl.replace(/\/api$/, '')}${endpoint.tryPath}`)
+      setCacheStatus(readCacheStatus(res.headers))
       const text = await res.text()
       try {
-        setResult(JSON.stringify(JSON.parse(text), null, 2))
+        const parsed: unknown = JSON.parse(text)
+        setResult(JSON.stringify(parsed, null, 2))
+        if (!res.ok && typeof parsed === 'object' && parsed !== null && 'message' in parsed) setError(String(parsed.message))
       } catch {
-        setResult(text)
+        if (res.ok) setResult(text)
+        else setError(`${res.status} ${res.statusText}: ${text}`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Request failed')
@@ -169,6 +194,11 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
       >
         {loading ? t('apiDocs.sending') : t('apiDocs.tryItOut')}
       </button>
+      {cacheStatus && (
+        <p className="mt-2 text-xs font-mono text-gray-500">
+          {t('apiDocs.cacheStatus', 'Cache:')} <span className="text-gray-300">{cacheStatus}</span>
+        </p>
+      )}
       {error && (
         <pre className="mt-2 p-3 rounded-lg bg-red-900/20 border border-red-800 text-red-400 text-xs overflow-auto max-h-48 whitespace-pre-wrap">
           {error}
@@ -179,6 +209,11 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
           {result}
         </pre>
       )}
+      <div className="mt-3 grid gap-2">
+        <label className="text-xs text-gray-500">Path<input value={path} onChange={(event) => setPath(event.target.value)} className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-gray-200" /></label>
+        {endpoint.method === 'POST' && <label className="text-xs text-gray-500">JSON body<textarea value={body} onChange={(event) => setBody(event.target.value)} rows={3} className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-gray-200 font-mono" /></label>}
+      </div>
+      {(latency != null || Object.keys(headers).length > 0) && <p className="mt-2 text-xs text-gray-500">{latency != null ? `${latency}ms` : ''}{Object.entries(headers).map(([key, value]) => ` · ${key}: ${value}`).join('')}</p>}
     </div>
   )
 }
@@ -275,6 +310,14 @@ export function ApiDocs() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           Read the oracle on-chain
+        </a>
+        <a
+          href="https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/blob/main/docs/sdk-quickstart.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 mt-3 ml-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-800 bg-cyan-900/20 text-cyan-400 hover:bg-cyan-900/40 transition-colors"
+        >
+          SDK quickstarts
         </a>
       </div>
 

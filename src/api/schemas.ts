@@ -203,11 +203,20 @@ export const WsWelcomeMessageSchema = z.object({
   protocolVersion: z.number().int().min(0),
 })
 
+/** Server ack confirming inbound updates were paused/resumed for this connection (#469). */
+export const WsPausedMessageSchema = z.object({ type: z.literal('paused') })
+export const WsResumedMessageSchema = z.object({ type: z.literal('resumed') })
+
 /**
  * Discriminated union of all known WebSocket message types.
  * Add new variants here as the server protocol evolves.
  */
-export const WsMessageSchema = z.discriminatedUnion('type', [WsPriceUpdateSchema, WsWelcomeMessageSchema])
+export const WsMessageSchema = z.discriminatedUnion('type', [
+  WsPriceUpdateSchema,
+  WsWelcomeMessageSchema,
+  WsPausedMessageSchema,
+  WsResumedMessageSchema,
+])
 
 // ── Type inference from schemas ──────────────────────────────────────────────
 

@@ -10,11 +10,22 @@ updates:
       timezone: UTC
     # Open at most 10 PRs at once to avoid review overload.
     open-pull-requests-limit: 10
-    # Group all patch updates into a single PR to reduce noise.
+    # Group updates into a small number of PRs to reduce review overload and
+    # keep each diff reviewable (#511) — patch and minor bumps are low-risk
+    # and rarely worth a separate PR each; dev-only tooling is grouped
+    # separately from production dependencies since a bundle-size regression
+    # can only come from the latter.
     groups:
-      patch-updates:
+      production-updates:
+        dependency-type: production
         update-types:
           - patch
+          - minor
+      development-updates:
+        dependency-type: development
+        update-types:
+          - patch
+          - minor
     # Labels applied to every Dependabot PR for easy filtering.
     labels:
       - dependencies

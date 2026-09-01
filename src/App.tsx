@@ -13,6 +13,8 @@ import { ToastProvider } from './context/ToastContext'
 import { PreferencesProvider } from './preferences/PreferencesContext'
 import { ErrorReporterProvider } from './context/ErrorReporterContext'
 import { WalletProvider } from './wallet/WalletContext'
+import { AuthProvider } from './auth/AuthContext'
+import { AuthCallback } from './pages/AuthCallback'
 import { useWebVitals } from './hooks/useWebVitals'
 import { useAccessibility } from './hooks/useAccessibility'
 import { initAnalytics } from './hooks/useAnalytics'
@@ -23,12 +25,14 @@ import { PerformanceOverlay } from './components/PerformanceOverlay'
 import { ApiVersionBanner } from './components/ApiVersionBanner'
 import { InstallPrompt } from './components/InstallPrompt'
 import { PwaUpdateBanner } from './components/PwaUpdateBanner'
+import { Webhooks } from './pages/Webhooks'
 import {
   LazyApiDocs,
   LazyDashboard,
   LazyLanding,
   LazyNotFound,
   LazyPriceDetail,
+  LazySecurity,
   preloadDashboard,
   preloadPriceDetail,
 } from './utils/chunks'
@@ -99,6 +103,16 @@ export function AppContent(): ReactElement {
                 </RouteSuspense>
               }
             />
+            <Route path="/webhooks" element={<Webhooks />} />
+            <Route
+              path="/security"
+              element={
+                <RouteSuspense fallback={<NotFoundSkeleton />}>
+                  <LazySecurity />
+                </RouteSuspense>
+              }
+            />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route
               path="*"
               element={
@@ -125,12 +139,14 @@ export default function App(): ReactElement {
       <ErrorReporterProvider>
         <PreferencesProvider>
           <ToastProvider>
-            <WalletProvider>
-              <PriceProvider>
-                <AppContent />
-                {import.meta.env.DEV && <PerformanceOverlay />}
-              </PriceProvider>
-            </WalletProvider>
+            <AuthProvider>
+              <WalletProvider>
+                <PriceProvider>
+                  <AppContent />
+                  {import.meta.env.DEV && <PerformanceOverlay />}
+                </PriceProvider>
+              </WalletProvider>
+            </AuthProvider>
           </ToastProvider>
         </PreferencesProvider>
       </ErrorReporterProvider>

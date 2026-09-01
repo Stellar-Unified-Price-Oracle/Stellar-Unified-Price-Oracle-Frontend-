@@ -4,9 +4,11 @@ import App from './App'
 import './index.css'
 import { getMissingRequiredEnvVars } from './config/validateEnv'
 import { installConsoleAggregator } from './utils/consoleAggregator'
+import { installCspReporting } from './utils/cspReporting'
 import { checkStorageSizeWarning } from './utils/storage'
 
 installConsoleAggregator()
+installCspReporting()
 // Warn in dev if localStorage usage is approaching the quota limit
 checkStorageSizeWarning()
 

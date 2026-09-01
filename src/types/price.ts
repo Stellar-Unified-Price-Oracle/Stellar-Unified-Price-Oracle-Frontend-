@@ -148,6 +148,26 @@ export interface WsUnsubscribeMessage {
   assetPairs: string[]
 }
 
+/** Client request to pause inbound price updates under backpressure (#469). */
+export interface WsPauseMessage {
+  action: 'pause'
+}
+
+/** Client request to resume inbound price updates once backpressure clears (#469). */
+export interface WsResumeMessage {
+  action: 'resume'
+}
+
+/** Server ack confirming inbound updates have been paused for this connection (#469). */
+export interface WsPausedMessage {
+  type: 'paused'
+}
+
+/** Server ack confirming inbound updates have resumed for this connection (#469). */
+export interface WsResumedMessage {
+  type: 'resumed'
+}
+
 /** A real-time price update received via WebSocket. */
 export interface WsPriceUpdate {
   type: 'price_update'
@@ -171,7 +191,7 @@ export interface WsPriceUpdate {
 }
 
 /** Union of all possible WebSocket message types. */
-export type WsMessage = WsPriceUpdate | WsWelcomeMessage
+export type WsMessage = WsPriceUpdate | WsWelcomeMessage | WsPausedMessage | WsResumedMessage
 
 // ---------------------------------------------------------------------------
 // Type guards

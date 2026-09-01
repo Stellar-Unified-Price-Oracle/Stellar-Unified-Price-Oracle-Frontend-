@@ -1,0 +1,16 @@
+# ZAP baseline scan rule overrides for this app.
+# Format: <rule id>	<threshold: IGNORE|WARN|FAIL>	<url regex, optional>
+#
+# Only add an IGNORE here for a rule that has been manually verified as a false
+# positive for this app, with the reasoning recorded below. Never blanket-ignore
+# a rule to make the job pass without investigating the alert first.
+#
+# 10015: "Re-examine Cache-control Directives" — informational, fires on static
+# hashed assets we intentionally cache long-term (immutable, content-hashed
+# filenames from the Vite build); caching itself is not a vulnerability here.
+10015	IGNORE
+#
+# 10096: "Timestamp Disclosure - Unix" — fires on numeric IDs/prices in mock API
+# fixtures that happen to fall in the Unix-timestamp range; not an actual
+# timestamp leak.
+10096	IGNORE

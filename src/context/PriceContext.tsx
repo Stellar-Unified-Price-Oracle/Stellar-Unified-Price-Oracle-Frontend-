@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { WebSocketClient, type ConnectionStatus } from '../api/websocket'
-import { WsLeaderElection } from '../api/wsLeaderElection'
+import type { ConnectionStatus, ConnectionDiagnostics } from '../api/websocket'
+import { RealtimeClient } from '../api/realtimeClient'
 import { fetchAllPrices, fetchPricesBatched } from '../api/rest'
 import { rateLimitManager, type RateLimitStatus } from '../api/rateLimit'
 import { useOutboundQueue } from '../hooks/useOutboundQueue'
+import { offlinePriceStore } from '../services/offlinePriceStore'
 import { config } from '../config'
-import { computeAttribution, appendToRingBuffer, type SourcePriceState } from '../utils/moveAttribution'
-import type { LivePriceEntry, PriceData, MoveAttribution, WsPriceUpdate } from '../types'
+import type { LivePriceEntry, PriceData } from '../types'
+import { useToast } from './ToastContext'
 
 /**
  * Internal event emitter for per-pair live price updates.
@@ -57,6 +58,8 @@ export interface PriceContextValue {
   livePrices: Map<string, LivePriceEntry>
   /** Current WebSocket connection status. */
   wsStatus: ConnectionStatus
+  /** Connection diagnostics — retry count, negotiated protocol, active transport (#471), pause state (#469). */
+  diagnostics: ConnectionDiagnostics
   /** Current API rate-limit status. */
   rateLimitStatus: RateLimitStatus
   /** Remaining retry window for rate limiting in milliseconds. */
@@ -81,22 +84,12 @@ export interface PriceContextValue {
   unsubscribe: (pairs: string[]) => void
   /** Internal: emit live price update for a specific pair (do not use directly). */
   _emitPriceUpdate: (pair: string, entry: LivePriceEntry) => void
-  /**
-   * Per-pair move attribution history (ring-buffer, max ATTRIBUTION_RING_BUFFER_SIZE
-   * entries per pair).
-   *
-   * Each entry describes one WS tick — which sources moved and by how much.
-   * The oldest entry is evicted when the buffer is full, keeping memory usage
-   * strictly bounded at O(pairs × ATTRIBUTION_RING_BUFFER_SIZE × ~300 bytes).
-   */
-  attributionHistory: Map<string, MoveAttribution[]>
-  /**
-   * Whether this tab is the BroadcastChannel WebSocket leader.
-   * `true` — this tab owns the real WS connection.
-   * `false` — this tab receives relayed updates from the leader tab.
-   * `null` — BroadcastChannel is unavailable; every tab owns its own WS (fallback).
-   */
-  isWsLeader: boolean | null
+  /** `true` when `prices` is being served from the persisted offline snapshot rather than a live REST fetch (#470). */
+  isOfflineSnapshot: boolean
+  /** When `isOfflineSnapshot` is true, the timestamp the cached snapshot was saved at; otherwise `null`. */
+  offlineSnapshotSavedAt: number | null
+  /** Clears the persisted offline price snapshot (manual "clear cache" action, #470). */
+  clearPriceCache: () => Promise<void>
 }
 
 const PriceContext = createContext<PriceContextValue | null>(null)
@@ -145,36 +138,37 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
   const [livePrices, setLivePrices] = useState<Map<string, LivePriceEntry>>(new Map())
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('disconnected')
+  const [diagnostics, setDiagnostics] = useState<ConnectionDiagnostics>({
+    retryCount: 0,
+    lastConnectedAt: null,
+    totalDisconnections: 0,
+    transport: 'ws',
+  })
   const [rateLimitStatus, setRateLimitStatus] = useState<RateLimitStatus>(
     rateLimitManager.status,
   )
   const [rateLimitRetryAfterMs, setRateLimitRetryAfterMs] = useState(
     rateLimitManager.retryAfterMs,
   )
-
-  // ── Leader election state ─────────────────────────────────────────────────
-  /** null = fallback (BC unavailable), true = leader, false = follower */
-  const [isWsLeader, setIsWsLeader] = useState<boolean | null>(null)
-  const electionRef = useRef<WsLeaderElection | null>(null)
-
-  // ── Move attribution state ────────────────────────────────────────────────
-  const [attributionHistory, setAttributionHistory] = useState<Map<string, MoveAttribution[]>>(
-    new Map(),
-  )
-  /**
-   * Per-pair, per-source last-seen prices — mutable ref so attribution
-   * computation can read+write without triggering re-renders.
-   * Shape: { assetPair -> { sourceName -> lastPrice } }
-   */
-  const sourcePriceStateRef = useRef<Map<string, SourcePriceState>>(new Map())
-  /**
-   * Per-pair last aggregate price — used to compute the aggregate delta.
-   */
-  const prevAggPriceRef = useRef<Map<string, number>>(new Map())
-
-  const wsRef = useRef<WebSocketClient | null>(null)
+  const wsRef = useRef<RealtimeClient | null>(null)
   const requestIdsRef = useRef<Map<string, number>>(new Map())
   const cleanupTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  // Offline-first price cache (#470): last confirmed snapshot, persisted to IndexedDB
+  // and used as the display source when the REST fetch has no data (first offline load).
+  const [offlineSnapshot, setOfflineSnapshot] = useState<{ prices: PriceData[]; savedAt: number } | null>(null)
+  const wasOfflineRef = useRef(false)
+  const { addToast } = useToast()
+
+  useEffect(() => {
+    let cancelled = false
+    void offlinePriceStore.load().then((snapshot) => {
+      if (!cancelled) setOfflineSnapshot(snapshot)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const clearCleanupTimer = (pair: string): void => {
     const timer = cleanupTimersRef.current.get(pair)
@@ -313,26 +307,28 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
   // ── WebSocket + leader election setup ──────────────────────────────────────
 
-  useEffect(() => {
-    const timers = cleanupTimersRef.current
-    const requestIds = requestIdsRef.current
+    const client = new RealtimeClient()
+    wsRef.current = client
 
-    /**
-     * Open a real WebSocket.  Called both by the leader and by fallback tabs.
-     * When the tab is the leader it also relays every price_update to followers.
-     */
-    const openWebSocket = (isLeader: boolean) => {
-      const client = new WebSocketClient()
-      wsRef.current = client
-
-      const unsubStatus = client.onStatusChange(setWsStatus)
-      const unsubMsg = client.onMessage((msg) => {
-        if (msg.type === 'price_update') {
-          handlePriceUpdate(msg, requestIds, timers)
-
-          // Leader relays to followers
-          if (isLeader && electionRef.current) {
-            electionRef.current.relayMessage(msg)
+    const unsubStatus = client.onStatusChange((status) => {
+      setWsStatus(status)
+      setDiagnostics(client.diagnostics)
+    })
+    const unsubMsg = client.onMessage((msg) => {
+      if (msg.type === 'price_update') {
+        setLivePrices((prev) => {
+          const next = new Map(prev)
+          const current = prev.get(msg.assetPair)
+          const entry: LivePriceEntry = {
+            data: {
+              assetPair: msg.assetPair,
+              price: msg.price,
+              timestamp: msg.timestamp,
+              confidence: msg.confidence,
+              sources: msg.sources,
+            },
+            syncState: 'optimistic',
+            flashVersion: (current?.flashVersion ?? 0) + 1,
           }
         }
       })
@@ -444,20 +440,68 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     })
   }, [prices])
 
+  useEffect(() => {
+    if (prices.length > 0 && wsRef.current) {
+      wsRef.current.subscribe(prices.map((p) => p.assetPair))
+    }
+  }, [prices])
+
+  // Offline-first (#470): debounced persist of the latest REST-confirmed snapshot,
+  // bounded by the shared IndexedDB LRU cache and read back on the next disconnect/reload.
+  useEffect(() => {
+    offlinePriceStore.persist(prices)
+  }, [prices])
+
+  // REST has no data (first load while offline, or the fetch failed) — fall back to the
+  // last persisted snapshot so the dashboard renders last-known prices instead of going blank.
+  const isOfflineSnapshot =
+    prices.length === 0 && !pricesLoading && (offlineSnapshot?.prices.length ?? 0) > 0
+  const displayPrices = prices.length > 0 ? prices : (offlineSnapshot?.prices ?? prices)
+
+  // Reconciliation: once REST data comes back after a spell showing the offline
+  // snapshot, surface which pairs changed while we were disconnected (#470).
+  useEffect(() => {
+    if (isOfflineSnapshot) {
+      wasOfflineRef.current = true
+      return
+    }
+    if (!wasOfflineRef.current || prices.length === 0 || !offlineSnapshot) return
+    wasOfflineRef.current = false
+
+    const cachedByPair = new Map(offlineSnapshot.prices.map((p) => [p.assetPair, p]))
+    const updatedPairs = prices.filter((p) => {
+      const cached = cachedByPair.get(p.assetPair)
+      return !cached || p.timestamp > cached.timestamp
+    })
+    if (updatedPairs.length > 0) {
+      const preview = updatedPairs.slice(0, 3).map((p) => p.assetPair).join(', ')
+      addToast({
+        type: 'info',
+        message: `Back online — ${updatedPairs.length} pair${updatedPairs.length === 1 ? '' : 's'} updated while offline (${preview}${updatedPairs.length > 3 ? '…' : ''}).`,
+        priority: 'normal',
+      })
+    }
+  }, [isOfflineSnapshot, prices, offlineSnapshot, addToast])
+
   const subscribe = (pairs: string[]): void => wsRef.current?.subscribe(pairs)
   const unsubscribe = (pairs: string[]): void => wsRef.current?.unsubscribe(pairs)
   const handleRefetchPrices = (): void => { void refetchPrices() }
   const emitPriceUpdate = useCallback((pair: string, entry: LivePriceEntry): void => {
     priceUpdateEmitter.emit(pair, entry)
   }, [])
+  const clearPriceCache = useCallback(async (): Promise<void> => {
+    await offlinePriceStore.clear()
+    setOfflineSnapshot(null)
+  }, [])
 
   const value: PriceContextValue = {
-    prices,
+    prices: displayPrices,
     pricesLoading,
     pricesError,
     pricesValidating,
     livePrices,
     wsStatus,
+    diagnostics,
     rateLimitStatus,
     rateLimitRetryAfterMs,
     outboundQueued: outbound.queued,
@@ -467,8 +511,9 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     subscribe,
     unsubscribe,
     _emitPriceUpdate: emitPriceUpdate,
-    attributionHistory,
-    isWsLeader,
+    isOfflineSnapshot,
+    offlineSnapshotSavedAt: offlineSnapshot?.savedAt ?? null,
+    clearPriceCache,
   }
 
   return (

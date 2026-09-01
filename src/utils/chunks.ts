@@ -7,6 +7,7 @@ export const chunkLoaders = {
   priceDetail: () => import('../pages/PriceDetail'),
   apiDocs: () => import('../pages/ApiDocs'),
   notFound: () => import('../pages/NotFound'),
+  security: () => import('../pages/Security'),
   priceChart: () => import('../components/PriceChart'),
   priceTable: () => import('../components/PriceTableView'),
   priceHistoryTable: () => import('../components/PriceHistoryTable'),
@@ -34,6 +35,11 @@ export const LazyApiDocs = lazy(() => preloadApiDocs().then((module) => ({ defau
 export const LazyNotFound = lazy(() =>
   preloadChunk('route-not-found', chunkLoaders.notFound).then((module) => ({
     default: module.NotFound,
+  })),
+)
+export const LazySecurity = lazy(() =>
+  preloadChunk('route-security', chunkLoaders.security).then((module) => ({
+    default: module.Security,
   })),
 )
 export const LazyPriceChart = lazy(() => preloadPriceChart().then((module) => ({ default: module.PriceChart })))

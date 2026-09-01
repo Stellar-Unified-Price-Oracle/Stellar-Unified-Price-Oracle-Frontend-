@@ -19,6 +19,7 @@ import {
   recordPerfMark,
   type PerformanceSnapshot,
 } from '../utils/performanceMonitor'
+import { startMemoryProfiler, stopMemoryProfiler } from '../utils/memoryProfiler'
 import { isFeatureEnabled } from '../config/featureFlags'
 import { trackEvent } from './useAnalytics'
 
@@ -67,6 +68,7 @@ export function usePerformanceMonitor(): PerformanceSnapshot | null {
 
   useEffect(() => {
     startPerformanceMonitor()
+    startMemoryProfiler() // #504 — long-session memory harness
     recordPerfMark('app:ready')
 
     const unsubscribe = subscribePerformance((s) => {
@@ -79,6 +81,7 @@ export function usePerformanceMonitor(): PerformanceSnapshot | null {
     return () => {
       unsubscribe()
       stopPerformanceMonitor()
+      stopMemoryProfiler()
     }
   }, [handleLongTask, handleJank, handleMemoryWarning])
 

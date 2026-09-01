@@ -13,8 +13,10 @@ export type {
   WsWelcomeMessage,
   WsPriceUpdate,
   WsMessage,
-  SourceDelta,
-  MoveAttribution,
+  WsPauseMessage,
+  WsResumeMessage,
+  WsPausedMessage,
+  WsResumedMessage,
 } from './price'
 
 export { isPriceData, ATTRIBUTION_RING_BUFFER_SIZE } from './price'
