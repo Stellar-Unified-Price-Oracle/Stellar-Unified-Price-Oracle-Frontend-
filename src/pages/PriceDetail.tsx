@@ -7,6 +7,7 @@ import { fetchPrice } from '../api/rest'
 import { PriceDetailSkeleton } from '../components/PriceDetailSkeleton'
 import { CsvImportZone } from '../components/CsvImportZone'
 import { OnChainComparisonPanel } from '../components/OnChainComparisonPanel'
+import { BacktestTool } from '../components/BacktestTool'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
@@ -582,6 +583,13 @@ export function PriceDetail() {
                     <LazyPriceHistoryTable data={history} />
                   </VisibleSuspense>
                 )}
+              </div>
+
+              {/* Backtesting Tool */}
+              <div className="mb-6">
+                <ErrorBoundary boundaryId="backtest-tool" featureLabel="Backtest Tool">
+                  <BacktestTool pair={decodedPair} history={history} />
+                </ErrorBoundary>
               </div>
 
               {/* CSV import */}

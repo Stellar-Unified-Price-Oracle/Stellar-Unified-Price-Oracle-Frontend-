@@ -514,6 +514,10 @@ export interface SourceReliabilityMetric {
    */
   stalenessMs: number
   /**
+   * Overall reliability score from 0 (completely unreliable) to 100 (optimal).
+   */
+  reliabilityScore: number
+  /**
    * Direction of the uptime change comparing the current window against the
    * previous window of the same length.
    * - `'up'`   — uptime improved by > 1 pp
@@ -584,19 +588,28 @@ export function computeSourceMetrics(
     // Staleness
     const stalenessMs = sh.lastUpdate !== null ? Math.max(0, now - sh.lastUpdate) : 0
 
+    // Compute 0-100 score: uptime (70%), latency (15%), staleness (15%)
+    const latencyScore = sh.latency === null ? 100 : Math.max(0, 100 - sh.latency / 10)
+    const stalenessScore = Math.max(0, 100 - stalenessMs / 36000)
+    const rawScore = uptimePercent * 0.7 + latencyScore * 0.15 + stalenessScore * 0.15
+    const reliabilityScore = Math.round(Math.min(100, Math.max(0, rawScore)))
+
     return {
       source: src,
       uptimePercent,
       meanLatencyMs: sh.latency,
       stalenessMs,
+      reliabilityScore,
       trend,
     }
   })
 
-  // Sort descending by uptime, then ascending by staleness as tiebreaker
+  // Sort descending by reliabilityScore, then uptime, then ascending by staleness
   metrics.sort((a, b) => {
-    const diff = b.uptimePercent - a.uptimePercent
-    if (diff !== 0) return diff
+    const diffScore = b.reliabilityScore - a.reliabilityScore
+    if (diffScore !== 0) return diffScore
+    const diffUptime = b.uptimePercent - a.uptimePercent
+    if (diffUptime !== 0) return diffUptime
     return a.stalenessMs - b.stalenessMs
   })
 
@@ -614,6 +627,7 @@ export function exportLeaderboardCsv(metrics: SourceReliabilityMetric[]): void {
   const headers = [
     'rank',
     'source',
+    'reliabilityScore',
     'uptimePercent',
     'meanLatencyMs',
     'stalenessMs',
@@ -623,6 +637,7 @@ export function exportLeaderboardCsv(metrics: SourceReliabilityMetric[]): void {
   const rows: Array<Record<string, unknown>> = metrics.map((m, i) => ({
     rank: i + 1,
     source: m.source,
+    reliabilityScore: m.reliabilityScore,
     uptimePercent: parseFloat(m.uptimePercent.toFixed(2)),
     meanLatencyMs: m.meanLatencyMs ?? '',
     stalenessMs: m.stalenessMs,
@@ -632,4 +647,27 @@ export function exportLeaderboardCsv(metrics: SourceReliabilityMetric[]): void {
   const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
   const filename = `reliability-leaderboard_${ts}.csv`
   downloadFile(toCsv(rows, headers), filename, 'text/csv')
+}
+
+/**
+ * Triggers a browser JSON download for the reliability leaderboard.
+ *
+ * Filename: `reliability-leaderboard_<ISO-timestamp>.json`
+ *
+ * @param metrics  Array produced by {@link computeSourceMetrics}.
+ */
+export function exportLeaderboardJson(metrics: SourceReliabilityMetric[]): void {
+  const data = metrics.map((m, i) => ({
+    rank: i + 1,
+    source: m.source,
+    reliabilityScore: m.reliabilityScore,
+    uptimePercent: parseFloat(m.uptimePercent.toFixed(2)),
+    meanLatencyMs: m.meanLatencyMs,
+    stalenessMs: m.stalenessMs,
+    trend: m.trend,
+  }))
+
+  const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+  const filename = `reliability-leaderboard_${ts}.json`
+  downloadFile(JSON.stringify(data, null, 2), filename, 'application/json')
 }
