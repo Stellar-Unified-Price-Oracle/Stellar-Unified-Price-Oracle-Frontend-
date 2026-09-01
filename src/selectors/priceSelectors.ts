@@ -1,5 +1,5 @@
-import { createSelector } from './createSelector'
 import type { PriceData } from '../types'
+import { createSelector } from './createSelector'
 
 const STALE_THRESHOLD_MS = 5 * 60 * 1000
 

@@ -1,4 +1,4 @@
-import { useCallback, useState, useId } from 'react'
+import { memo, useCallback, useState, useId, type ReactElement } from 'react'
 
 export type PresetRange = '1h' | '24h' | '7d' | '30d' | '1y' | 'all'
 
@@ -23,7 +23,7 @@ interface DateRangePickerProps {
   maxRangeDays?: number
 }
 
-export function DateRangePicker({ value, onChange, maxRangeDays = 365 }: DateRangePickerProps) {
+export const DateRangePicker = memo(function DateRangePicker({ value, onChange, maxRangeDays = 365 }: DateRangePickerProps): ReactElement {
   const startId = useId()
   const endId = useId()
   const [customError, setCustomError] = useState<string | null>(null)
@@ -132,7 +132,7 @@ export function DateRangePicker({ value, onChange, maxRangeDays = 365 }: DateRan
       )}
     </div>
   )
-}
+})
 
 /** Convert a DateRange to the API `limit` param and optional start/end timestamps */
 export function dateRangeToParams(range: DateRange): { limit: number; startTs?: number; endTs?: number } {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { ErrorBoundary } from './ErrorBoundary'
 import { checkAccessibility } from '../test/accessibility'
+import { ErrorBoundary } from './ErrorBoundary'
 
 afterEach(cleanup)
 
@@ -35,9 +35,9 @@ describe('ErrorBoundary', () => {
         <Bomb shouldThrow={true} />
       </ErrorBoundary>,
     )
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
-    expect(screen.getByText('💥')).toBeInTheDocument()
-    expect(screen.getByText('Reload page')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/encountered an error/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
     spy.mockRestore()
   })
 
@@ -83,7 +83,7 @@ describe('ErrorBoundary', () => {
         <Bomb shouldThrow={true} />
       </ErrorBoundary>,
     )
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
 
     rerender(
       <ErrorBoundary key="2">

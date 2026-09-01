@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import { ConnectionBadge } from './ConnectionBadge'
 import { checkAccessibility } from '../test/accessibility'
+import { ConnectionBadge } from './ConnectionBadge'
 
 afterEach(cleanup)
 
@@ -30,6 +30,17 @@ describe('ConnectionBadge', () => {
     render(<ConnectionBadge status="disconnected" />)
     expect(screen.getByText('Offline')).toBeInTheDocument()
   })
+
+  it('renders rate limited status with countdown', () => {
+    render(<ConnectionBadge status="connected" rateLimitStatus="limited" retryAfterMs={15000} />)
+    expect(screen.getByText('Rate limited (15s)')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveAttribute('aria-label', 'API rate limited')
+  })
+
+  it('renders rate limited status without retry info', () => {
+    render(<ConnectionBadge status="connected" rateLimitStatus="limited" />)
+    expect(screen.getByText('Rate limited')).toBeInTheDocument()
+  })
 })
 
 describe('snapshots', () => {
@@ -50,6 +61,11 @@ describe('snapshots', () => {
 
   it('disconnected', () => {
     const { container } = render(<ConnectionBadge status="disconnected" />)
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('rate limited', () => {
+    const { container } = render(<ConnectionBadge status="connected" rateLimitStatus="limited" retryAfterMs={10000} />)
     expect(container.firstChild).toMatchSnapshot()
   })
 })

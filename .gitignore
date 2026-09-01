@@ -1,12 +1,101 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
 dist
+build
+out
+
+# ── Test coverage, reports & artifacts ────────────────────────────────────────
+coverage
 reports
+sbom.json
+build-attestation.json
+
+# ── Storybook ─────────────────────────────────────────────────────────────────
+storybook-static
+
+# ── Environment variables ─────────────────────────────────────────────────────
 .env
 .env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ── TypeScript incremental build ──────────────────────────────────────────────
 *.tsbuildinfo
+
+# ── Lint / tooling caches ──────────────────────────────────────────────────────
+.eslintcache
+vite.config.*.timestamp-*
+
+# ── Editor swap / log files ───────────────────────────────────────────────────
+*.log
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# ── E2E test artifacts ────────────────────────────────────────────────────────
 e2e/results
 e2e/test-results
+playwright/.cache
+
+# ── Vitest cache ──────────────────────────────────────────────────────────────
+.vitest-cache/
+.vite/
+
+# ── Test snapshot files ────────────────────────────────────────────────────────
+# Vitest/Jest inline snapshots — auto-generated, not committed
+src/**/__snapshots__/
+**/*.snap
+
+# Playwright visual-regression baselines (e2e/snapshots/) ARE committed to git
+# so CI can detect regressions. Only exclude the diff/actual artifacts:
 test-results/
-playwright-report
-plans
+playwright-report/
+# Do NOT add e2e/snapshots/ here — those are the approved baselines
+
+# ── IDE / editor ──────────────────────────────────────────────────────────────
+# Track shared workspace configuration (settings, extensions, tasks, debug)
+!.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/*.md
+# Workspace file
+!*.code-workspace
+
+# Exclude IDE-specific files
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+
+# ── AI agent directories ──────────────────────────────────────────────────────
+.kiro/
+.cursor/
+.aider*
+
+# ── Docker local overrides (may contain credentials) ─────────────────────────
+docker-compose.override.yml
+
+# ── Bundle analysis (generated, not source) ───────────────────────────────────
+reports/bundle-stats.html
+
+# ── Misc generated files ──────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:https": "HTTPS=true vite",
+    "setup-https": "node scripts/setup-https.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
@@ -13,14 +15,25 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "build:analyze": "ANALYZE=true vite build",
+    "build:hash": "npm run build && node scripts/build-hash.js",
+    "build:verify": "node scripts/build-hash.js --verify",
+    "sbom": "node scripts/generate-sbom.js",
     "size-limit": "size-limit",
     "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "prepare": "husky || true",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:chromium": "playwright test --project=chromium",
     "test:e2e:firefox": "playwright test --project=firefox",
-    "test:e2e:webkit": "playwright test --project=webkit"
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "test:e2e:visual": "playwright test --project=visual-regression",
+    "test:e2e:visual:update": "node scripts/update-visual-baselines.js",
+    "test:e2e:mobile": "playwright test --grep @mobile",
+    "test:e2e:responsive": "playwright test e2e/responsive.spec.ts e2e/mobile-responsive.spec.ts",
+    "check:api-version": "node scripts/check-api-version.js",
+    "generate:openapi": "npx openapi-typescript ${BACKEND_OPENAPI_URL:-http://localhost:3000/openapi.json} --output src/api/openapi-types.ts"
   },
   "size-limit": [
     {
@@ -43,40 +56,64 @@
     }
   ],
   "dependencies": {
-    "@tanstack/react-virtual": "^3.14.3",
+    "@stellar/freighter-api": "^6.0.1",
+    "@stellar/stellar-sdk": "^16.2.0",
+    "@tanstack/react-query": "^5.0.0",
+    "@tanstack/react-virtual": "^3.14.9",
+    "@types/dompurify": "^3.0.5",
+    "comlink": "4.4.2",
+    "dompurify": "^3.4.14",
+    "i18next": "24.2.3",
+    "i18next-browser-languagedetector": "8.0.5",
+    "jspdf": "^4.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-i18next": "15.5.1",
     "react-router-dom": "^7.5.0",
-    "recharts": "^2.15.3",
-    "web-vitals": "^4.2.4"
+    "recharts": "^3.0.0",
+    "web-vitals": "^4.2.4",
+    "zod": "^4.0.0",
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.24.0",
-    "@playwright/test": "^1.61.0",
+    "@axe-core/playwright": "^4.12.1",
+    "@commitlint/cli": "19.8.1",
+    "@commitlint/config-conventional": "19.8.1",
+    "@eslint/js": "^9.39.2",
+    "@playwright/test": "1.52.0",
     "@size-limit/file": "^12.1.0",
+    "@storybook/addon-a11y": "^10.5.5",
+    "@storybook/addon-themes": "^10.5.5",
+    "@storybook/react-vite": "^10.5.5",
     "@tailwindcss/vite": "^4.1.4",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^26.0.0",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
-    "@vitejs/plugin-react": "^4.4.1",
-    "eslint": "^9.24.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^16.0.0",
     "husky": "^9.1.7",
     "jsdom": "^26.0.0",
     "lint-staged": "^15.5.1",
-    "prettier": "^3.5.3",
+    "msw": "^2.14.6",
+    "prettier": "^3.9.0",
     "rollup-plugin-visualizer": "^7.0.1",
     "size-limit": "^12.1.0",
+    "storybook": "^10.5.5",
     "tailwindcss": "^4.1.4",
-    "typescript": "~5.7.2",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.29.1",
-    "vite": "^6.3.2",
-    "vitest": "^3.1.2",
+    "vite": "^8.0.0",
+    "vitest": "^4.0.0",
     "vitest-axe": "^0.1.0"
   },
   "lint-staged": {
@@ -86,6 +123,14 @@
     ],
     "*.{css,json,md}": [
       "prettier --write"
+    ],
+    "**/*.{ts,tsx}": [
+      "bash -c 'tsc -b --noEmit'"
+    ]
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
     ]
   }
 }

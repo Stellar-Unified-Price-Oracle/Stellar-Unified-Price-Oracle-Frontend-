@@ -5,7 +5,7 @@ import { usePreferences } from '../preferences/PreferencesContext'
  * Applies accessibility class names to the document root based on user preferences.
  * Also respects the system-level prefers-reduced-motion media query.
  */
-export function useAccessibility() {
+export function useAccessibility(): void {
   const { preferences } = usePreferences()
 
   useEffect(() => {

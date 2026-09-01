@@ -1,16 +1,25 @@
 {
-  "name": "Stellar Oracle",
-  "short_name": "StellarOracl",
-  "start_url": "/",
+  "name": "Stellar Unified Price Oracle",
+  "short_name": "Stellar Oracle",
+  "description": "Stellar Unified Price Oracle & Aggregator - Developer Portal & Analytics Dashboard",
+  "start_url": ".",
+  "scope": ".",
+  "id": ".",
   "display": "standalone",
   "background_color": "#030712",
   "theme_color": "#030712",
   "icons": [
     {
-      "src": "/vite.svg",
+      "src": "vite.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

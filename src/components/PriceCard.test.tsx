@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { PriceCard } from './PriceCard'
 import { checkAccessibility } from '../test/accessibility'
+import { PriceCard } from './PriceCard'
 
 afterEach(cleanup)
 
@@ -53,6 +53,7 @@ describe('PriceCard', () => {
     const card = screen.getByRole('button', { name: 'View details for BTC/USD' })
     await user.click(card)
     expect(onClick).toHaveBeenCalledTimes(1)
+    expect(onClick).toHaveBeenCalledWith('BTC/USD')
   })
 
   it('shows Set alert text when no alert', () => {
@@ -73,6 +74,7 @@ describe('PriceCard', () => {
     const alertButton = screen.getByLabelText('Set alert for BTC/USD')
     await user.click(alertButton)
     expect(onAlertClick).toHaveBeenCalledTimes(1)
+    expect(onAlertClick).toHaveBeenCalledWith(expect.anything(), 'BTC/USD')
     expect(onClick).not.toHaveBeenCalled()
   })
 
@@ -94,6 +96,7 @@ describe('PriceCard', () => {
     card.focus()
     await user.keyboard('{Enter}')
     expect(onClick).toHaveBeenCalledTimes(1)
+    expect(onClick).toHaveBeenCalledWith('BTC/USD')
   })
 
   it('does not apply reduced opacity when isStale is false', () => {

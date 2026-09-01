@@ -2,8 +2,10 @@
   "$schema": "https://json.schemastore.org/semantic-release",
   "branches": [
     "main",
-    { "name": "beta", "prerelease": true },
-    { "name": "alpha", "prerelease": true }
+    { "name": "staging", "prerelease": "rc" },
+    { "name": "develop", "prerelease": true },
+    { "name": "beta",    "prerelease": true },
+    { "name": "alpha",   "prerelease": true }
   ],
   "plugins": [
     [
@@ -54,7 +56,7 @@
       "@semantic-release/changelog",
       {
         "changelogFile": "CHANGELOG.md",
-        "changelogTitle": "# Changelog\n\nAll notable changes to the Stellar Unified Price Oracle SDK are documented here.\nGenerated automatically from [Conventional Commits](https://www.conventionalcommits.org/).\n"
+        "changelogTitle": "# Changelog\n\nAll notable changes to the Stellar Unified Price Oracle Frontend are documented here.\nGenerated automatically from [Conventional Commits](https://www.conventionalcommits.org/).\n"
       }
     ],
     [

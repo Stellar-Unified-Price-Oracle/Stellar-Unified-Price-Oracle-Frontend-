@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Validate commit message against Conventional Commits via commitlint.
+# Blocks the commit if the message does not conform to the project's
+# commit conventions defined in commitlint.config.js.
+npx --no -- commitlint --edit "$1"

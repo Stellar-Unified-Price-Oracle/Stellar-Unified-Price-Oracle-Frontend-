@@ -1,0 +1,278 @@
+name: Promote to Production
+
+on:
+  # Manually triggered by authorized users (with 'deploy' permission).
+  # Allows selective promotion from staging to production with approval gates.
+  workflow_dispatch:
+    inputs:
+      staging_version:
+        description: 'Staging deployment to promote (commit SHA or "latest")'
+        required: true
+        default: 'latest'
+      run_e2e_tests:
+        description: 'Run E2E tests against production before going live'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  deployments: write
+  statuses: write
+
+jobs:
+  # ── Pre-promotion validation ────────────────────────────────────────────────
+  # Verify that the staging build is ready for production.
+  validate-staging:
+    runs-on: ubuntu-latest
+    outputs:
+      staging_commit: ${{ steps.resolve.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve staging version
+        id: resolve
+        run: |
+          if [ "${{ github.event.inputs.staging_version }}" = "latest" ]; then
+            # Get the commit hash of the latest main branch push
+            COMMIT=$(git rev-parse origin/main)
+          else
+            COMMIT="${{ github.event.inputs.staging_version }}"
+          fi
+          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+          echo "✓ Staging version resolved to: $COMMIT"
+
+      - name: Verify commit exists in main
+        run: |
+          git fetch origin main
+          git cat-file -t ${{ steps.resolve.outputs.commit }} > /dev/null || {
+            echo "❌ Commit ${{ steps.resolve.outputs.commit }} not found"
+            exit 1
+          }
+          echo "✓ Commit verified in main branch"
+
+  # ── E2E test against production-like staging ───────────────────────────────
+  # Run the full E2E test suite against the staging environment to catch
+  # any environment-specific issues before production promotion.
+  #
+  # This step is optional (controlled by run_e2e_tests input) and can be
+  # skipped for hotfixes if necessary, but requires explicit user consent.
+  test-staging:
+    needs: [validate-staging]
+    if: ${{ github.event.inputs.run_e2e_tests == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-staging.outputs.staging_commit }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Download the pre-built staging artifact (if available from CI run)
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist/
+        continue-on-error: true
+
+      # Fallback: rebuild if artifact not available
+      - name: Build (fallback)
+        if: failure()
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.STAGING_API_URL }}
+          VITE_WS_URL: ${{ secrets.STAGING_WS_URL }}
+          NODE_ENV: production
+
+      - run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run E2E tests against staging
+        run: npm run test:e2e
+        env:
+          # Point tests at staging instead of localhost
+          VITE_API_URL: ${{ secrets.STAGING_API_URL }}
+          VITE_WS_URL: ${{ secrets.STAGING_WS_URL }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 7
+
+  # ── Approval gate ────────────────────────────────────────────────────────
+  # Require manual approval before deploying to production.
+  # Only repository admins or users with 'deploy' permission can approve.
+  approve-production-deploy:
+    needs: [validate-staging, test-staging]
+    if: ${{ !failure() }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production-promotion
+      # This environment can be configured to require specific reviewers
+    steps:
+      - name: Approval granted
+        run: echo "✓ Production deployment approved"
+
+  # ── Production deployment ───────────────────────────────────────────────────
+  # Deploy the validated staging build to production.
+  # This step is gated behind the approval environment above.
+  deploy-production:
+    needs: [validate-staging, approve-production-deploy]
+    if: ${{ !failure() }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://oracle.example.com
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-staging.outputs.staging_commit }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build for production
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+          VITE_WS_URL: ${{ secrets.PRODUCTION_WS_URL }}
+          NODE_ENV: production
+
+      - name: Deploy to Vercel production
+        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PRODUCTION_PROJECT_ID }}
+        run: |
+          npm install -g vercel@latest
+          vercel deploy \
+            --token "$VERCEL_TOKEN" \
+            --prod \
+            --build-env VITE_API_URL="${{ secrets.PRODUCTION_API_URL }}" \
+            --build-env VITE_WS_URL="${{ secrets.PRODUCTION_WS_URL }}"
+
+      - name: Create deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.ref,
+              environment: 'production',
+              required_contexts: [],
+              auto_merge: false,
+            })
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: '${{ job.status }}',
+              description: 'Production deployment from staging',
+              environment_url: 'https://oracle.example.com',
+            })
+
+      - name: Notify production deployment
+        if: success()
+        run: |
+          echo "✅ Production deployment successful!"
+          echo "Production URL: https://oracle.example.com"
+          echo "Commit: ${{ needs.validate-staging.outputs.staging_commit }}"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed"
+          echo "Commit: ${{ needs.validate-staging.outputs.staging_commit }}"
+          exit 1
+
+  # ── Post-deployment smoke tests ─────────────────────────────────────────────
+  # Run lightweight smoke tests against production to verify the deploy was
+  # successful. These are faster than full E2E tests and catch immediate issues.
+  smoke-test-production:
+    needs: [deploy-production]
+    if: ${{ !failure() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run smoke tests
+        run: npm run test:e2e -- --grep "@smoke"
+        env:
+          VITE_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+          VITE_WS_URL: ${{ secrets.PRODUCTION_WS_URL }}
+        continue-on-error: true
+
+      - name: Health check
+        run: |
+          curl -f -s https://oracle.example.com/health || true
+          curl -s https://oracle.example.com/ | grep -q "Stellar" || {
+            echo "❌ Production health check failed"
+            exit 1
+          }
+
+  # ── Rollback procedure ──────────────────────────────────────────────────────
+  # If production smoke tests fail, trigger a rollback to the previous version.
+  rollback-production:
+    needs: [smoke-test-production]
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Trigger rollback
+        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PRODUCTION_PROJECT_ID }}
+        run: |
+          npm install -g vercel@latest
+          echo "⚠️  Smoke tests failed. Initiating rollback..."
+          # List recent deployments and promote the previous one
+          vercel list --token "$VERCEL_TOKEN" --limit 5 | grep -v current || true
+          echo "Manual rollback required. Use: vercel promote <deployment-url>"
+
+      - name: Notify rollback
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **Production smoke tests failed.** Manual rollback may be required. Check the workflow run for details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            })

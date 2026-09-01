@@ -1,0 +1,114 @@
+name: Preview Deployment
+
+# Deploys every PR to a unique Vercel preview URL, comments the URL on the PR,
+# runs a lightweight E2E pass against it, and removes the alias when the PR
+# closes (#378). Requires VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID
+# configured as repository secrets — the job is skipped otherwise.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    outputs:
+      preview-url: ${{ steps.alias.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Pull Vercel project settings
+        run: npx vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Preview builds use mock data so they never touch the production API.
+      - name: Build preview
+        run: npx vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VITE_USE_MOCK: 'true'
+
+      - name: Deploy prebuilt output
+        id: deploy
+        run: |
+          url=$(npx vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Alias to a stable, per-PR URL so re-runs on new commits update the same
+      # link instead of minting a new one each time.
+      - name: Alias to a stable per-PR URL
+        id: alias
+        run: |
+          alias_host="pr-${{ github.event.pull_request.number }}-stellar-oracle-frontend.vercel.app"
+          npx vercel alias set "${{ steps.deploy.outputs.url }}" "$alias_host" --token=${{ secrets.VERCEL_TOKEN }}
+          echo "url=https://$alias_host" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Comment preview URL on the PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🔗 Preview deployment: ${{ steps.alias.outputs.url }}`,
+            })
+
+  e2e-preview:
+    needs: [deploy-preview]
+    if: ${{ !cancelled() && needs.deploy-preview.result == 'success' }}
+    runs-on: ubuntu-latest
+    # Advisory only — a flaky run against live infra shouldn't block the preview.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run test:e2e:chromium
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.preview-url }}
+
+  teardown-preview:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove preview alias
+        run: |
+          alias_host="pr-${{ github.event.pull_request.number }}-stellar-oracle-frontend.vercel.app"
+          npx vercel alias rm "$alias_host" --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

@@ -3,39 +3,46 @@
 exports[`snapshots > default 1`] = `
 <div
   aria-hidden="true"
-  class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 animate-pulse"
+  class="skeleton-offscreen bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5"
 >
   <div
     class="flex items-center justify-between mb-3"
   >
     <div
-      class="h-5 w-28 bg-gray-200 dark:bg-gray-800 rounded"
+      class="skeleton-shimmer h-5 w-28 rounded"
     />
     <div
-      class="h-2 w-2 rounded-full bg-gray-200 dark:bg-gray-800"
+      class="skeleton-shimmer h-2 w-2 rounded-full"
     />
   </div>
   <div
-    class="h-9 w-36 bg-gray-200 dark:bg-gray-800 rounded mb-3"
+    class="skeleton-shimmer h-9 w-36 rounded mb-3"
   />
   <div
     class="flex items-center justify-between mb-3"
   >
     <div
-      class="h-3 w-20 bg-gray-200 dark:bg-gray-800 rounded"
+      class="skeleton-shimmer h-3 w-20 rounded"
     />
     <div
-      class="h-3 w-24 bg-gray-200 dark:bg-gray-800 rounded"
+      class="skeleton-shimmer h-3 w-24 rounded"
     />
   </div>
   <div
-    class="flex gap-1.5"
+    class="flex gap-1.5 mb-3"
   >
     <div
-      class="h-5 w-16 bg-gray-200 dark:bg-gray-800 rounded"
+      class="skeleton-shimmer h-5 w-16 rounded"
     />
     <div
-      class="h-5 w-16 bg-gray-200 dark:bg-gray-800 rounded"
+      class="skeleton-shimmer h-5 w-16 rounded"
+    />
+  </div>
+  <div
+    class="pt-3 border-t border-gray-100 dark:border-gray-800"
+  >
+    <div
+      class="skeleton-shimmer h-3.5 w-20 rounded"
     />
   </div>
 </div>

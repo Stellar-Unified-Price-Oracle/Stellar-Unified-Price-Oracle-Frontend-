@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+import { fetchPricesBatched } from '../api/rest'
 import { PriceProvider, usePriceContext } from './PriceContext'
-import { fetchPrice } from '../api/rest'
 
 const mockConnect = vi.fn()
 const mockDisconnect = vi.fn()
@@ -16,22 +18,26 @@ let messageHandler: ((msg: {
   sources: string[]
 }) => void) | null = null
 
-vi.mock('../hooks/useSwr', () => ({
-  useSwr: vi.fn(() => ({
-    data: [
-      { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
-      { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 0.95, sources: ['redstone'] },
-    ],
-    loading: false,
-    error: null,
-    isValidating: false,
-    refetch: vi.fn(),
-  })),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: vi.fn(() => ({
+      data: [
+        { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
+        { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now(), confidence: 0.95, sources: ['redstone'] },
+      ],
+      isLoading: false,
+      error: null,
+      isFetching: false,
+      refetch: vi.fn(),
+    })),
+  }
+})
 
 vi.mock('../api/rest', () => ({
   fetchAllPrices: vi.fn(),
-  fetchPrice: vi.fn(),
+  fetchPricesBatched: vi.fn(),
 }))
 
 vi.mock('../api/websocket', () => ({
@@ -49,6 +55,18 @@ vi.mock('../api/websocket', () => ({
     send: vi.fn(),
   })),
 }))
+
+function makeQueryClient() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } })
+}
+
+function Wrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={makeQueryClient()}>
+      <PriceProvider>{children}</PriceProvider>
+    </QueryClientProvider>
+  )
+}
 
 function TestConsumer() {
   const ctx = usePriceContext()
@@ -68,7 +86,7 @@ function TestConsumer() {
 beforeEach(() => {
   vi.clearAllMocks()
   messageHandler = null
-  vi.mocked(fetchPrice).mockResolvedValue({
+  vi.mocked(fetchPricesBatched).mockResolvedValue({
     assetPair: 'BTC/USD',
     price: 50010,
     timestamp: 1700000001000,
@@ -82,38 +100,28 @@ afterEach(cleanup)
 describe('PriceProvider', () => {
   it('renders children', () => {
     render(
-      <PriceProvider>
-        <div>child</div>
-      </PriceProvider>,
+      <QueryClientProvider client={makeQueryClient()}>
+        <PriceProvider>
+          <div>child</div>
+        </PriceProvider>
+      </QueryClientProvider>,
     )
     expect(screen.getByText('child')).toBeInTheDocument()
   })
 
   it('provides price context to consumers', () => {
-    render(
-      <PriceProvider>
-        <TestConsumer />
-      </PriceProvider>,
-    )
+    render(<TestConsumer />, { wrapper: Wrapper })
     expect(screen.getAllByTestId('price-count')[0].textContent).toBe('2')
     expect(screen.getAllByTestId('loading')[0].textContent).toBe('false')
   })
 
   it('provides default wsStatus as disconnected', () => {
-    render(
-      <PriceProvider>
-        <TestConsumer />
-      </PriceProvider>,
-    )
+    render(<TestConsumer />, { wrapper: Wrapper })
     expect(screen.getAllByTestId('ws-status')[0].textContent).toBe('disconnected')
   })
 
   it('applies websocket updates optimistically before REST confirmation', async () => {
-    render(
-      <PriceProvider>
-        <TestConsumer />
-      </PriceProvider>,
-    )
+    render(<TestConsumer />, { wrapper: Wrapper })
 
     act(() => {
       messageHandler?.({
@@ -134,8 +142,36 @@ describe('PriceProvider', () => {
     })
   })
 
+  it('patches the REST cache with the WS-confirmed price (#321)', async () => {
+    const client = makeQueryClient()
+    const setSpy = vi.spyOn(client, 'setQueryData')
+
+    render(
+      <QueryClientProvider client={client}>
+        <PriceProvider>
+          <TestConsumer />
+        </PriceProvider>
+      </QueryClientProvider>,
+    )
+
+    act(() => {
+      messageHandler?.({
+        type: 'price_update',
+        assetPair: 'BTC/USD',
+        price: 50010,
+        timestamp: 1700000001000,
+        confidence: 0.99,
+        sources: ['chainlink'],
+      })
+    })
+
+    await waitFor(() => {
+      expect(setSpy).toHaveBeenCalledWith(['prices'], expect.any(Function))
+    })
+  })
+
   it('rolls back when REST revalidation conflicts with the optimistic update', async () => {
-    vi.mocked(fetchPrice).mockResolvedValueOnce({
+    vi.mocked(fetchPricesBatched).mockResolvedValueOnce({
       assetPair: 'BTC/USD',
       price: 49990,
       timestamp: 1700000002000,
@@ -143,11 +179,7 @@ describe('PriceProvider', () => {
       sources: ['redstone'],
     })
 
-    render(
-      <PriceProvider>
-        <TestConsumer />
-      </PriceProvider>,
-    )
+    render(<TestConsumer />, { wrapper: Wrapper })
 
     act(() => {
       messageHandler?.({

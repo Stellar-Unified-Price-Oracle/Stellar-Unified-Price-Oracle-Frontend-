@@ -1,0 +1,73 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PriceDetailSkeleton snapshots > default 1`] = `
+<div
+  aria-busy="true"
+  aria-label="Loading price detail"
+  role="status"
+>
+  <div
+    class="flex items-center gap-3 mb-6"
+  >
+    <div
+      class="skeleton-shimmer h-8 w-8 rounded-lg"
+    />
+    <div
+      class="skeleton-shimmer h-7 w-40 rounded"
+    />
+    <div
+      class="skeleton-shimmer h-5 w-10 rounded-full ml-2"
+    />
+  </div>
+  <div
+    class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6"
+  >
+    <div
+      class="skeleton-shimmer h-4 w-24 rounded mb-3"
+    />
+    <div
+      class="skeleton-shimmer h-12 w-52 rounded mb-4"
+    />
+    <div
+      class="flex items-center justify-between"
+    >
+      <div
+        class="skeleton-shimmer h-3 w-32 rounded"
+      />
+      <div
+        class="skeleton-shimmer h-3 w-28 rounded"
+      />
+    </div>
+  </div>
+  <div
+    class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6"
+  >
+    <div
+      class="skeleton-shimmer h-4 w-20 rounded mb-4"
+    />
+    <div
+      class="flex gap-2"
+    >
+      <div
+        class="skeleton-shimmer h-6 w-20 rounded"
+      />
+      <div
+        class="skeleton-shimmer h-6 w-20 rounded"
+      />
+      <div
+        class="skeleton-shimmer h-6 w-20 rounded"
+      />
+    </div>
+  </div>
+  <div
+    class="skeleton-offscreen bg-gray-900 border border-gray-800 rounded-xl p-6"
+  >
+    <div
+      class="skeleton-shimmer h-4 w-28 rounded mb-4"
+    />
+    <div
+      class="skeleton-shimmer h-48 w-full rounded"
+    />
+  </div>
+</div>
+`;

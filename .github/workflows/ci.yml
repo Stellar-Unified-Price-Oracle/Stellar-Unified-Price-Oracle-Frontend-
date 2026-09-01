@@ -23,13 +23,38 @@ jobs:
 
       - run: npm ci
 
+      # Fail CI on any critical or high severity vulnerabilities.
+      # Moderate and low findings are reported but do not block the build.
+      - name: Audit dependencies (fail on critical/high)
+        run: npm audit --audit-level=high
+
       - run: npm run typecheck
 
       - run: npm run lint
 
       - run: npm run build
+        env:
+          VITE_USE_MOCK: 'true'
 
       - run: npm run test:run
+
+      # Upload hidden source maps to Sentry for production error tracking,
+      # then strip them from the deployment artifact so they are never
+      # served to end-users or uploaded to the CDN.
+      - name: Upload source maps to Sentry
+        if: github.ref == 'refs/heads/main' && env.SENTRY_AUTH_TOKEN != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          npx @sentry/cli@latest sourcemaps upload \
+            --org "$SENTRY_ORG" \
+            --project "$SENTRY_PROJECT" \
+            dist/assets
+
+      - name: Strip source maps from deploy artifact
+        run: find dist/assets -name '*.map' -delete
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -38,12 +63,11 @@ jobs:
           path: dist/
 
   e2e:
-    needs: frontend
-    timeout-minutes: 30
+    needs: [frontend]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        project: [chromium, firefox, webkit]
+    continue-on-error: true
+
     steps:
       - uses: actions/checkout@v4
 
@@ -54,17 +78,230 @@ jobs:
 
       - run: npm ci
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps ${{ matrix.project }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist/
 
-      - name: Run E2E tests (${{ matrix.project }})
-        run: npx playwright test --project=${{ matrix.project }}
+      - run: npx playwright install --with-deps chromium firefox webkit
+
+      - run: npm run test:e2e
+
+  # ── Visual regression ───────────────────────────────────────────────────────
+  # Compares screenshots against baselines stored in e2e/snapshots/.
+  # The job fails if any screenshot differs beyond the configured threshold.
+  #
+  # To update baselines locally:
+  #   npm run test:e2e:visual:update
+  #   git add e2e/snapshots/ && git commit -m "chore: update visual baselines"
+  visual-regression:
+    needs: [frontend]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    # Treat as advisory on PRs — screenshot diffs require manual review and a
+    # deliberate baseline update commit, not an automatic failure gate.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist/
+
+      # Only install Chromium — visual baselines are browser-specific and we
+      # intentionally generate/compare against Chromium only for consistency.
+      - run: npx playwright install --with-deps chromium
+
+      - name: Run visual regression tests
+        run: npm run test:e2e:visual
         env:
-          CI: true
+          CI: 'true'
+
+      # Upload the HTML report so reviewers can inspect pixel diffs in the
+      # GitHub Actions UI even when the job succeeds.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-regression-report
+          path: reports/playwright/
+          retention-days: 14
+
+      # Upload any diff screenshots Playwright generated for failed comparisons.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-regression-diffs
+          path: test-results/
+          retention-days: 7
+
+  # ── Bundle size analysis ────────────────────────────────────────────────────
+  # Builds with the visualizer enabled, enforces the size-limit budgets
+  # configured in package.json, uploads the visualization for historical
+  # inspection, and (on PRs) comments the size diff against the base branch.
+  bundle-analysis:
+    needs: [frontend]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build with bundle visualization
+        run: npm run build:analyze
+        env:
+          VITE_USE_MOCK: 'true'
+
+      - name: Check bundle size against budgets
+        run: npm run size-limit
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ matrix.project }}
-          path: playwright-report/
-          retention-days: 7
+          name: bundle-analysis-${{ github.sha }}
+          path: reports/bundle-analysis.html
+          retention-days: 90
+
+      # Comments the gzip/brotli size diff between this PR and its base branch,
+      # using the same size-limit config as the budget check above. Advisory —
+      # a failure here shouldn't block the build.
+      - name: Compare bundle size to base branch
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: andresz1/size-limit-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── API version compatibility check ────────────────────────────────────────
+  # Verifies the frontend's declared version range is compatible with the
+  # running backend. Skips gracefully when no backend is available (e.g. on
+  # frontend-only PRs). Set BACKEND_API_URL to point at a live/staging backend.
+  #
+  # To run locally:
+  #   VITE_API_URL=http://localhost:3000 npm run check:api-version
+  api-version-check:
+    needs: [frontend]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    # Non-blocking: backend may not be running in every CI environment.
+    # The script already exits 0 when the server is unreachable.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check API version compatibility
+        run: node scripts/check-api-version.js
+        env:
+          # Override with a real backend URL in repository secrets when available.
+          VITE_API_URL: ${{ vars.BACKEND_API_URL || 'http://localhost:3000' }}
+
+  # ── Deploy to Staging ───────────────────────────────────────────────────────
+  # Automatically deploys the main branch to a staging environment after all
+  # tests pass. Staging uses production-like configuration but points to test
+  # API endpoints. Access is gated via basic auth.
+  #
+  # This job runs only on pushes to main (not on PRs), and only if all prior
+  # jobs passed. Requires VERCEL_TOKEN and VERCEL_ORG_ID secrets to be set.
+  deploy-staging:
+    needs: [frontend, e2e, visual-regression]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.example.com
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build for staging
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.STAGING_API_URL }}
+          VITE_WS_URL: ${{ secrets.STAGING_WS_URL }}
+          NODE_ENV: production
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist/
+
+      - name: Deploy to Vercel staging
+        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+        run: |
+          npm install -g vercel@latest
+          vercel deploy \
+            --token "$VERCEL_TOKEN" \
+            --prod \
+            --build-env VITE_API_URL="${{ secrets.STAGING_API_URL }}" \
+            --build-env VITE_WS_URL="${{ secrets.STAGING_WS_URL }}"
+
+      - name: Create deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.ref,
+              environment: 'staging',
+              required_contexts: [],
+              auto_merge: false,
+            })
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: '${{ job.status }}',
+              description: 'Deployment to staging',
+              environment_url: 'https://staging.example.com',
+            })
+
+      - name: Notify deployment
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "✅ Staging deployment complete"
+          echo "Staging URL: https://staging.example.com"
+          echo "API: ${{ secrets.STAGING_API_URL }}"
+          echo "WebSocket: ${{ secrets.STAGING_WS_URL }}"

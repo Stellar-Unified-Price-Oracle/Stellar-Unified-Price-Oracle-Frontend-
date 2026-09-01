@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run lint-staged to check only the files included in this commit.
+# lint-staged runs ESLint (with auto-fix), Prettier (with auto-fix), and
+# TypeScript type-checking on staged .ts/.tsx files, and Prettier on staged
+# .css/.json/.md files.
+#
+# The commit is blocked if any check fails. Auto-fixed files are amended into
+# the staged state automatically by lint-staged.
+npx --no -- lint-staged

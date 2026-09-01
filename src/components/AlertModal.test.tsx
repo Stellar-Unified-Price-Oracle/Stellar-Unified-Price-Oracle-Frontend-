@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AlertModal } from './AlertModal'
 import type { Alert } from '../types'
 import { checkAccessibility } from '../test/accessibility'
+import { AlertModal } from './AlertModal'
 
 afterEach(cleanup)
 
