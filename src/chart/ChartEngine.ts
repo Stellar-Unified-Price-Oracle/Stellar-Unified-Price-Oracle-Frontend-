@@ -1,6 +1,8 @@
 export interface ChartPoint {
   x: number
   y: number
+  /** Optional metadata for tooltip rendering. */
+  meta?: Record<string, unknown>
 }
 
 export type SeriesStyle = 'area' | 'line' | 'dashed-line'
@@ -223,4 +225,61 @@ export function computeViewport(
   const maxY = Math.max(...ys)
   const yPad = (maxY - minY) * 0.05 || 1
   return { width, height, paddingX, paddingY, minX, maxX, minY: minY - yPad, maxY: maxY + yPad }
+}
+
+/**
+ * #461 – Renders excluded-source ticks as hollow grey circles.
+ *
+ * Each point in the series is drawn as an outlined circle (no fill) so it is
+ * visually distinct from accepted values on the main area/line series.
+ */
+export function createScatterPlugin(radius = 4): ChartPlugin {
+  return {
+    name: 'scatter',
+    render(ctx, series, vp) {
+      for (const s of series) {
+        for (const pt of s.points) {
+          const cx = toCanvasX(vp, pt.x)
+          const cy = toCanvasY(vp, pt.y)
+          ctx.beginPath()
+          ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+          ctx.strokeStyle = s.color
+          ctx.lineWidth = 1.5
+          ctx.setLineDash([])
+          ctx.stroke()
+          // hollow — no fill
+        }
+      }
+    },
+  }
+}
+
+/**
+ * #463 – Renders anomaly marker triangles above flagged ticks.
+ *
+ * Points with `meta.severity === 'critical'` use red; others use amber.
+ */
+export function createAnomalyPlugin(markerSize = 6): ChartPlugin {
+  return {
+    name: 'anomaly',
+    render(ctx, series, vp) {
+      for (const s of series) {
+        for (const pt of s.points) {
+          const severity = (pt.meta?.severity as string | undefined) ?? 'warning'
+          const color = severity === 'critical' ? '#ef4444' : '#f59e0b'
+          const cx = toCanvasX(vp, pt.x)
+          const cy = toCanvasY(vp, pt.y) - markerSize - 4
+
+          // Downward-pointing triangle above the tick
+          ctx.beginPath()
+          ctx.moveTo(cx, cy + markerSize)
+          ctx.lineTo(cx - markerSize / 2, cy)
+          ctx.lineTo(cx + markerSize / 2, cy)
+          ctx.closePath()
+          ctx.fillStyle = color
+          ctx.fill()
+        }
+      }
+    },
+  }
 }

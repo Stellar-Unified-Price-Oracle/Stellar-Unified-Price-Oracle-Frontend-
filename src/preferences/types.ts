@@ -39,6 +39,8 @@ export interface PrivacyPreferences {
   analyticsOptOut?: boolean
   chartTimezone: ChartTimezone
   formatLocale: LocaleCode
+  /** #461 – Whether to render excluded-outlier source ticks on the price chart. */
+  showExcludedSources: boolean
 }
 
 /**

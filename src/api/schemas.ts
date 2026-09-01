@@ -15,12 +15,20 @@ export const PriceDataSchema = z.object({
 /**
  * Strict Zod schema for {@link import('../types/price').PriceHistoryEntry}.
  * All fields are required. Extra properties are stripped.
+ * `excludedSources` is optional — present only when the API includes exclusion metadata (#461).
  */
+export const ExcludedSourceTickSchema = z.object({
+  source: z.string().min(1),
+  reportedPrice: z.number().finite(),
+  reason: z.string(),
+})
+
 export const PriceHistoryEntrySchema = z.object({
   price: z.number().finite(),
   timestamp: z.number().int().min(0),
   confidence: z.number().min(0).max(1),
   sources: z.array(z.string().min(1)),
+  excludedSources: z.array(ExcludedSourceTickSchema).optional(),
 })
 
 export const PriceHistoryResponseSchema = z.object({
