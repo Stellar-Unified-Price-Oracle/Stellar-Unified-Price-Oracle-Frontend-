@@ -42,7 +42,7 @@ jobs:
       # (first run, or cache evicted) just means the comment reports current
       # numbers without a delta — never blocks the job.
       - name: Restore Lighthouse baseline
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: lighthouse-baseline.json
           key: lighthouse-baseline-${{ github.base_ref || github.ref_name }}-${{ github.sha }}
@@ -73,7 +73,7 @@ jobs:
       # On main, refresh the baseline that PR runs diff against.
       - name: Save Lighthouse baseline
         if: github.event_name == 'push'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: lighthouse-baseline.json
           key: lighthouse-baseline-${{ github.ref_name }}-${{ github.sha }}
