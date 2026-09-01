@@ -1,10 +1,19 @@
-import { useMemo, useState, type ReactElement } from 'react'
+import { useMemo, useRef, useState, type ReactElement } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useAlerts } from '../hooks/useAlerts'
 import { formatPrice, formatTimestamp } from '../utils/format'
 import { loadExportUtils } from '../utils/deferredExports'
 import type { AlertHistoryEntry } from '../types'
+
+// #507 — long alert histories (1k+ entries) render every row without this;
+// only virtualize once the list is long enough to matter so short lists keep
+// their previous simple markup.
+const ROW_HEIGHT_PX = 68
+const VIRTUALIZE_THRESHOLD = 50
+const OVERSCAN_ROWS = 8
+const SCROLL_CONTAINER_MAX_HEIGHT_PX = 480
 
 function conditionText(entry: AlertHistoryEntry, t: TFunction): string {
   if (entry.percentageMode) {
@@ -27,12 +36,30 @@ export function AlertHistoryLog(): ReactElement {
   const { alertHistory, clearAlertHistory } = useAlerts()
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
 
+  // Search operates over the full (unvirtualized) history so it's honest
+  // about what matches, independent of what's currently mounted (#507).
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return alertHistory
     return alertHistory.filter((e) => e.assetPair.toLowerCase().includes(q))
   }, [alertHistory, search])
+
+  const isVirtual = filtered.length > VIRTUALIZE_THRESHOLD
+
+  const rowVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT_PX,
+    overscan: OVERSCAN_ROWS,
+  })
+
+  const virtualRows = isVirtual ? rowVirtualizer.getVirtualItems() : null
+  const totalSize = isVirtual ? rowVirtualizer.getTotalSize() : filtered.length * ROW_HEIGHT_PX
+  const paddingTop = virtualRows && virtualRows.length > 0 ? virtualRows[0].start : 0
+  const paddingBottom =
+    virtualRows && virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0
 
   const handleExportCsv = async (): Promise<void> => {
     const { alertHistoryToCsvRows, downloadFile, exportFilename, toCsv } =
@@ -105,34 +132,47 @@ export function AlertHistoryLog(): ReactElement {
       ) : filtered.length === 0 ? (
         <p className="text-center py-8 text-sm text-gray-500">{t('alertPanel.history.noResults')}</p>
       ) : (
-        <ul className="space-y-2">
-          {filtered.map((entry) => (
-            <li key={entry.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-white text-sm flex items-center gap-1.5">
-                  {entry.assetPair}
-                  {/* #487 — distinguish escalation-step firings from the initial trigger */}
-                  {entry.escalation && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
-                      {t('alertPanel.escalation.historyBadge', { channel: t(`alertModal.escalation.channel_${entry.escalation.channel}`) })}
+        // #507 — long alert histories (1k+ entries) are windowed with
+        // @tanstack/react-virtual so only visible rows are mounted; short
+        // lists render every row directly, same as before.
+        <div
+          ref={scrollRef}
+          style={isVirtual ? { maxHeight: SCROLL_CONTAINER_MAX_HEIGHT_PX, overflowY: 'auto' } : undefined}
+        >
+          <ul className="space-y-2">
+            {paddingTop > 0 && <li aria-hidden="true" style={{ height: paddingTop }} />}
+            {(virtualRows ?? filtered.map((_, index) => ({ index }))).map(({ index }) => {
+              const entry = filtered[index]
+              return (
+                <li key={entry.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-white text-sm flex items-center gap-1.5">
+                      {entry.assetPair}
+                      {/* #487 — distinguish escalation-step firings from the initial trigger */}
+                      {entry.escalation && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+                          {t('alertPanel.escalation.historyBadge', { channel: t(`alertModal.escalation.channel_${entry.escalation.channel}`) })}
+                        </span>
+                      )}
+                      {/* #491 — flag retest-enabled alert fire sequence entries */}
+                      {entry.retest && entry.retest.kind === 'retest' && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+                          {t('alertPanel.retest.historyBadge')}
+                        </span>
+                      )}
                     </span>
-                  )}
-                  {/* #491 — flag retest-enabled alert fire sequence entries */}
-                  {entry.retest && entry.retest.kind === 'retest' && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
-                      {t('alertPanel.retest.historyBadge')}
-                    </span>
-                  )}
-                </span>
-                <span className="text-xs text-gray-500">{formatTimestamp(entry.triggeredAt)}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-400 font-mono">{conditionText(entry, t)}</span>
-                <span className="text-gray-300 font-mono">{t('alertPanel.history.priceAt', { price: formatPrice(entry.price) })}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
+                    <span className="text-xs text-gray-500">{formatTimestamp(entry.triggeredAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-400 font-mono">{conditionText(entry, t)}</span>
+                    <span className="text-gray-300 font-mono">{t('alertPanel.history.priceAt', { price: formatPrice(entry.price) })}</span>
+                  </div>
+                </li>
+              )
+            })}
+            {paddingBottom > 0 && <li aria-hidden="true" style={{ height: paddingBottom }} />}
+          </ul>
+        </div>
       )}
     </div>
   )

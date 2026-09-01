@@ -172,6 +172,13 @@ Rules:
 - Reference issues with `Closes #123` or `Refs #456` in the footer.
 - One logical change per commit. Do not bundle unrelated fixes.
 
+### Signed commits
+
+Please sign your commits (SSH or GPG) so history is independently verifiable — see
+[`docs/PROVENANCE.md`](./docs/PROVENANCE.md) for setup steps. Release artifacts built
+from `main` carry a signed SLSA build provenance attestation; signed commits give the
+same guarantee for the source history that produced them.
+
 ---
 
 ## Pull Request Workflow

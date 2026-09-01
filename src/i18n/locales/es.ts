@@ -9,6 +9,7 @@ const es = {
   },
   footer: {
     text: 'Stellar Unified Price Oracle · Portal de desarrolladores y panel de análisis',
+    securityLink: 'Seguridad',
   },
 
   dashboard: {

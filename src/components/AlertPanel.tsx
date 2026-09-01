@@ -42,6 +42,8 @@ import { formatPrice } from '../utils/format'
 import type { Alert, AlertSnoozeDuration } from '../types'
 import { computeAlertStats, alertStatsToExportRow } from '../utils/alertAnalytics'
 import { toCsv, downloadFile } from '../utils/export'
+import { useAlertHealth } from '../hooks/useAlertHealth'
+import type { AlertHealthFlag } from '../utils/alertHealthCheck'
 import { AlertHistoryLog } from './AlertHistoryLog'
 import { AlertAnalyticsStrip } from './AlertAnalyticsStrip'
 
@@ -109,6 +111,57 @@ function RetestBadge({ alert }: { alert: Alert }): ReactElement | null {
   )
 }
 
+/**
+ * #493 — Health flag badge: warns when an alert's condition has never been
+ * satisfiable against observed history, with a "Review" affordance that reveals
+ * the reason + a percentile-grounded suggested value, and a dismiss action.
+ * Purely informational — never fires a notification.
+ */
+function HealthFlagBadge({ flag, onDismiss }: { flag: AlertHealthFlag; onDismiss: () => void }): ReactElement {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30 transition-colors"
+        aria-expanded={open}
+      >
+        ⚠ {t('alertPanel.health.badge')}
+      </button>
+      {open && (
+        <div className="mt-1.5 p-2 rounded-lg bg-gray-800/80 border border-gray-700 text-[11px] text-gray-300 space-y-1">
+          {flag.issues.map((issue) => (
+            <div key={issue.conditionId}>
+              <p>
+                {issue.reason === 'thresholdNeverSatisfiable'
+                  ? t('alertPanel.health.reasonNeverSatisfiable')
+                  : t('alertPanel.health.reasonInsufficientHistory')}
+              </p>
+              {issue.suggestedValue !== null && (
+                <p className="text-cyan-400">
+                  {t('alertPanel.health.suggestion', {
+                    value: issue.field === 'price' ? formatPrice(issue.suggestedValue) : `${issue.suggestedValue.toFixed(2)}%`,
+                  })}
+                </p>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="text-gray-500 hover:text-gray-300 underline"
+          >
+            {t('alertPanel.health.dismiss')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const SNOOZE_DURATIONS: { value: AlertSnoozeDuration; labelKey: string }[] = [
   { value: '15min', labelKey: 'alertPanel.snooze.15min' },
   { value: '1hr', labelKey: 'alertPanel.snooze.1hr' },
@@ -122,6 +175,8 @@ export function AlertPanel(): ReactElement | null {
   const { t } = useTranslation()
   const [snoozeOpenId, setSnoozeOpenId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'alerts' | 'history'>('alerts')
+  // #493 – never-firing misconfiguration flags for active alerts.
+  const { flags: healthFlags, dismiss: dismissHealthFlag } = useAlertHealth(alerts)
 
   const handleExportAnalytics = useCallback(() => {
     const HEADERS = ['alertId', 'fireCount', 'avgTimeToFire', 'maxTimeToFire', 'hitRatePerDay', 'thresholdHint']
@@ -415,6 +470,12 @@ export function AlertPanel(): ReactElement | null {
                           <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                           <EscalationProgress alert={alert} />
                           <RoutingBadge alert={alert} />
+                          {healthFlags.find((f) => f.alertId === alert.id) && (
+                            <HealthFlagBadge
+                              flag={healthFlags.find((f) => f.alertId === alert.id)!}
+                              onDismiss={() => dismissHealthFlag(alert.id)}
+                            />
+                          )}
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button

@@ -36,6 +36,11 @@ jobs:
         env:
           VITE_USE_MOCK: 'true'
 
+      # Fail CI when a new CDN script/stylesheet is added without an `integrity`
+      # attribute and without a reviewed exception in sri-exceptions.json.
+      - name: Subresource Integrity check
+        run: node scripts/check-sri.js
+
       - run: npm run test:run
 
       # Upload hidden source maps to Sentry for production error tracking,
@@ -152,7 +157,9 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # write is only exercised by the size-history commit step below, which
+      # only runs on pushes to main (never on PRs, dependabot's included).
+      contents: write
       pull-requests: write
 
     steps:
@@ -170,6 +177,12 @@ jobs:
         env:
           VITE_USE_MOCK: 'true'
 
+      # Machine-readable budget results (name/size/sizeLimit/passed per
+      # check), captured before the pass/fail step below so a breach is still
+      # recorded for the history/comment steps that read this file (#511).
+      - name: Record bundle size results
+        run: npx size-limit --json --silent > reports/size-limit.json
+
       - name: Check bundle size against budgets
         run: npm run size-limit
 
@@ -180,11 +193,46 @@ jobs:
           path: reports/bundle-analysis.html
           retention-days: 90
 
+      # Dependabot-authored PRs get a read-only GITHUB_TOKEN on the pull_request
+      # event (a GitHub security restriction), so this job cannot comment
+      # directly on them — dependabot-bundle-size.yml picks this artifact up
+      # via workflow_run (which runs with normal repo permissions) instead.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: size-limit-result
+          path: reports/size-limit.json
+          retention-days: 90
+
+      # Appends this run's sizes to the checked-in history file so budget
+      # trends are visible over time (#511), not just per-PR. Only on pushes
+      # to main — PR branches don't get history commits.
+      - name: Record size history
+        if: >
+          !cancelled() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('reports/size-limit.json', 'utf-8'));
+            const entry = {
+              sha: process.env.GITHUB_SHA,
+              date: new Date().toISOString(),
+              results: results.map(r => ({ name: r.name, size: r.size, sizeLimit: r.sizeLimit, passed: r.passed })),
+            };
+            fs.appendFileSync('.github/bundle-size-history.jsonl', JSON.stringify(entry) + '\n');
+          "
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .github/bundle-size-history.jsonl
+          git diff --cached --quiet || git commit -m 'chore(bundle-size): record size history [skip ci]'
+          git push
+
       # Comments the gzip/brotli size diff between this PR and its base branch,
       # using the same size-limit config as the budget check above. Advisory —
-      # a failure here shouldn't block the build.
+      # a failure here shouldn't block the build. Does not fire for Dependabot
+      # PRs (read-only token — see dependabot-bundle-size.yml instead).
       - name: Compare bundle size to base branch
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
         continue-on-error: true
         uses: andresz1/size-limit-action@v1
         with:
@@ -220,6 +268,32 @@ jobs:
         env:
           # Override with a real backend URL in repository secrets when available.
           VITE_API_URL: ${{ vars.BACKEND_API_URL || 'http://localhost:3000' }}
+
+  # ── IndexedDB write-burst benchmark ─────────────────────────────────────────
+  # Guards against reintroducing per-write eviction scans / transaction
+  # overhead in the useIdbQuery/useIndexedDB layer (#510). See
+  # scripts/bench-idb.mjs and docs/STORAGE_BUDGET.md.
+  #
+  # Advisory (continue-on-error): timings vary across shared CI runners, so
+  # this reports regressions without blocking merges on runner noise.
+  idb-benchmark:
+    needs: [frontend]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Benchmark IndexedDB write bursts
+        run: npm run bench:idb
 
   # ── Deploy to Staging ───────────────────────────────────────────────────────
   # Automatically deploys the main branch to a staging environment after all

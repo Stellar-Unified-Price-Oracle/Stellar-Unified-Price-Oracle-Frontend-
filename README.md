@@ -1,4 +1,5 @@
 [![CI](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml/badge.svg)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-)
 [![Bundle JS](https://img.shields.io/badge/JS-%3C200%20kB-44cc11?logo=javascript&labelColor=1a1a2e)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
 [![Bundle CSS](https://img.shields.io/badge/CSS-%3C50%20kB-44cc11?logo=css3&labelColor=1a1a2e)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -13,8 +14,10 @@ A real-time dashboard for the Stellar Unified Price Oracle & Aggregator. Display
 
 **Live Site:** https://stellar-price-oracle.example.com  
 **API Documentation:** [docs/README.md](docs/README.md)  
+**SDK Quickstarts:** [docs/sdk-quickstart.md](docs/sdk-quickstart.md)  
 **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md)  
 **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
+**Security & Vulnerability Disclosure:** [SECURITY.md](SECURITY.md) · [/security](https://stellar-price-oracle.example.com/security) · [/.well-known/security.txt](https://stellar-price-oracle.example.com/.well-known/security.txt)  
 
 ---
 
@@ -126,6 +129,7 @@ See [Local HTTPS Setup Guide](./docs/https-setup.md) for more information.
 | `npm run format:check` | Check formatting without writing files |
 | `npm run build:analyze` | Build and open an interactive bundle treemap |
 | `npm run size-limit` | Check bundle size against CI budgets |
+| `npm run lhci` | Run Lighthouse CI locally against a production build |
 
 ## Build
 
@@ -145,6 +149,21 @@ npm run preview        # preview production build locally
 | CSS | 50 kB | Enforced in CI |
 
 The CI pipeline generates a [bundle-stats.html](./reports/bundle-stats.html) report using `rollup-plugin-visualizer` — an interactive treemap of the production bundle. This report is uploaded as a CI artifact on every build.
+
+### Lighthouse CI Budgets (#503)
+
+The `Lighthouse CI` workflow (`.github/workflows/lighthouse.yml`) runs on every PR against a real
+production build (`npm run build` + `vite preview`), checking the `/` and `/dashboard` routes:
+
+| Metric | Budget |
+|---|---|
+| Largest Contentful Paint (LCP) | ≤ 2500 ms |
+| Cumulative Layout Shift (CLS) | ≤ 0.1 |
+| Total Blocking Time (TBT) | ≤ 300 ms |
+| Accessibility score | ≥ 90 |
+
+A violation fails the job. Results — including the delta against the last run on `main` — are
+posted as a PR comment. Budgets live in [`.lighthouserc.json`](./.lighthouserc.json).
 
 ## API Endpoints Consumed
 

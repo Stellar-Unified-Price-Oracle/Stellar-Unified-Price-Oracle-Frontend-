@@ -33,7 +33,8 @@
     "test:e2e:mobile": "playwright test --grep @mobile",
     "test:e2e:responsive": "playwright test e2e/responsive.spec.ts e2e/mobile-responsive.spec.ts",
     "check:api-version": "node scripts/check-api-version.js",
-    "generate:openapi": "npx openapi-typescript ${BACKEND_OPENAPI_URL:-http://localhost:3000/openapi.json} --output src/api/openapi-types.ts"
+    "generate:openapi": "npx openapi-typescript ${BACKEND_OPENAPI_URL:-http://localhost:3000/openapi.json} --output src/api/openapi-types.ts",
+    "lhci": "npx @lhci/cli@0.14.x autorun --config=.lighthouserc.json"
   },
   "size-limit": [
     {

@@ -88,7 +88,44 @@ export class FakeWebSocket {
   }
 
   simulateMessage(data: unknown): void {
-    const event = new MessageEvent('message', { data: JSON.stringify(data) })
+    this.dispatchMessageEvent(JSON.stringify(data))
+  }
+
+  /**
+   * Sends a raw string as the message event's `data`, bypassing
+   * `JSON.stringify` (#474). Use this to simulate a partial/truncated frame
+   * or non-JSON garbage that a real flaky connection might deliver —
+   * `simulateMessage` can only ever produce well-formed JSON, so
+   * malformed-payload tests need this instead.
+   */
+  simulateRawMessage(raw: string): void {
+    this.dispatchMessageEvent(raw)
+  }
+
+  /**
+   * Dispatches each message in `messages`, in the exact array order given —
+   * pair with out-of-sequence `seq` values to simulate a real unstable
+   * connection re-ordering or re-delivering frames (#474).
+   */
+  simulateOutOfOrder(messages: unknown[]): void {
+    messages.forEach((m) => this.simulateMessage(m))
+  }
+
+  /**
+   * Dispatches `messages` in order, silently skipping the ones at
+   * `dropIndices` — as if a lossy connection had simply never delivered
+   * them (#474). Silent drops are the default/expected shape of packet loss:
+   * nothing arrives, nothing errors.
+   */
+  simulateWithDrops(messages: unknown[], dropIndices: number[]): void {
+    const drops = new Set(dropIndices)
+    messages.forEach((m, i) => {
+      if (!drops.has(i)) this.simulateMessage(m)
+    })
+  }
+
+  private dispatchMessageEvent(data: string): void {
+    const event = new MessageEvent('message', { data })
 
     if (this.options.messageLatency != null && this.options.messageLatency > 0) {
       setTimeout(() => this.onmessage?.(event), this.options.messageLatency)

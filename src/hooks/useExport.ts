@@ -1,14 +1,6 @@
 import { useCallback } from 'react'
 import type { PriceData } from '../types'
-import {
-  toCsv,
-  priceDataToCsvRows,
-  priceDataToJsonRows,
-  priceDataToXlsx,
-  downloadFile,
-  downloadBinaryFile,
-  exportFilename,
-} from '../utils/export'
+import { loadExportUtils } from '../utils/deferredExports'
 import { useRateLimit } from './useRateLimit'
 
 export type ExportFormat = 'csv' | 'json' | 'xlsx'
@@ -34,40 +26,23 @@ export interface UseExportReturn {
 export function useExport(): UseExportReturn {
   const { allowed: exportAllowed, cooldownSec: exportCooldownSec, consume } = useRateLimit('export')
 
-  const exportCSV = useCallback(
-    (items: PriceData[], columns?: string[]) => {
-      if (!consume()) return
-      const { rows, headers } = priceDataToCsvRows(items, columns)
-      const csv = toCsv(rows, headers)
-      downloadFile(csv, exportFilename('oracle-prices', 'csv'), 'text/csv')
-    },
-    [consume],
-  )
-
-  const exportJSON = useCallback(
-    (items: PriceData[], columns?: string[]) => {
-      if (!consume()) return
-      const json = JSON.stringify(priceDataToJsonRows(items, columns), null, 2)
-      downloadFile(json, exportFilename('oracle-prices', 'json'), 'application/json')
-    },
-    [consume],
-  )
-
-  const exportXLSX = useCallback(
-    (items: PriceData[], columns?: string[]) => {
-      if (!consume()) return
-      const xlsx = priceDataToXlsx(items, columns)
-      downloadBinaryFile(
-        xlsx,
-        exportFilename('oracle-prices', 'xlsx'),
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      )
-    },
-    [consume],
-  )
-
   const exportData = useCallback(
-    (format: ExportFormat, items: PriceData[], columns?: string[]) => {
+    async (format: ExportFormat, items: PriceData[], columns?: string[]) => {
+      // Consume a single token for the aggregated exportData call so callers
+      // using exportData directly are also rate-limited.
+      if (!consume()) return
+      // Export generators (csv/xlsx encoding, file download plumbing) are only
+      // pulled into a chunk once the user actually triggers an export.
+      const {
+        downloadBinaryFile,
+        downloadFile,
+        exportFilename,
+        priceDataToCsvRows,
+        priceDataToJsonRows,
+        priceDataToXlsx,
+        toCsv,
+      } = await loadExportUtils()
+
       if (format === 'json') {
         exportJSON(items, columns)
       } else if (format === 'xlsx') {

@@ -1,0 +1,85 @@
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ── Lighthouse budget enforcement (#503) ─────────────────────────────────────
+# Runs Lighthouse against a real production build (via `vite preview`) for the
+# key routes and enforces budgets for LCP, CLS, TBT, and the accessibility
+# score. Fails the job on any violation, and posts (or updates) a single PR
+# comment with the results and the delta against the last run on main.
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_USE_MOCK: 'true'
+
+      # Baseline from the last successful run on the base branch, used to
+      # compute the score/metric deltas shown in the PR comment. A cache miss
+      # (first run, or cache evicted) just means the comment reports current
+      # numbers without a delta — never blocks the job.
+      - name: Restore Lighthouse baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: lighthouse-baseline.json
+          key: lighthouse-baseline-${{ github.base_ref || github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            lighthouse-baseline-${{ github.base_ref || github.ref_name }}-
+
+      - name: Run Lighthouse CI
+        run: npx @lhci/cli@0.14.x autorun --config=.lighthouserc.json
+        continue-on-error: true
+        id: lhci
+
+      - name: Report results
+        run: node scripts/lighthouse-report.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASELINE_SUMMARY: lighthouse-baseline.json
+          BASELINE_OUT: lighthouse-baseline.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+          retention-days: 30
+
+      # On main, refresh the baseline that PR runs diff against.
+      - name: Save Lighthouse baseline
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: lighthouse-baseline.json
+          key: lighthouse-baseline-${{ github.ref_name }}-${{ github.sha }}
+
+      # Fail the job if either the assertion stage or the budget check in the
+      # report script found a violation.
+      - name: Fail on budget violation
+        if: steps.lhci.outcome == 'failure'
+        run: exit 1

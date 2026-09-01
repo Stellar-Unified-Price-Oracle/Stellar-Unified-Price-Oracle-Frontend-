@@ -14,6 +14,12 @@ export const config = {
   useMock: env.VITE_USE_MOCK === 'true',
   logLevel: env.VITE_LOG_LEVEL,
   stellarNetwork: env.VITE_STELLAR_NETWORK,
+  auth: {
+    githubClientId: env.VITE_OAUTH_GITHUB_CLIENT_ID,
+    googleClientId: env.VITE_OAUTH_GOOGLE_CLIENT_ID,
+    // How often to silently re-check the session cookie is still valid (#501).
+    sessionCheckIntervalMs: 5 * 60_000,
+  },
   refreshInterval: 10_000,
   wsReconnectDelay: 3_000,
   wsBroadcastInterval: 5_000,

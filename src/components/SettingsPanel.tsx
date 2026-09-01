@@ -1,6 +1,7 @@
 import { useState, useCallback, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePreferences } from '../preferences/PreferencesContext'
+import { usePriceContext } from '../context/PriceContext'
 import {
   REFRESH_INTERVAL_OPTIONS,
   CHART_RANGE_OPTIONS,
@@ -8,7 +9,7 @@ import {
   CHART_TIMEZONE_OPTIONS,
   FORMAT_LOCALE_OPTIONS,
 } from '../preferences/constants'
-import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, orderByRecentlyUsed, type SupportedLanguage } from '../i18n'
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, type SupportedLanguage } from '../i18n'
 import { clearAllData, getLocalStorageSize, writeRaw, STORAGE_KEYS } from '../utils/storage'
 import { loadSoundPreferences, saveSoundPreferences } from '../utils/soundPreferences'
 import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
@@ -60,9 +61,11 @@ function AccessibilityToggle({
 export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
   const { preferences, updatePreference, undo, redo, canUndo, canRedo, clearHistory } =
     usePreferences()
+  const { clearPriceCache } = usePriceContext()
   const { t, i18n } = useTranslation()
   const [clearStatus, setClearStatus] = useState<'idle' | 'confirming' | 'clearing' | 'done'>('idle')
   const [soundPrefs, setSoundPrefs] = useState(loadSoundPreferences)
+  const [priceCacheStatus, setPriceCacheStatus] = useState<'idle' | 'clearing' | 'done'>('idle')
 
   const storageSize = getLocalStorageSize()
 
@@ -81,6 +84,13 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
   const handleClearCancel = useCallback(() => {
     setClearStatus('idle')
   }, [])
+
+  const handleClearPriceCache = useCallback(async () => {
+    setPriceCacheStatus('clearing')
+    await clearPriceCache()
+    setPriceCacheStatus('done')
+    setTimeout(() => setPriceCacheStatus('idle'), 1500)
+  }, [clearPriceCache])
 
   const handleSoundEnabledChange = useCallback((enabled: boolean) => {
     setSoundPrefs((prev) => {
@@ -369,6 +379,21 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
                 Includes alert thresholds, notification config, theme preference, and cached
                 price data. No passwords, API keys, or personal information are stored.
               </p>
+
+              {/* Offline price snapshot (#470) — scoped clear, distinct from "clear everything" below. */}
+              <button
+                type="button"
+                onClick={() => void handleClearPriceCache()}
+                disabled={priceCacheStatus === 'clearing'}
+                className="w-full px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors disabled:opacity-40"
+                aria-label="Clear cached offline price snapshot"
+              >
+                {priceCacheStatus === 'done'
+                  ? 'Offline price cache cleared'
+                  : priceCacheStatus === 'clearing'
+                    ? 'Clearing…'
+                    : 'Clear cached offline prices'}
+              </button>
 
               {clearStatus === 'idle' && (
                 <button

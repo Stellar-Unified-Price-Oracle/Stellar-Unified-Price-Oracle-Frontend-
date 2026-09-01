@@ -1,5 +1,11 @@
 import { config } from '../config'
-import type { WsMessage, WsSubscribeMessage, WsUnsubscribeMessage } from '../types'
+import type {
+  WsMessage,
+  WsSubscribeMessage,
+  WsUnsubscribeMessage,
+  WsPauseMessage,
+  WsResumeMessage,
+} from '../types'
 import { wsAnalytics } from '../utils/wsAnalytics'
 import { recordWsMessageTiming } from '../utils/performanceMonitor'
 import { WS_PROTOCOL_VERSION } from './version'
@@ -16,6 +22,7 @@ type StatusHandler = (status: ConnectionStatus) => void
  * - `disconnected` — cleanly closed (e.g. explicit {@link WebSocketClient.disconnect})
  * - `waiting`      — in the backoff window before the next reconnect attempt
  * - `dead`         — max retries exhausted; no further reconnect will occur
+ * - `paused`       — connected, but inbound updates are paused under backpressure (#469)
  */
 export type ConnectionStatus =
   | 'connecting'
@@ -24,6 +31,7 @@ export type ConnectionStatus =
   | 'reconnecting'
   | 'waiting'
   | 'dead'
+  | 'paused'
 
 /** Diagnostics exposed via the client for use in UI components. */
 export interface ConnectionDiagnostics {
@@ -37,6 +45,10 @@ export interface ConnectionDiagnostics {
   protocolVersion?: number | null
   /** True when the server speaks a newer protocol than this client supports (#472). */
   protocolUpgradeRequired?: boolean
+  /** True while inbound updates are auto-paused under backpressure (#469). */
+  isPaused?: boolean
+  /** Which realtime transport is currently active (#471). Only set by {@link RealtimeClient}. */
+  transport?: 'ws' | 'sse'
 }
 
 const supportsDecompression = typeof DecompressionStream !== 'undefined'
@@ -65,23 +77,32 @@ async function decompress(data: Blob): Promise<string> {
   }
 }
 
-// Reconnection configuration
-const INITIAL_DELAY_MS = 1_000
-const MAX_DELAY_MS = 30_000
-const MAX_RETRIES = 20
+// Reconnection configuration. Exported (#471) so the SSE fallback transport
+// (`sseTransport.ts`) shares the exact same backoff/heartbeat behaviour.
+export const INITIAL_DELAY_MS = 1_000
+export const MAX_DELAY_MS = 30_000
+export const MAX_RETRIES = 20
 
 // Heartbeat configuration
-const HEARTBEAT_INTERVAL_MS = 30_000
-const HEARTBEAT_TIMEOUT_MS = 10_000
+export const HEARTBEAT_INTERVAL_MS = 30_000
+export const HEARTBEAT_TIMEOUT_MS = 10_000
 
 /**
  * Full-jitter exponential backoff: returns a random value in [0, min(initial * 2^attempt, max)].
  * This avoids thundering-herd reconnect storms.
  */
-function jitteredBackoff(attempt: number): number {
+export function jitteredBackoff(attempt: number): number {
   const cap = Math.min(INITIAL_DELAY_MS * Math.pow(2, attempt), MAX_DELAY_MS)
   return Math.random() * cap
 }
+
+// Backpressure configuration (#469). The browser dispatches WS messages
+// synchronously, so there is no literal inbound "queue" to inspect — instead
+// we approximate queue depth with the inbound message rate over a rolling
+// window, which is what actually saturates the UI when a flood hits.
+const BACKPRESSURE_WINDOW_MS = 1_000
+const BACKPRESSURE_HIGH_WATER_MARK = 40 // msgs/sec — auto-pause above this
+const BACKPRESSURE_LOW_WATER_MARK = 10 // msgs/sec — auto-resume at/below this
 
 /**
  * Manages a single WebSocket connection to the price feed server.
@@ -99,6 +120,11 @@ function jitteredBackoff(attempt: number): number {
  * - **Rate-limit awareness**: pauses reconnection when `rateLimitManager` reports
  *   a `limited` status and resumes after the retry-after window
  * - **Diagnostics**: `retryCount`, `lastConnectedAt`, `totalDisconnections`
+ * - **Compression metrics (#468)**: when the server sends a compressed (Blob) frame,
+ *   the wire size vs. decoded size is recorded via `wsAnalytics.recordCompression`
+ * - **Backpressure (#469)**: auto-sends `{action:'pause'}` when the inbound message
+ *   rate exceeds a high-water mark, `{action:'resume'}` once it drains — surfaced as
+ *   the `paused` connection status and `diagnostics.isPaused`
  */
 export class WebSocketClient {
   private ws: WebSocket | null = null
@@ -122,7 +148,15 @@ export class WebSocketClient {
   private subscribedPairs = new Set<string>()
   private useCompression = false
 
-  // Outbound message buffer (queue while disconnected)
+  // Outbound message buffer (#474): subscribe/unsubscribe calls made while
+  // disconnected land here instead of hitting a closed socket. It is not
+  // replayed raw on reconnect — `subscribedPairs` already captures the net
+  // *effect* of every queued call, and `onopen` sends one fresh subscribe
+  // for that final set (see the `re-subscribes on reconnect` test), so
+  // replaying the raw log too would just duplicate that. It exists to give
+  // `send()` somewhere safe to put a message instead of writing to a
+  // closed/connecting socket, and is cleared once reconnection reconciles
+  // the subscription state.
   private outboundQueue: string[] = []
 
   // Duplicate/ordering protection
@@ -131,6 +165,11 @@ export class WebSocketClient {
   // Heartbeat
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null
   private heartbeatTimeout: ReturnType<typeof setTimeout> | null = null
+
+  // Backpressure (#469) — rolling inbound message count + auto pause/resume state
+  private backpressureTimer: ReturnType<typeof setInterval> | null = null
+  private inboundCount = 0
+  private _isPaused = false
 
   // Diagnostics
   private _retryCount = 0
@@ -152,6 +191,7 @@ export class WebSocketClient {
       totalDisconnections: this._totalDisconnections,
       protocolVersion: this._protocolVersion,
       protocolUpgradeRequired: this._protocolUpgradeRequired,
+      isPaused: this._isPaused,
     }
   }
 
@@ -192,6 +232,52 @@ export class WebSocketClient {
       clearTimeout(this.heartbeatTimeout)
       this.heartbeatTimeout = null
     }
+  }
+
+  // ── Backpressure (#469) ─────────────────────────────────────────────────────
+
+  private startBackpressureMonitor() {
+    this.stopBackpressureMonitor()
+    this.inboundCount = 0
+    this.backpressureTimer = setInterval(() => {
+      const rate = this.inboundCount
+      this.inboundCount = 0
+      if (!this._isPaused && rate > BACKPRESSURE_HIGH_WATER_MARK) {
+        this.pauseInbound()
+      } else if (this._isPaused && rate <= BACKPRESSURE_LOW_WATER_MARK) {
+        this.resumeInbound()
+      }
+    }, BACKPRESSURE_WINDOW_MS)
+  }
+
+  private stopBackpressureMonitor() {
+    if (this.backpressureTimer) {
+      clearInterval(this.backpressureTimer)
+      this.backpressureTimer = null
+    }
+    this._isPaused = false
+  }
+
+  /** Tells the server to pause this subscription (high-water mark exceeded) and reflects it in `status`. */
+  private pauseInbound() {
+    this._isPaused = true
+    this.sendRaw(JSON.stringify({ action: 'pause' } satisfies WsPauseMessage))
+    this.setStatus('paused')
+  }
+
+  /**
+   * Tells the server to resume this subscription (drained below the low-water mark) and
+   * re-sends the current subscription set so the server can replay anything missed (#469).
+   */
+  private resumeInbound() {
+    this._isPaused = false
+    this.sendRaw(JSON.stringify({ action: 'resume' } satisfies WsResumeMessage))
+    if (this.subscribedPairs.size > 0) {
+      this.sendRaw(
+        JSON.stringify({ action: 'subscribe', assetPairs: Array.from(this.subscribedPairs) }),
+      )
+    }
+    this.setStatus('connected')
   }
 
   // ── Raw send (bypasses queue logic) ────────────────────────────────────────
@@ -259,6 +345,7 @@ export class WebSocketClient {
 
       // Start heartbeat
       this.startHeartbeat()
+      this.startBackpressureMonitor()
     }
 
     // Fix: capture a reference to the stable handler Sets (not individual callbacks).
@@ -271,12 +358,16 @@ export class WebSocketClient {
 
       // Any inbound message resets the heartbeat timeout
       this.resetHeartbeatTimeout()
+      // Backpressure (#469) — count this arrival toward the current rolling window
+      this.inboundCount++
 
       try {
         let text: string
         if (e.data instanceof Blob) {
           text = supportsDecompression ? await decompress(e.data) : await e.data.text()
           this.useCompression = true
+          // #468 – permessage-deflate savings: wire size (compressed Blob) vs. decoded text size.
+          wsAnalytics.recordCompression(e.data.size, new TextEncoder().encode(text).length)
         } else {
           text = e.data as string
         }
@@ -308,6 +399,12 @@ export class WebSocketClient {
           return
         }
 
+        // #469 – server acks for our pause/resume requests are informational only;
+        // the client already flipped its local state optimistically when it sent them.
+        if (msg.type === 'paused' || msg.type === 'resumed') {
+          return
+        }
+
         messageHandlersRef.forEach((h) => h(msg))
 
         // Record end-to-end processing time for this message
@@ -320,6 +417,7 @@ export class WebSocketClient {
     this.ws.onclose = () => {
       this.useCompression = false
       this.stopHeartbeat()
+      this.stopBackpressureMonitor()
       wsAnalytics.recordDisconnect()
       this._totalDisconnections++
       this.setStatus('disconnected')
@@ -371,6 +469,7 @@ export class WebSocketClient {
     this.destroyed = true
     this.reconnectAttempt = 0
     this.stopHeartbeat()
+    this.stopBackpressureMonitor()
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     this.ws?.close()
     this.ws = null
