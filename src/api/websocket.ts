@@ -148,7 +148,15 @@ export class WebSocketClient {
   private subscribedPairs = new Set<string>()
   private useCompression = false
 
-  // Outbound message buffer (queue while disconnected)
+  // Outbound message buffer (#474): subscribe/unsubscribe calls made while
+  // disconnected land here instead of hitting a closed socket. It is not
+  // replayed raw on reconnect — `subscribedPairs` already captures the net
+  // *effect* of every queued call, and `onopen` sends one fresh subscribe
+  // for that final set (see the `re-subscribes on reconnect` test), so
+  // replaying the raw log too would just duplicate that. It exists to give
+  // `send()` somewhere safe to put a message instead of writing to a
+  // closed/connecting socket, and is cleared once reconnection reconciles
+  // the subscription state.
   private outboundQueue: string[] = []
 
   // Duplicate/ordering protection

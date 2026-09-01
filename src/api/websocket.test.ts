@@ -6,7 +6,15 @@ import { WS_PROTOCOL_VERSION } from './version'
 let ws: FakeWebSocket
 
 function stubWebSocket(): void {
-  const mock = vi.fn(() => ws) as unknown as { OPEN: number; CONNECTING: number; CLOSING: number; CLOSED: number }
+  // `websocket.ts` calls `new WebSocket(url)`. A `vi.fn()` wrapping an arrow
+  // function can't be invoked with `new` (arrow functions have no
+  // `[[Construct]]`) — that throws "is not a constructor" the moment
+  // `connect()` runs. Wrapping a regular `function` instead works: `new`
+  // uses whatever object it explicitly returns, per the normal JS
+  // constructor-return-value-override rule.
+  const mock = vi.fn(function (this: unknown) {
+    return ws
+  }) as unknown as { OPEN: number; CONNECTING: number; CLOSING: number; CLOSED: number }
   mock.OPEN = FakeWebSocket.OPEN
   mock.CONNECTING = FakeWebSocket.CONNECTING
   mock.CLOSING = FakeWebSocket.CLOSING
@@ -158,6 +166,9 @@ describe('WebSocketClient', () => {
     const client = new WebSocketClient()
     client.connect()
     ws.simulateOpen()
+    // The protocol handshake is expected on open (#472) — isolate what
+    // happens after disconnect from that legitimate open-time traffic.
+    ws.sent.length = 0
     client.disconnect()
     ws.simulateClose()
     expect(ws.closed).toBe(true)
@@ -525,7 +536,11 @@ describe('WebSocketClient', () => {
     vi.advanceTimersByTime(1_000)
     expect(connectSpy).not.toHaveBeenCalled()
 
-    vi.advanceTimersByTime(1_500)
+    // Once the 2s rate-limit window clears, scheduleReconnect() re-runs and
+    // applies a *fresh* jittered backoff (up to INITIAL_DELAY_MS at attempt
+    // 0) before actually calling connect() — advance past the worst case
+    // for that jitter too, not just the rate-limit window itself.
+    vi.advanceTimersByTime(2_100)
     expect(connectSpy).toHaveBeenCalledTimes(1)
 
     rateLimitManager.clearRateLimit()
