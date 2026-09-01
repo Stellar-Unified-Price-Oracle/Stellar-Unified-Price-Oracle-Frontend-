@@ -8,6 +8,8 @@ permissions:
   contents: write
   packages: write
   pull-requests: write
+  id-token: write # OIDC identity used to sign the build provenance attestation
+  attestations: write # publish the signed attestation to the repo's attestation store
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -54,6 +56,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Package release artifact
+        if: success() && github.ref == 'refs/heads/main'
+        run: tar -C dist -czf dist.tar.gz .
+
+      # Generates a signed SLSA-style provenance attestation binding this exact
+      # artifact hash to the commit, workflow, and runner that built it, using
+      # GitHub's OIDC-backed Sigstore signing (no stored keys). A failure here
+      # stops the job, so an unattested build is never deployed from this workflow.
+      - name: Generate build provenance attestation
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'dist.tar.gz'
 
       - name: Upload to CDN (on main release)
         if: success() && github.ref == 'refs/heads/main'

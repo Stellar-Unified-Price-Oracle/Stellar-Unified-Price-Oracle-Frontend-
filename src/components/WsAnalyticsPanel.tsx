@@ -13,6 +13,13 @@ function fmt(ts: number) {
   return new Date(ts).toLocaleTimeString()
 }
 
+/** Formats a byte count compactly, e.g. 1536 -> "1.5 KB" (#468). */
+function fmtBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export const WsAnalyticsPanel = memo(function WsAnalyticsPanel() {
   const [summary, setSummary] = useState<WsAnalyticsSummary>(() => wsAnalytics.getSummary())
 
@@ -74,6 +81,15 @@ export const WsAnalyticsPanel = memo(function WsAnalyticsPanel() {
           <div className="text-gray-400">Avg latency</div>
           <div className="font-mono text-white">
             {summary.avgLatencyMs != null ? `${summary.avgLatencyMs.toFixed(0)}ms` : '—'}
+          </div>
+        </div>
+        {/* #468 – permessage-deflate savings */}
+        <div className="bg-gray-800 rounded p-2">
+          <div className="text-gray-400">Compression saved</div>
+          <div className="font-mono text-white">
+            {summary.compressionBytesSaved > 0
+              ? `${fmtBytes(summary.compressionBytesSaved)} (${((summary.compressionRatio ?? 0) * 100).toFixed(0)}%)`
+              : '—'}
           </div>
         </div>
       </div>

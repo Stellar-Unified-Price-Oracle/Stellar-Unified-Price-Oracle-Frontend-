@@ -25,8 +25,78 @@
 import { wrap, type Remote } from 'comlink'
 
 export interface WorkerPoolOptions {
-  /** Number of workers to spawn. Defaults to `navigator.hardwareConcurrency` capped at 4. */
+  /**
+   * Number of workers to spawn. When omitted, sized adaptively (#506) from
+   * `navigator.hardwareConcurrency`, capped by `maxSize`/`minSize` and
+   * reduced further on low-memory devices.
+   */
   size?: number
+  /** Upper bound on adaptive pool size. Defaults to 4. */
+  maxSize?: number
+  /** Lower bound on adaptive pool size. Defaults to 1. */
+  minSize?: number
+  /** Label used to identify this pool in {@link getWorkerPoolDiagnostics}. */
+  label?: string
+}
+
+export interface WorkerPoolDiagnostics {
+  label: string
+  size: number
+  hardwareConcurrency: number | null
+  deviceMemoryGb: number | null
+  lowMemory: boolean
+}
+
+/** Non-standard, Chrome-only. Absent in Firefox/Safari. */
+interface NavigatorWithMemory extends Navigator {
+  deviceMemory?: number
+}
+
+const DEFAULT_MAX_SIZE = 4
+const DEFAULT_MIN_SIZE = 1
+/** Devices reporting <= this much RAM (GB) are treated as low-memory (#506). */
+const LOW_MEMORY_THRESHOLD_GB = 4
+/** Worker cap applied on low-memory devices, before `maxSize` is also applied. */
+const LOW_MEMORY_MAX_WORKERS = 2
+
+function readDeviceMemoryGb(): number | null {
+  const mem = (typeof navigator !== 'undefined' ? navigator : undefined) as
+    | NavigatorWithMemory
+    | undefined
+  return typeof mem?.deviceMemory === 'number' ? mem.deviceMemory : null
+}
+
+/**
+ * Computes an adaptive pool size from the device's core count and memory
+ * (#506). Sizes toward `navigator.hardwareConcurrency`, clamped to
+ * `[minSize, maxSize]`, and additionally capped on low-memory devices
+ * (`navigator.deviceMemory <= 4` GB) to avoid oversubscribing constrained
+ * hardware.
+ */
+export function getAdaptivePoolSize(options: WorkerPoolOptions = {}): number {
+  const maxSize = options.maxSize ?? DEFAULT_MAX_SIZE
+  const minSize = options.minSize ?? DEFAULT_MIN_SIZE
+
+  if (options.size !== undefined) {
+    return Math.max(minSize, Math.min(options.size, maxSize))
+  }
+
+  const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? 2 : 2
+  const deviceMemoryGb = readDeviceMemoryGb()
+  const lowMemory = deviceMemoryGb !== null && deviceMemoryGb <= LOW_MEMORY_THRESHOLD_GB
+
+  const target = lowMemory ? Math.min(cores, LOW_MEMORY_MAX_WORKERS) : cores
+  return Math.max(minSize, Math.min(target, maxSize))
+}
+
+// ── Diagnostics registry (#506) ─────────────────────────────────────────────
+// Tracks every live pool's size so the dev diagnostics panel can display it.
+
+const registry = new Map<WorkerPool<object>, WorkerPoolDiagnostics>()
+
+/** Snapshot of every currently-live worker pool's adaptive sizing. */
+export function getWorkerPoolDiagnostics(): WorkerPoolDiagnostics[] {
+  return [...registry.values()]
 }
 
 interface PoolEntry<T extends object> {
@@ -56,13 +126,22 @@ export class WorkerPool<T extends object> {
   ) {
     if (!WorkerPool.supported) return
 
-    const size = options.size ?? Math.min(navigator.hardwareConcurrency ?? 2, 4)
+    const size = getAdaptivePoolSize(options)
 
     for (let i = 0; i < size; i++) {
       const worker = factory()
       const proxy = wrap<T>(worker)
       this.entries.push({ worker, proxy, busy: false })
     }
+
+    const deviceMemoryGb = readDeviceMemoryGb()
+    registry.set(this as unknown as WorkerPool<object>, {
+      label: options.label ?? 'unnamed',
+      size,
+      hardwareConcurrency: typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? null : null,
+      deviceMemoryGb,
+      lowMemory: deviceMemoryGb !== null && deviceMemoryGb <= LOW_MEMORY_THRESHOLD_GB,
+    })
   }
 
   /**
@@ -107,6 +186,7 @@ export class WorkerPool<T extends object> {
     }
     this.entries.length = 0
     this.queue.length = 0
+    registry.delete(this as unknown as WorkerPool<object>)
   }
 
   /** Number of workers currently executing a task. */

@@ -141,6 +141,32 @@ function idbDelete(db: IDBDatabase, store: StoreName, key: string): Promise<void
   })
 }
 
+/** Writes multiple entries in a single readwrite transaction (#510). Avoids
+ * the per-write transaction overhead of calling `idbPut` in a loop, which is
+ * the dominant cost during write bursts (each `db.transaction()` call queues
+ * its own commit). */
+function idbPutMany(db: IDBDatabase, store: StoreName, entries: CacheEntry<unknown>[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const objectStore = db.transaction(store, 'readwrite').objectStore(store)
+    let settled = false
+    objectStore.transaction.oncomplete = () => {
+      if (!settled) {
+        settled = true
+        resolve()
+      }
+    }
+    objectStore.transaction.onerror = () => {
+      if (!settled) {
+        settled = true
+        reject(objectStore.transaction.error)
+      }
+    }
+    for (const entry of entries) {
+      objectStore.put(entry)
+    }
+  })
+}
+
 function idbGetAll<T>(db: IDBDatabase, store: StoreName): Promise<CacheEntry<T>[]> {
   return new Promise((resolve, reject) => {
     const req = tx(db, store, 'readonly').getAll()
@@ -162,6 +188,34 @@ async function evict(db: IDBDatabase, store: StoreName) {
       total -= entry.size
     }
   })
+}
+
+/**
+ * Debounce window for `scheduleEvict` (#510). Eviction scans and sorts every
+ * entry in a store (`idbGetAll` + `.sort()`), which is the most expensive part
+ * of a write — paying that cost after every single `set()` during a write
+ * burst (e.g. alert history, price ticks) causes visible main-thread jank.
+ * Coalescing to one scan per burst keeps the budget enforced without the
+ * per-write cost.
+ */
+const EVICT_DEBOUNCE_MS = 500
+
+const evictTimers = new Map<StoreName, ReturnType<typeof setTimeout>>()
+
+/** Schedules `evict` to run once, shortly after the last write to `store`. */
+function scheduleEvict(db: IDBDatabase, store: StoreName): void {
+  const existing = evictTimers.get(store)
+  if (existing) clearTimeout(existing)
+  evictTimers.set(
+    store,
+    setTimeout(() => {
+      evictTimers.delete(store)
+      evict(db, store).catch(() => {
+        // Eviction failure is non-fatal — the store just stays over budget
+        // until the next successful write triggers another attempt.
+      })
+    }, EVICT_DEBOUNCE_MS),
+  )
 }
 
 // ---------- Observable Queries ----------
@@ -365,12 +419,40 @@ export const idbCache = {
       await idbPut(db, store, { key, value, size, storedAt: now, accessedAt: now })
       notifySubscribers(store, key, value)
       broadcastChange(store, key, value)
-      await evict(db, store)
+      scheduleEvict(db, store)
     } catch {
       // Cache write failure is non-fatal
       if (navigator.onLine === false) {
         await queueMutation(store, key, value)
       }
+    }
+  },
+
+  /**
+   * Writes multiple entries to `store` in a single transaction (#510).
+   * Prefer this over calling `set` in a loop for bulk/burst writes — it pays
+   * the transaction and eviction-scan cost once instead of once per entry.
+   */
+  async setMany<T>(store: StoreName, entries: Array<{ key: string; value: T }>): Promise<void> {
+    if (entries.length === 0) return
+    try {
+      const db = await openDB()
+      const now = Date.now()
+      const cacheEntries = entries.map(({ key, value }) => ({
+        key,
+        value,
+        size: byteSize(value),
+        storedAt: now,
+        accessedAt: now,
+      }))
+      await idbPutMany(db, store, cacheEntries)
+      for (const { key, value } of entries) {
+        notifySubscribers(store, key, value)
+        broadcastChange(store, key, value)
+      }
+      scheduleEvict(db, store)
+    } catch {
+      // Batch write failure is non-fatal
     }
   },
 
@@ -453,6 +535,8 @@ export const idbCache = {
     evictionMutex['locked'] = false
     evictionMutex['queue'] = []
     syncQueueEnabled = true
+    for (const timer of evictTimers.values()) clearTimeout(timer)
+    evictTimers.clear()
   },
 
   /** Disable sync queue (for testing) */

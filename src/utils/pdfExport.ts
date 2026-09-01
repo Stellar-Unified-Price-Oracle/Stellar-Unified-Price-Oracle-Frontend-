@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import type { PriceHistoryEntry } from '../types'
+import type { AggregationBreakdown } from '../types/price'
 import type { RasterizedChart } from './chartExport'
 
 export interface ExportPriceHistoryPdfOptions {
@@ -7,6 +8,8 @@ export interface ExportPriceHistoryPdfOptions {
   history: PriceHistoryEntry[]
   chart: RasterizedChart | null
   filename: string
+  /** Optional aggregation breakdown to append as a dedicated page (#459). */
+  breakdown?: AggregationBreakdown | null
 }
 
 const MARGIN = 12
@@ -55,8 +58,11 @@ function addFootersAndPageNumbers(doc: jsPDF, label: string): void {
 /**
  * Builds a PDF report combining a paginated price data table (landscape) with
  * an embedded chart image (portrait), and triggers a download (#316).
+ *
+ * When `breakdown` is provided an additional portrait page is appended showing
+ * the per-source aggregation breakdown table (#459).
  */
-export function exportPriceHistoryPdf({ pair, history, chart, filename }: ExportPriceHistoryPdfOptions): void {
+export function exportPriceHistoryPdf({ pair, history, chart, filename, breakdown }: ExportPriceHistoryPdfOptions): void {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   doc.setProperties({
     title: `${pair} Price Report`,
@@ -118,6 +124,65 @@ export function exportPriceHistoryPdf({ pair, history, chart, filename }: Export
       imgWidth = imgHeight * aspect
     }
     doc.addImage(chart.dataUrl, 'PNG', MARGIN, 22, imgWidth, imgHeight)
+  }
+
+  // Aggregation breakdown page (#459)
+  if (breakdown) {
+    doc.addPage('a4', 'portrait')
+    const pw = doc.internal.pageSize.getWidth()
+
+    doc.setFontSize(14)
+    doc.setTextColor(20)
+    doc.text(`${pair} Aggregation Breakdown`, MARGIN, 14)
+
+    doc.setFontSize(8)
+    doc.setTextColor(110)
+    const modeLabel =
+      breakdown.mode === 'weighted_mean'
+        ? 'Weighted Mean'
+        : breakdown.mode === 'median'
+          ? 'Median'
+          : 'Outlier-Excluded Mean'
+    doc.text(`Mode: ${modeLabel}  |  Aggregate: $${breakdown.aggregatePrice.toFixed(6)}`, MARGIN, 20)
+
+    // Table header
+    const bdColX = { source: MARGIN, price: MARGIN + 45, weight: MARGIN + 90, contribution: MARGIN + 120, excluded: MARGIN + 160 }
+    let by = 28
+    doc.setFontSize(9)
+    doc.setTextColor(60)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Source', bdColX.source, by)
+    doc.text('Price', bdColX.price, by)
+    doc.text('Weight', bdColX.weight, by)
+    doc.text('Contribution', bdColX.contribution, by)
+    doc.text('Excluded', bdColX.excluded, by)
+    doc.setFont('helvetica', 'normal')
+    doc.setDrawColor(210)
+    doc.line(MARGIN, by + 2, pw - MARGIN, by + 2)
+    by += ROW_HEIGHT + 2
+
+    doc.setFontSize(8)
+    doc.setTextColor(40)
+    for (const item of breakdown.sources) {
+      doc.text(item.source, bdColX.source, by)
+      doc.text(`$${item.price.toFixed(6)}`, bdColX.price, by)
+      doc.text(`${(item.weight * 100).toFixed(1)}%`, bdColX.weight, by)
+      doc.text(item.excluded ? '—' : `$${item.contribution.toFixed(6)}`, bdColX.contribution, by)
+      doc.text(item.excluded ? 'yes' : 'no', bdColX.excluded, by)
+      by += ROW_HEIGHT
+    }
+
+    // Aggregate total row
+    doc.setDrawColor(180)
+    doc.line(MARGIN, by, pw - MARGIN, by)
+    by += 2
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(20)
+    doc.text('Aggregate', bdColX.source, by)
+    doc.text(`$${breakdown.aggregatePrice.toFixed(6)}`, bdColX.price, by)
+    doc.text('100%', bdColX.weight, by)
+    doc.text(`$${breakdown.aggregatePrice.toFixed(6)}`, bdColX.contribution, by)
+    doc.setFont('helvetica', 'normal')
   }
 
   addFootersAndPageNumbers(doc, `${pair} · Stellar Unified Price Oracle`)

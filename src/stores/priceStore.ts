@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ConnectionStatus } from '../api/websocket'
 import type { RateLimitStatus } from '../api/rateLimit'
 import type { LivePriceEntry } from '../types'
+import { registerMemoryProbe } from '../utils/memoryProfiler'
 
 /**
  * Zustand store for price-related state.
@@ -53,3 +54,8 @@ export const usePriceStore = create<PriceState>((set) => ({
       return { livePrices: next }
     }),
 }))
+
+// #504 — report live price entry count to the memory profiling harness. The
+// store is a module-level singleton, so this probe lives for the app's
+// whole lifetime with no unmount to unregister on.
+registerMemoryProbe('priceStore', () => usePriceStore.getState().livePrices.size)

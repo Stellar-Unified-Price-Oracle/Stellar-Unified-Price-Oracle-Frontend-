@@ -31,6 +31,7 @@ import { FilterPanel, readFilterState, countActiveFilters } from '../components/
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
+import { StaleDataWarningBanner } from '../components/StaleDataWarningBanner'
 import type { AlertFormData, LivePriceEntry, PriceData } from '../types'
 import { buildConditionGroupFromFormData } from '../utils/alertEvaluator'
 
@@ -57,9 +58,12 @@ export function Dashboard() {
     pricesValidating,
     livePrices,
     wsStatus,
+    diagnostics,
     rateLimitStatus,
     rateLimitRetryAfterMs,
     refetchPrices,
+    isOfflineSnapshot,
+    offlineSnapshotSavedAt,
   } = usePriceContext()
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -389,7 +393,12 @@ export function Dashboard() {
             </svg>
             {t('scheduledExports.button', { defaultValue: 'Schedule' })}
           </button>
-          <ConnectionBadge status={wsStatus} rateLimitStatus={rateLimitStatus} retryAfterMs={rateLimitRetryAfterMs} />
+          <ConnectionBadge
+            status={wsStatus}
+            rateLimitStatus={rateLimitStatus}
+            retryAfterMs={rateLimitRetryAfterMs}
+            diagnostics={diagnostics}
+          />
         </div>
       </div>
 
@@ -468,6 +477,13 @@ export function Dashboard() {
         <div className="mb-6 p-4 bg-red-900/30 border border-red-800 rounded-xl text-sm text-red-400" role="alert">
           {pricesError.message}
         </div>
+      )}
+
+      {/* Offline-first (#470): rendering the last persisted snapshot instead of a blank dashboard. */}
+      {isOfflineSnapshot && offlineSnapshotSavedAt != null && (
+        <StaleDataWarningBanner
+          thresholdMinutes={Math.max(1, Math.round((Date.now() - offlineSnapshotSavedAt) / 60_000))}
+        />
       )}
 
       {pricesLoading && prices.length === 0 ? (

@@ -13,13 +13,14 @@
 1. [Overview](#overview)
 2. [Authentication](#authentication)
 3. [Rate Limiting](#rate-limiting)
-4. [Response Format](#response-format)
-5. [Error Handling](#error-handling)
-6. [REST Endpoints](#rest-endpoints)
-7. [WebSocket Endpoint](#websocket-endpoint)
-8. [Data Models](#data-models)
-9. [Examples](#examples)
-10. [SDKs & Libraries](#sdks--libraries)
+4. [Caching](#caching-508)
+5. [Response Format](#response-format)
+6. [Error Handling](#error-handling)
+7. [REST Endpoints](#rest-endpoints)
+8. [WebSocket Endpoint](#websocket-endpoint)
+9. [Data Models](#data-models)
+10. [Examples](#examples)
+11. [SDKs & Libraries](#sdks--libraries)
 
 ---
 
@@ -85,6 +86,39 @@ All endpoints are rate-limited per IP address. Rate limit metadata is included i
 Delay = Random(0, min(1s × 2^attempt, 30s))
 Max attempts: 3
 ```
+
+---
+
+## Caching (#508)
+
+Public, read-only endpoints are safe to cache at the edge (CDN) and in
+clients — prices are public data and reads dominate writes. Responses on
+these routes carry standard HTTP caching headers so any conforming
+cache (browser, CDN, SDK-level HTTP cache) can serve repeat reads without
+hitting the origin:
+
+| Endpoint | `Cache-Control` | Notes |
+|---|---|---|
+| `GET /api/prices` | `public, max-age=5, stale-while-revalidate=30` | Aggregated across all pairs; short TTL since it updates continuously. |
+| `GET /api/prices/:pair` | `public, max-age=5, stale-while-revalidate=30` | Same TTL as the all-pairs endpoint. |
+| `GET /api/prices/:pair/history` | `public, max-age=60, stale-while-revalidate=300` | Historical pages are append-only and safe to cache longer. |
+| `POST /api/prices/history/batch` | not cached | Non-idempotent method; cache per-pair history instead. |
+
+**`stale-while-revalidate`** lets a cache serve a slightly stale response
+immediately while it revalidates in the background — clients should not
+treat a `max-age`-expired response as an error, just a cue that a fresher
+value is on its way.
+
+**`X-Cache-Status`** is surfaced on cacheable responses (`HIT`, `MISS`, or
+`STALE` when a stale-while-revalidate response was served) so consumers —
+including the [API docs "Try it out" playground](../src/pages/ApiDocs.tsx) —
+can see whether a given read came from the edge cache or the origin.
+
+SDKs that layer their own client-side cache (e.g. the IndexedDB cache used by
+this frontend, see [`docs/STORAGE_BUDGET.md`](./STORAGE_BUDGET.md)) should
+treat `max-age` as a floor, not a ceiling — it's fine to hold a value longer
+locally, but a client cache should never outlive what its own TTL policy
+allows just because the CDN says it's still fresh.
 
 ---
 

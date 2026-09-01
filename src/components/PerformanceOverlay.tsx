@@ -16,6 +16,8 @@
 import { memo, useState, useEffect, useCallback } from 'react'
 import { subscribePerformance, type PerformanceSnapshot } from '../utils/performanceMonitor'
 import { subscribeRenderInfo, getRenderCounts, type RenderInfo } from '../hooks/useRenderTracker'
+import { getWorkerPoolDiagnostics, type WorkerPoolDiagnostics } from '../workers/workerPool'
+import { subscribeMemoryProfiler, type MemoryProfilerSnapshot } from '../utils/memoryProfiler'
 
 function fpsColour(fps: number): string {
   if (fps === 0) return 'text-slate-400'
@@ -45,6 +47,8 @@ export const PerformanceOverlay = memo(function PerformanceOverlay() {
   )
   const [perf, setPerf] = useState<PerformanceSnapshot | null>(null)
   const [renderRows, setRenderRows] = useState<RenderRow[]>([])
+  const [pools, setPools] = useState<WorkerPoolDiagnostics[]>([])
+  const [mem, setMem] = useState<MemoryProfilerSnapshot | null>(null)
 
   const toggleVisible = useCallback(() => {
     setVisible((v) => {
@@ -72,6 +76,20 @@ export const PerformanceOverlay = memo(function PerformanceOverlay() {
       setRenderRows(rows)
     }
     return subscribeRenderInfo(update)
+  }, [])
+
+  // Worker pool sizes (#506) — polled since pools don't emit change events
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    setPools(getWorkerPoolDiagnostics())
+    const interval = setInterval(() => setPools(getWorkerPoolDiagnostics()), 5_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Memory profiling harness (#504)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    return subscribeMemoryProfiler((s) => setMem(s))
   }, [])
 
   // Keyboard shortcut: Alt+Shift+P
@@ -167,6 +185,46 @@ export const PerformanceOverlay = memo(function PerformanceOverlay() {
           <span className="text-slate-500">unsupported</span>
         )}
       </div>
+
+      {/* Worker pool sizes (#506) */}
+      {pools.length > 0 && (
+        <div className="mt-2 border-t border-slate-700 pt-2">
+          <div className="mb-1 text-slate-500">Worker pools</div>
+          {pools.map((p) => (
+            <div key={p.label} className="flex items-center justify-between gap-2 py-0.5">
+              <span className="text-slate-400">{p.label}</span>
+              <span className="text-slate-300">
+                {p.size} {p.lowMemory && <span className="text-amber-400" title="Reduced for low device memory">⚠ low-mem</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Memory profiling harness (#504) */}
+      {mem?.latest && (
+        <div className="mt-2 border-t border-slate-700 pt-2">
+          <div className="mb-1 text-slate-500">Memory ({mem.samples.length} samples)</div>
+          <div className="flex items-center justify-between gap-2 py-0.5">
+            <span className="text-slate-400">DOM nodes</span>
+            <span className="text-slate-300">{mem.latest.domNodeCount ?? '—'}</span>
+          </div>
+          {Object.entries(mem.latest.subsystems).map(([name, count]) => (
+            <div key={name} className="flex items-center justify-between gap-2 py-0.5">
+              <span className="text-slate-400">{name}</span>
+              <span className="text-slate-300">{count}</span>
+            </div>
+          ))}
+          {mem.growth && (
+            <div className="mt-1 text-slate-500">
+              growth: {mem.growth.heapBytesPerHour !== null
+                ? `${(mem.growth.heapBytesPerHour / (1024 * 1024)).toFixed(1)} MB/hr`
+                : 'n/a'}
+              {mem.growth.domNodesPerHour !== null && `, ${Math.round(mem.growth.domNodesPerHour)} nodes/hr`}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Top render counts */}
       {renderRows.length > 0 && (

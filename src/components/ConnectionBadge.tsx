@@ -35,6 +35,7 @@
  * | `waiting`     | orange | Exponential back-off window before next attempt  |
  * | `dead`        | red    | Max retries exhausted, manual reload required    |
  * | `disconnected`| red    | Offline, REST polling only                       |
+ * | `paused`      | orange | Inbound updates paused under backpressure (#469) |
  *
  * ## Edge cases
  * - **Rate limited** — overrides the status colour with orange and shows a countdown
@@ -85,6 +86,13 @@ const STATUS_MAP: Record<ConnectionStatus, { label: string; color: string; toolt
     label: 'Offline',
     color: 'bg-red-500',
     tooltip: 'WebSocket is offline. Prices are updated via REST polling only.',
+  },
+  paused: {
+    label: 'Paused',
+    color: 'bg-orange-500',
+    tooltip:
+      'Inbound updates are paused — the client asked the server to pause this subscription ' +
+      'while it catches up. Resumes automatically once the backlog drains.',
   },
 }
 
@@ -145,6 +153,9 @@ export const ConnectionBadge = memo(function ConnectionBadge({
     label = `${s.label} (${diagnostics.retryCount}/${20})`
   }
 
+  // #471 – visible indicator when the client has fallen back from WebSocket to SSE.
+  const isSseFallback = diagnostics?.transport === 'sse'
+
   const ariaLabel = isRateLimited ? 'API rate limited' : `WebSocket ${s.label}`
 
   let tooltipText = isRateLimited
@@ -153,6 +164,11 @@ export const ConnectionBadge = memo(function ConnectionBadge({
 
   if (!isRateLimited && diagnostics && diagnostics.retryCount > 0) {
     tooltipText += ` (attempt ${diagnostics.retryCount} of 20)`
+  }
+
+  if (isSseFallback) {
+    tooltipText +=
+      ' Falling back to Server-Sent Events — the WebSocket upgrade failed or was blocked by the network.'
   }
 
   return (
@@ -167,6 +183,14 @@ export const ConnectionBadge = memo(function ConnectionBadge({
           aria-hidden="true"
         />
         {label}
+        {isSseFallback && (
+          <span
+            className="px-1 rounded bg-amber-500/20 text-amber-400 text-[10px] font-semibold uppercase tracking-wide"
+            title="Streaming over Server-Sent Events (WebSocket fallback)"
+          >
+            SSE
+          </span>
+        )}
       </span>
     </Tooltip>
   )

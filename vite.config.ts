@@ -69,37 +69,37 @@ function buildProxyConfig(env: Record<string, string>): ProxyConfig {
   return proxyConfig
 }
 
+// Hostnames that are always a local/dev default, never a real third-party
+// origin worth a preconnect/dns-prefetch hint (#509). Guards against emitting
+// hints for `http://localhost:3000`-style fallbacks when VITE_API_URL /
+// VITE_WS_URL aren't actually configured for this build.
+const DEV_DEFAULT_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1'])
+
+function isKnownProductionOrigin(rawUrl: string | undefined): string | null {
+  if (!rawUrl) return null
+  try {
+    const url = new URL(rawUrl.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:'))
+    if (DEV_DEFAULT_HOSTS.has(url.hostname)) return null
+    return url.origin
+  } catch {
+    return null
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const proxyConfig = buildProxyConfig(env)
 
-  const apiUrl = env.VITE_API_URL || 'http://localhost:3000'
-  const wsUrl = env.VITE_WS_URL || 'ws://localhost:3000'
+  // Resource hints are only emitted for explicitly configured production
+  // origins — not the localhost fallbacks used in local dev — so preview/dev
+  // builds without real API/WS origins don't ship dead preconnect hints.
   const origins = new Set<string>()
 
-  try {
-    origins.add(new URL(apiUrl).origin)
-  } catch {
-    // ignore - URL may be invalid
-  }
+  const apiOrigin = isKnownProductionOrigin(env.VITE_API_URL)
+  if (apiOrigin) origins.add(apiOrigin)
 
-  try {
-    origins.add(
-      new URL(wsUrl.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:')).origin,
-    )
-  } catch {
-    // ignore - URL may be invalid
-  }
-
-  for (const target of Object.values(proxyConfig)) {
-    if (typeof target.target === 'string') {
-      try {
-        origins.add(new URL(target.target).origin)
-      } catch {
-        // ignore - URL may be invalid
-      }
-    }
-  }
+  const wsOrigin = isKnownProductionOrigin(env.VITE_WS_URL)
+  if (wsOrigin) origins.add(wsOrigin)
 
   const hints = Array.from(origins)
     .flatMap((origin) => [

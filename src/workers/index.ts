@@ -26,8 +26,8 @@ import type { ExportWorker } from './export.worker'
 import type { ChartAggregationWorker } from './chartAggregation.worker'
 
 // Re-export pool utilities for callers that need fine-grained control
-export { WorkerPool, withWorker } from './workerPool'
-export type { WorkerPoolOptions } from './workerPool'
+export { WorkerPool, withWorker, getAdaptivePoolSize, getWorkerPoolDiagnostics } from './workerPool'
+export type { WorkerPoolOptions, WorkerPoolDiagnostics } from './workerPool'
 
 // Re-export all worker types
 export type { DataParserWorker } from './dataParser.worker'
@@ -46,7 +46,7 @@ export const dataParserPool: WorkerPool<DataParserWorker> | null =
     ? new WorkerPool<DataParserWorker>(
         () =>
           new Worker(new URL('./dataParser.worker.ts', import.meta.url), { type: 'module' }),
-        { size: 2 },
+        { label: 'dataParser' },
       )
     : null
 
@@ -59,7 +59,7 @@ export const exportPool: WorkerPool<ExportWorker> | null =
     ? new WorkerPool<ExportWorker>(
         () =>
           new Worker(new URL('./export.worker.ts', import.meta.url), { type: 'module' }),
-        { size: 2 },
+        { label: 'export' },
       )
     : null
 
@@ -74,7 +74,7 @@ export const chartPool: WorkerPool<ChartAggregationWorker> | null =
           new Worker(new URL('./chartAggregation.worker.ts', import.meta.url), {
             type: 'module',
           }),
-        { size: 2 },
+        { label: 'chartAggregation' },
       )
     : null
 
