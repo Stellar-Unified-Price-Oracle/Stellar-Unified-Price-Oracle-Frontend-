@@ -36,6 +36,42 @@ export function saveAlertHistory(history: AlertHistoryEntry[]): void {
   writeJson(STORAGE_KEYS.alertHistory, history)
 }
 
+/**
+ * Debounce window for `saveAlertHistoryDebounced` (#510). Escalation steps and
+ * fast-moving percentage alerts can fire many times per second (simulation
+ * replay, retest detection); writing the full log to storage on every single
+ * fire serializes and blocks the main thread once per fire. Coalescing bursts
+ * into one write keeps the log correct (last write wins, always the latest
+ * state) without the per-fire cost.
+ */
+const HISTORY_WRITE_DEBOUNCE_MS = 400
+
+let historyWriteTimer: ReturnType<typeof setTimeout> | null = null
+let pendingHistory: AlertHistoryEntry[] | null = null
+
+/** Debounced `saveAlertHistory` — coalesces write storms during alert bursts. */
+export function saveAlertHistoryDebounced(history: AlertHistoryEntry[]): void {
+  pendingHistory = history
+  if (historyWriteTimer !== null) clearTimeout(historyWriteTimer)
+  historyWriteTimer = setTimeout(() => {
+    historyWriteTimer = null
+    if (pendingHistory) saveAlertHistory(pendingHistory)
+    pendingHistory = null
+  }, HISTORY_WRITE_DEBOUNCE_MS)
+}
+
+/** Flushes any pending debounced write immediately (e.g. on unmount). */
+export function flushAlertHistory(): void {
+  if (historyWriteTimer !== null) {
+    clearTimeout(historyWriteTimer)
+    historyWriteTimer = null
+  }
+  if (pendingHistory) {
+    saveAlertHistory(pendingHistory)
+    pendingHistory = null
+  }
+}
+
 /** Builds the history entry for an alert's initial trigger (or a persistent re-fire). */
 export function buildTriggerHistoryEntry(
   alert: Alert,

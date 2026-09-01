@@ -99,6 +99,111 @@ export function createLinePlugin(): ChartPlugin {
   }
 }
 
+/**
+ * Decimation threshold (#505): series with more points than this are
+ * downsampled with LTTB before rendering.
+ */
+export const DECIMATION_THRESHOLD = 2000
+
+/** Target point count series are decimated down to when above the threshold. */
+export const DECIMATION_TARGET_POINTS = 1000
+
+/**
+ * Largest Triangle Three Buckets (LTTB) downsampling.
+ *
+ * Reduces `points` to `targetPoints` while preserving the visual shape of the
+ * series (peaks/valleys survive, unlike naive stride sampling). Always keeps
+ * the first and last point. No-op when `points.length <= targetPoints`.
+ *
+ * Reference: Sveinn Steinarsson, "Downsampling Time Series for Visual
+ * Representation", Reykjavík University, 2013.
+ */
+export function lttbDecimate(points: ChartPoint[], targetPoints: number): ChartPoint[] {
+  const n = points.length
+  if (targetPoints < 3 || n <= targetPoints) return points
+
+  const sampled: ChartPoint[] = [points[0]]
+  const bucketSize = (n - 2) / (targetPoints - 2)
+  let prevIdx = 0
+
+  for (let i = 0; i < targetPoints - 2; i++) {
+    const nextStart = Math.floor((i + 1) * bucketSize) + 1
+    const nextEnd = Math.min(Math.floor((i + 2) * bucketSize) + 1, n)
+
+    let avgX = 0
+    let avgY = 0
+    const nextSize = Math.max(1, nextEnd - nextStart)
+    for (let j = nextStart; j < nextEnd; j++) {
+      avgX += points[j].x
+      avgY += points[j].y
+    }
+    avgX /= nextSize
+    avgY /= nextSize
+
+    const curStart = Math.floor(i * bucketSize) + 1
+    const curEnd = Math.min(Math.floor((i + 1) * bucketSize) + 1, n)
+
+    const prev = points[prevIdx]
+    let maxArea = -1
+    let maxIdx = curStart
+
+    for (let j = curStart; j < curEnd; j++) {
+      const area = Math.abs(
+        (prev.x - avgX) * (points[j].y - prev.y) - (prev.x - points[j].x) * (avgY - prev.y),
+      ) * 0.5
+      if (area > maxArea) {
+        maxArea = area
+        maxIdx = j
+      }
+    }
+
+    sampled.push(points[maxIdx])
+    prevIdx = maxIdx
+  }
+
+  sampled.push(points[n - 1])
+  return sampled
+}
+
+export interface DecimationResult {
+  series: ChartSeries[]
+  /** True when any series in the output was decimated. */
+  decimated: boolean
+  /** Total source points across all series before decimation. */
+  sourcePointCount: number
+  /** Total rendered points across all series after decimation. */
+  renderedPointCount: number
+}
+
+/**
+ * Applies LTTB decimation to every series whose point count exceeds
+ * {@link DECIMATION_THRESHOLD}, keeping series under the threshold untouched.
+ * Used by chart renderers to stay smooth at 10k+ history points (#505).
+ */
+export function decimateSeries(
+  series: ChartSeries[],
+  threshold = DECIMATION_THRESHOLD,
+  targetPoints = DECIMATION_TARGET_POINTS,
+): DecimationResult {
+  let decimated = false
+  let sourcePointCount = 0
+  let renderedPointCount = 0
+
+  const out = series.map((s) => {
+    sourcePointCount += s.points.length
+    if (s.points.length <= threshold) {
+      renderedPointCount += s.points.length
+      return s
+    }
+    const points = lttbDecimate(s.points, targetPoints)
+    decimated = true
+    renderedPointCount += points.length
+    return { ...s, points }
+  })
+
+  return { series: out, decimated, sourcePointCount, renderedPointCount }
+}
+
 export function computeViewport(
   series: ChartSeries[],
   width: number,

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchPriceHistory } from '../api/rest'
-import { idbCache } from './useIndexedDB'
+import { registerMemoryProbe } from '../utils/memoryProfiler'
 import type { PriceHistoryEntry, PriceHistoryResponse } from '../types'
+import { idbCache } from './useIndexedDB'
 
 // Cross-session cache TTL for the first page of history, per #321's endpoint
 // TTL tiers (history: 2 min). Pagination (loadMore) always hits the network.
@@ -199,6 +200,13 @@ export function usePriceHistory(
       abortRef.current?.abort()
     }
   }, [])
+
+  // #504 — report this instance's buffered point count to the memory
+  // profiling harness ("chart buffers" subsystem). Several chart components
+  // may mount their own history hook at once; probes summed by subsystem.
+  const historyRef = useRef(history)
+  historyRef.current = history
+  useEffect(() => registerMemoryProbe('chartBuffers', () => historyRef.current.length), [])
 
   return { history, loading, loadingMore, error, hasMore, loadMore, refetch }
 }

@@ -1,0 +1,29 @@
+# Gitleaks configuration (#494).
+#
+# Extends the built-in default rule set (broad coverage of common secret
+# formats: cloud provider keys, API tokens, private keys, etc.) with a couple of
+# project-specific allowlist entries so known-safe, non-secret strings in this
+# repo don't generate noise. Used by both the CI workflow
+# (.github/workflows/secret-scan.yml) and the local pre-commit hook
+# (.husky/pre-commit), so local and CI results always agree.
+title = "stellar-oracle-frontend gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Project-wide allowlist"
+paths = [
+  '''package-lock\.json''',
+  '''\.gitleaks\.toml''',
+  # Fixtures/mocks intentionally contain placeholder-shaped values, not real secrets.
+  '''(^|/)e2e/.*''',
+  '''(^|/)src/.*\.test\.(ts|tsx)$''',
+  '''(^|/)src/.*\.stories\.(ts|tsx)$''',
+]
+
+regexes = [
+  # Example/placeholder addresses used throughout docs and .env.example files.
+  '''you@example\.com''',
+  '''0x0{40}''',
+]

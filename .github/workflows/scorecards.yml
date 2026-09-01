@@ -1,0 +1,53 @@
+name: OpenSSF Scorecard
+
+# #495 — Public, tracked supply-chain health baseline. Runs weekly and can be
+# triggered on demand; publishes results to the repo's code scanning alerts and
+# as a downloadable artifact, and the score is surfaced via the README badge.
+on:
+  branch_protection_rule:
+  schedule:
+    # Every Saturday at 05:00 UTC.
+    - cron: '0 5 * * 6'
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to read repo/org data the checks inspect (branch protection, etc.).
+      contents: read
+      # Needed to publish results as SARIF to the code scanning dashboard.
+      security-events: write
+      # Needed to mint the OIDC token Scorecard uses to publish results to the
+      # public transparency log (uploads are skipped automatically on forks).
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@v2
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 90
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif

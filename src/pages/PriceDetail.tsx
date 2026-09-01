@@ -10,11 +10,13 @@ import { OnChainComparisonPanel } from '../components/OnChainComparisonPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
+import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
 import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
+import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
@@ -73,6 +75,7 @@ export function PriceDetail() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { preferences } = usePreferences()
+  const { attributionHistory } = usePriceContext()
   const [importedData, setImportedData] = useState<CsvRow[] | null>(null)
   const [activeTab, _setActiveTab] = useState<DetailTab>('overview')
 
@@ -203,6 +206,15 @@ export function PriceDetail() {
               ))}
             </div>
           </div>
+
+          {/* Move attribution — rendered whenever WS attribution data is available */}
+          {(() => {
+            const pairHistory = attributionHistory.get(decodedPair) ?? []
+            const latest = pairHistory[pairHistory.length - 1]
+            return latest ? (
+              <MoveAttributionPanel latest={latest} history={pairHistory} />
+            ) : null
+          })()}
 
           {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
@@ -395,6 +407,15 @@ export function PriceDetail() {
                   ))}
                 </div>
               </div>
+
+              {/* Move attribution — rendered whenever WS attribution data is available */}
+              {(() => {
+                const pairHistory = attributionHistory.get(decodedPair) ?? []
+                const latest = pairHistory[pairHistory.length - 1]
+                return latest ? (
+                  <MoveAttributionPanel latest={latest} history={pairHistory} />
+                ) : null
+              })()}
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">

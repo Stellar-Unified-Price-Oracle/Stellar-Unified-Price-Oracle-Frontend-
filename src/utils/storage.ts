@@ -46,12 +46,16 @@ export const STORAGE_KEYS = {
   alertHistory: 'alert-history',
   /** Notification routing config. Never includes the webhook secret — see the policy above. */
   notificationChannels: 'notification-channels',
+  /** Developer webhook endpoints (signing secrets remain session-only). */
+  developerWebhooks: 'developer-webhooks',
   /** `'1'` when the user has opted out of analytics. */
   analyticsOptOut: 'analyticsOptOut',
   /** `'dark'` / `'light'`. Also read by the pre-paint script in `index.html`. */
   theme: 'stellar-oracle-theme',
   /** Random per-browser bucket id used for sticky percentage-rollout feature flags (#359). No PII. */
   featureFlagBucket: 'feature-flag-bucket',
+  /** Ids of alert health flags (#493) the user has dismissed. No PII. */
+  alertHealthDismissed: 'alert-health-dismissed',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
@@ -231,6 +235,7 @@ function formatBytes(bytes: number): string {
  * | analyticsOptOut        | '1' (opted out) or '0'. No PII.                                   |
  * | stellar-oracle-theme   | 'dark' or 'light'. No PII.                                        |
  * | feature-flag-bucket    | Random per-browser bucket id for sticky flag rollout. No PII.     |
+ * | alert-health-dismissed | Ids of dismissed alert health flags (#493). No PII.                |
  *
  * ## IndexedDB stores (stellar-oracle DB)
  * | Store       | TTL      | Contents                                               |
@@ -268,6 +273,10 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       key: STORAGE_KEYS.featureFlagBucket,
       description: 'Random per-browser bucket id for sticky percentage-rollout feature flags. No PII.',
+    },
+    {
+      key: STORAGE_KEYS.alertHealthDismissed,
+      description: 'Ids of alert health flags the user has dismissed. No PII.',
     },
   ],
   indexedDB: [

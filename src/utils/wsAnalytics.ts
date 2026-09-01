@@ -19,6 +19,10 @@ export interface WsAnalyticsSummary {
   protocolVersion: number | null
   /** True when the server is newer than this client supports (#472). */
   protocolUpgradeRequired: boolean
+  /** Total bytes saved by permessage-deflate compression across all compressed messages (#468). */
+  compressionBytesSaved: number
+  /** Ratio of bytes saved to uncompressed size, e.g. 0.6 = 60% smaller on the wire, or `null` with no samples yet (#468). */
+  compressionRatio: number | null
   events: WsEvent[]
 }
 
@@ -31,6 +35,9 @@ let connectTime: number | null = null
 let latencySamples: number[] = []
 let protocolVersion: number | null = null
 let protocolUpgradeRequired = false
+// #468 – permessage-deflate savings, accumulated across every compressed message received.
+let compressedBytesTotal = 0
+let decompressedBytesTotal = 0
 
 function summarise(): WsAnalyticsSummary {
   const counts = { connect: 0, disconnect: 0, reconnect: 0, error: 0 }
@@ -56,6 +63,11 @@ function summarise(): WsAnalyticsSummary {
     avgLatencyMs: avg,
     protocolVersion,
     protocolUpgradeRequired,
+    compressionBytesSaved: decompressedBytesTotal - compressedBytesTotal,
+    compressionRatio:
+      decompressedBytesTotal > 0
+        ? (decompressedBytesTotal - compressedBytesTotal) / decompressedBytesTotal
+        : null,
     events: [...events],
   }
 }
@@ -93,6 +105,14 @@ export const wsAnalytics = {
     const s = summarise()
     listeners.forEach((l) => l(s))
   },
+  /** Records one permessage-deflate compressed message's wire size vs. its decompressed size (#468). */
+  recordCompression(compressedBytes: number, decompressedBytes: number) {
+    if (decompressedBytes <= 0) return
+    compressedBytesTotal += compressedBytes
+    decompressedBytesTotal += decompressedBytes
+    const s = summarise()
+    listeners.forEach((l) => l(s))
+  },
   subscribe(listener: Listener): () => void {
     listeners.add(listener)
     listener(summarise())
@@ -108,5 +128,7 @@ export const wsAnalytics = {
     events.length = 0
     latencySamples = []
     connectTime = null
+    compressedBytesTotal = 0
+    decompressedBytesTotal = 0
   },
 }

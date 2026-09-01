@@ -1,6 +1,21 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Secret scan (#494) — same rule set/allowlist CI uses (.gitleaks.toml), scoped
+# to staged changes so it stays fast. Skips silently if gitleaks isn't installed
+# locally (CI's secret-scan.yml is the enforced backstop either way) rather than
+# blocking commits on a missing local tool.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --config .gitleaks.toml --redact
+  GITLEAKS_EXIT=$?
+  if [ $GITLEAKS_EXIT -ne 0 ]; then
+    echo "FAILED: gitleaks found a potential secret in staged changes, commit aborted"
+    exit $GITLEAKS_EXIT
+  fi
+else
+  echo "gitleaks not installed locally — skipping local secret scan (CI still enforces this). See SECURITY.md."
+fi
+
 # Run lint-staged to check only the files included in this commit.
 # lint-staged runs ESLint (with auto-fix), Prettier (with auto-fix), and
 # TypeScript type-checking on staged .ts/.tsx files, and Prettier on staged
