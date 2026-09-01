@@ -72,6 +72,8 @@ describe('render count regression: Dashboard', () => {
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
       _emitPriceUpdate: vi.fn(),
+      attributionHistory: new Map(),
+      isWsLeader: null,
     })
   })
 

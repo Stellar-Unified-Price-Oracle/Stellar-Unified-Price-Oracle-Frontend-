@@ -97,10 +97,23 @@ const PriceContext = createContext<PriceContextValue | null>(null)
 /**
  * Provides real-time price data and WebSocket lifecycle management to its subtree.
  *
- * On mount it opens a WebSocket connection, subscribes to all tracked pairs, and
+ * On mount it opens a WebSocket connection (or participates in leader election
+ * when BroadcastChannel is available), subscribes to all tracked pairs, and
  * applies incoming price updates optimistically. Each update is confirmed against
  * the REST API and rolled back if the values differ. REST polling runs in parallel
  * as a fallback when the WebSocket is disconnected.
+ *
+ * ### Leader election
+ * When BroadcastChannel is available only the elected "leader" tab maintains a
+ * real WebSocket. Follower tabs receive relayed `price_update` messages via the
+ * channel and apply the same optimistic-update + REST-revalidation logic. When
+ * the leader closes, a follower takes over within {@link LEADER_TIMEOUT_MS} ms.
+ * When BroadcastChannel is unavailable each tab falls back to its own WS.
+ *
+ * ### Attribution
+ * On each WS tick (whether from a real socket or a relay) per-source price
+ * deltas are computed and stored in a bounded ring-buffer exposed as
+ * `attributionHistory`.
  */
 export function PriceProvider({ children }: { children: ReactNode }) {
   const {
@@ -174,62 +187,125 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     return unsubscribeFromRateLimit
   }, [])
 
-  useEffect(() => {
-    const timers = cleanupTimersRef.current
-    const requestIds = requestIdsRef.current
+  // ── Core price-update handler (shared by both leader WS and follower relay) ─
 
-    const scheduleSettledState = (pair: string) => {
-      clearCleanupTimer(pair)
-      const timer = setTimeout(() => {
-        setLivePrices((prev) => {
-          const current = prev.get(pair)
-          if (!current || current.syncState === 'optimistic') return prev
-
-          const next = new Map(prev)
-          next.set(pair, { ...current, syncState: 'synced' })
-          return next
-        })
-        timers.delete(pair)
-      }, 1200)
-      timers.set(pair, timer)
-    }
-
-    const revalidatePair = async (pair: string, requestId: number) => {
-      try {
-        const restPrice = await fetchPricesBatched(pair)
-
-        if (requestIds.get(pair) !== requestId) return
-
-        // Patch the REST cache with the WS-confirmed value so it doesn't serve a
-        // stale entry for this pair until the next poll cycle (#321).
-        queryClient.setQueryData<PriceData[]>(['prices'], (old) =>
-          old ? old.map((p) => (p.assetPair === pair ? restPrice : p)) : old,
-        )
-
-        setLivePrices((prev) => {
-          const current = prev.get(pair)
-          if (!current) return prev
-
-          const isConfirmed =
-            current.data.timestamp === restPrice.timestamp &&
-            current.data.price === restPrice.price &&
-            current.data.confidence === restPrice.confidence &&
-            current.data.sources.join('|') === restPrice.sources.join('|')
-
-          const next = new Map(prev)
-          next.set(pair, {
-            data: isConfirmed ? current.data : restPrice,
-            syncState: isConfirmed ? 'confirmed' : 'rollback',
-            flashVersion: current.flashVersion + 1,
-          })
-          return next
-        })
-
-        scheduleSettledState(pair)
-      } catch {
-        // Keep optimistic data visible and let polling retry the canonical state.
+  /**
+   * Process an incoming price_update — either from the real WebSocket (leader /
+   * fallback) or relayed via BroadcastChannel (follower).  Updates attribution
+   * ring-buffer, live prices, and triggers REST revalidation.
+   */
+  const handlePriceUpdate = useCallback(
+    (msg: WsPriceUpdate, requestIds: Map<string, number>, timers: Map<string, ReturnType<typeof setTimeout>>) => {
+      // ── Attribution computation ───────────────────────────────────────────
+      const sourcePriceState = sourcePriceStateRef.current
+      if (!sourcePriceState.has(msg.assetPair)) {
+        sourcePriceState.set(msg.assetPair, {})
       }
+      const prevSourcePrices = sourcePriceState.get(msg.assetPair)!
+      const prevAggPrice = prevAggPriceRef.current.get(msg.assetPair) ?? null
+      const attribution = computeAttribution(msg, prevSourcePrices, prevAggPrice)
+      prevAggPriceRef.current.set(msg.assetPair, msg.price)
+
+      setAttributionHistory((prev) => {
+        const existing = prev.get(msg.assetPair) ?? []
+        const next = new Map(prev)
+        next.set(msg.assetPair, appendToRingBuffer(existing, attribution))
+        return next
+      })
+
+      // ── Optimistic live price update ──────────────────────────────────────
+      setLivePrices((prev) => {
+        const next = new Map(prev)
+        const current = prev.get(msg.assetPair)
+        const entry: LivePriceEntry = {
+          data: {
+            assetPair: msg.assetPair,
+            price: msg.price,
+            timestamp: msg.timestamp,
+            confidence: msg.confidence,
+            sources: msg.sources,
+          },
+          syncState: 'optimistic',
+          flashVersion: (current?.flashVersion ?? 0) + 1,
+        }
+        next.set(msg.assetPair, entry)
+        priceUpdateEmitter.emit(msg.assetPair, entry)
+        return next
+      })
+
+      clearCleanupTimer(msg.assetPair)
+      const requestId = (requestIds.get(msg.assetPair) ?? 0) + 1
+      requestIds.set(msg.assetPair, requestId)
+      void revalidatePair(msg.assetPair, requestId, requestIds, timers)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
+  // ── REST revalidation ─────────────────────────────────────────────────────
+
+  const scheduleSettledState = (
+    pair: string,
+    timers: Map<string, ReturnType<typeof setTimeout>>,
+  ) => {
+    clearCleanupTimer(pair)
+    const timer = setTimeout(() => {
+      setLivePrices((prev) => {
+        const current = prev.get(pair)
+        if (!current || current.syncState === 'optimistic') return prev
+
+        const next = new Map(prev)
+        next.set(pair, { ...current, syncState: 'synced' })
+        return next
+      })
+      timers.delete(pair)
+    }, 1200)
+    timers.set(pair, timer)
+  }
+
+  const revalidatePair = async (
+    pair: string,
+    requestId: number,
+    requestIds: Map<string, number>,
+    timers: Map<string, ReturnType<typeof setTimeout>>,
+  ) => {
+    try {
+      const restPrice = await fetchPricesBatched(pair)
+
+      if (requestIds.get(pair) !== requestId) return
+
+      // Patch the REST cache with the WS-confirmed value so it doesn't serve a
+      // stale entry for this pair until the next poll cycle (#321).
+      queryClient.setQueryData<PriceData[]>(['prices'], (old) =>
+        old ? old.map((p) => (p.assetPair === pair ? restPrice : p)) : old,
+      )
+
+      setLivePrices((prev) => {
+        const current = prev.get(pair)
+        if (!current) return prev
+
+        const isConfirmed =
+          current.data.timestamp === restPrice.timestamp &&
+          current.data.price === restPrice.price &&
+          current.data.confidence === restPrice.confidence &&
+          current.data.sources.join('|') === restPrice.sources.join('|')
+
+        const next = new Map(prev)
+        next.set(pair, {
+          data: isConfirmed ? current.data : restPrice,
+          syncState: isConfirmed ? 'confirmed' : 'rollback',
+          flashVersion: current.flashVersion + 1,
+        })
+        return next
+      })
+
+      scheduleSettledState(pair, timers)
+    } catch {
+      // Keep optimistic data visible and let polling retry the canonical state.
     }
+  }
+
+  // ── WebSocket + leader election setup ──────────────────────────────────────
 
     const client = new RealtimeClient()
     wsRef.current = client
@@ -254,33 +330,86 @@ export function PriceProvider({ children }: { children: ReactNode }) {
             syncState: 'optimistic',
             flashVersion: (current?.flashVersion ?? 0) + 1,
           }
-          next.set(msg.assetPair, entry)
-          // Emit update for this specific pair to avoid re-rendering unrelated components
-          priceUpdateEmitter.emit(msg.assetPair, entry)
-          return next
-        })
+        }
+      })
 
-        clearCleanupTimer(msg.assetPair)
-        const requestId = (requestIds.get(msg.assetPair) ?? 0) + 1
-        requestIds.set(msg.assetPair, requestId)
-        void revalidatePair(msg.assetPair, requestId)
+      client.connect()
+
+      return () => {
+        unsubStatus()
+        unsubMsg()
+        client.disconnect()
+        wsRef.current = null
       }
+    }
+
+    let cleanupWs: (() => void) | null = null
+
+    // Set up leader election.  The election callbacks open / close the WS.
+    const election = new WsLeaderElection({
+      onBecomeLeader: () => {
+        setIsWsLeader(true)
+        cleanupWs?.()
+        cleanupWs = openWebSocket(/* isLeader */ true)
+        // Re-subscribe all pairs now that we own the socket
+        if (wsRef.current && prices.length > 0) {
+          wsRef.current.subscribe(prices.map((p) => p.assetPair))
+        }
+      },
+
+      onBecomeFollower: () => {
+        setIsWsLeader(false)
+        cleanupWs?.()
+        cleanupWs = null
+        wsRef.current = null
+        setWsStatus('disconnected')
+      },
+
+      onFollowerMessage: (msg) => {
+        handlePriceUpdate(msg, requestIds, timers)
+      },
+
+      onLeaderFallback: () => {
+        // BroadcastChannel unavailable — open own WS and behave normally
+        setIsWsLeader(null)
+        cleanupWs?.()
+        cleanupWs = openWebSocket(/* isLeader */ false)
+      },
     })
 
-    client.connect()
+    electionRef.current = election
+
+    // Register beforeunload to RESIGN so followers can take over immediately
+    const handleBeforeUnload = () => election.destroy()
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    election.start()
 
     return () => {
-      unsubStatus()
-      unsubMsg()
-      client.disconnect()
-      wsRef.current = null
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      election.destroy()
+      electionRef.current = null
+      cleanupWs?.()
       for (const timer of timers.values()) {
         clearTimeout(timer)
       }
       timers.clear()
     }
-  }, [queryClient])
+    // handlePriceUpdate is stable (no deps that change after mount).
+    // Including prices here would re-run the effect on every REST poll, which
+    // would tear down and re-establish the WS unnecessarily; subscriptions are
+    // handled separately in the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryClient, handlePriceUpdate])
 
+  // Re-subscribe to all pairs whenever the REST snapshot changes (e.g., new pairs added)
+  useEffect(() => {
+    if (prices.length > 0 && wsRef.current) {
+      wsRef.current.subscribe(prices.map((p) => p.assetPair))
+    }
+  }, [prices])
+
+  // Prune live prices that have been confirmed by the REST snapshot
   useEffect(() => {
     setLivePrices((prev) => {
       if (prev.size === 0) return prev
