@@ -78,6 +78,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
     { path: '/', label: t('nav.home'), preload: preloadLanding },
     { path: '/dashboard', label: t('nav.dashboard'), preload: preloadDashboard },
     { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
+    { path: '/webhooks', label: 'Webhooks' },
   ]
 
   return (

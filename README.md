@@ -14,6 +14,7 @@ A real-time dashboard for the Stellar Unified Price Oracle & Aggregator. Display
 
 **Live Site:** https://stellar-price-oracle.example.com  
 **API Documentation:** [docs/README.md](docs/README.md)  
+**SDK Quickstarts:** [docs/sdk-quickstart.md](docs/sdk-quickstart.md)  
 **Contributing Guide:** [CONTRIBUTING.md](CONTRIBUTING.md)  
 **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  
 **Security & Vulnerability Disclosure:** [SECURITY.md](SECURITY.md) · [/security](https://stellar-price-oracle.example.com/security) · [/.well-known/security.txt](https://stellar-price-oracle.example.com/.well-known/security.txt)  

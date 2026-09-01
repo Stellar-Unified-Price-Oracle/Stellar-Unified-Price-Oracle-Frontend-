@@ -46,6 +46,8 @@ export const STORAGE_KEYS = {
   alertHistory: 'alert-history',
   /** Notification routing config. Never includes the webhook secret — see the policy above. */
   notificationChannels: 'notification-channels',
+  /** Developer webhook endpoints (signing secrets remain session-only). */
+  developerWebhooks: 'developer-webhooks',
   /** `'1'` when the user has opted out of analytics. */
   analyticsOptOut: 'analyticsOptOut',
   /** `'dark'` / `'light'`. Also read by the pre-paint script in `index.html`. */
