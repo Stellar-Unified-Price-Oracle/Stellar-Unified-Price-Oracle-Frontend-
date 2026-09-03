@@ -12,7 +12,20 @@ interface UndoRedoState<T> {
   future: Command<T>[]
 }
 
-export function useUndoRedo<T>(initialState: T, maxDepth: number = 20) {
+interface UndoRedoReturn<T> {
+  state: T
+  canUndo: boolean
+  canRedo: boolean
+  undoCount: number
+  redoCount: number
+  execute: (command: Command<T>) => void
+  undo: () => void
+  redo: () => void
+  clear: () => void
+  reset: (newPresent: T) => void
+}
+
+export function useUndoRedo<T>(initialState: T, maxDepth: number = 20): UndoRedoReturn<T> {
   const maxDepthRef = useRef(maxDepth)
   maxDepthRef.current = maxDepth
 

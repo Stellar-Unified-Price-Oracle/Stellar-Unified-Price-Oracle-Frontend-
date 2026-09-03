@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { cleanup, render, screen, act } from '@testing-library/react'
-import { NetworkStatusBanner } from './NetworkStatusBanner'
 import { checkAccessibility } from '../test/accessibility'
+import { NetworkStatusBanner } from './NetworkStatusBanner'
 
 afterEach(cleanup)
 

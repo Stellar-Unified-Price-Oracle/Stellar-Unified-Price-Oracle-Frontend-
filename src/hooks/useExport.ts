@@ -1,49 +1,58 @@
-import { useState, useCallback } from 'react'
-import type { PriceData, PriceHistoryEntry } from '../types'
-import {
-  toCsv,
-  priceDataToCsvRows,
-  historyToCsvRows,
-  downloadFile,
-  exportFilename,
-} from '../utils/export'
+import { useCallback } from 'react'
+import type { PriceData } from '../types'
+import { loadExportUtils } from '../utils/deferredExports'
+import { useRateLimit } from './useRateLimit'
 
-export type ExportFormat = 'csv' | 'json'
+export type ExportFormat = 'csv' | 'json' | 'xlsx'
 
-export function useExport() {
-  const [exporting, setExporting] = useState(false)
+export interface UseExportReturn {
+  exportCSV: (items: PriceData[], columns?: string[]) => void
+  exportJSON: (items: PriceData[], columns?: string[]) => void
+  exportXLSX: (items: PriceData[], columns?: string[]) => void
+  exportData: (format: ExportFormat, items: PriceData[], columns?: string[]) => void
+  /** Whether an export is currently allowed (not rate-limited). */
+  exportAllowed: boolean
+  /** Seconds until the rate-limit window resets (0 when allowed). */
+  exportCooldownSec: number
+}
 
-  const exportPrices = useCallback(async (prices: PriceData[], format: ExportFormat) => {
-    setExporting(true)
-    try {
-      const filename = exportFilename('all-prices', format)
+/**
+ * Provides CSV, JSON, and XLSX export helpers.
+ * All exports share a single sliding-window rate limiter:
+ * max {@link RATE_LIMIT_CONFIGS}.export per minute (default 3).
+ * `exportAllowed` and `exportCooldownSec` are exposed so callers can
+ * disable buttons and display countdown labels during the cooldown period.
+ */
+export function useExport(): UseExportReturn {
+  const { allowed: exportAllowed, cooldownSec: exportCooldownSec, consume } = useRateLimit('export')
+
+  const exportData = useCallback(
+    async (format: ExportFormat, items: PriceData[], columns?: string[]) => {
+      // Consume a single token for the aggregated exportData call so callers
+      // using exportData directly are also rate-limited.
+      if (!consume()) return
+      // Export generators (csv/xlsx encoding, file download plumbing) are only
+      // pulled into a chunk once the user actually triggers an export.
+      const {
+        downloadBinaryFile,
+        downloadFile,
+        exportFilename,
+        priceDataToCsvRows,
+        priceDataToJsonRows,
+        priceDataToXlsx,
+        toCsv,
+      } = await loadExportUtils()
+
       if (format === 'json') {
-        const data = prices.map((p) => ({ ...p, timestamp: new Date(p.timestamp).toISOString() }))
-        downloadFile(JSON.stringify(data, null, 2), filename, 'application/json')
+        exportJSON(items, columns)
+      } else if (format === 'xlsx') {
+        exportXLSX(items, columns)
       } else {
-        const { rows, headers } = priceDataToCsvRows(prices)
-        downloadFile(toCsv(rows, headers), filename, 'text/csv')
+        exportCSV(items, columns)
       }
-    } finally {
-      setExporting(false)
-    }
-  }, [])
+    },
+    [exportCSV, exportJSON, exportXLSX],
+  )
 
-  const exportHistory = useCallback(async (pair: string, history: PriceHistoryEntry[], format: ExportFormat) => {
-    setExporting(true)
-    try {
-      const filename = exportFilename(pair, format)
-      if (format === 'json') {
-        const data = history.map((h) => ({ ...h, assetPair: pair, timestamp: new Date(h.timestamp).toISOString() }))
-        downloadFile(JSON.stringify(data, null, 2), filename, 'application/json')
-      } else {
-        const { rows, headers } = historyToCsvRows(pair, history)
-        downloadFile(toCsv(rows, headers), filename, 'text/csv')
-      }
-    } finally {
-      setExporting(false)
-    }
-  }, [])
-
-  return { exporting, exportPrices, exportHistory }
+  return { exportCSV, exportJSON, exportXLSX, exportData, exportAllowed, exportCooldownSec }
 }

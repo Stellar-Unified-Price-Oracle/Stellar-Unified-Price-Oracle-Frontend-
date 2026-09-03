@@ -49,16 +49,14 @@ describe('exportFilename', () => {
 })
 
 describe('downloadFile', () => {
-  let createObjectURLSpy: ReturnType<typeof vi.fn>
-  let revokeObjectURLSpy: ReturnType<typeof vi.fn>
+  let createObjectURLSpy: ReturnType<typeof vi.spyOn>
+  let revokeObjectURLSpy: ReturnType<typeof vi.spyOn>
   let clickSpy: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    createObjectURLSpy = vi.fn(() => 'blob:test')
-    revokeObjectURLSpy = vi.fn()
+    createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test')
+    revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     clickSpy = vi.fn()
-    URL.createObjectURL = createObjectURLSpy
-    URL.revokeObjectURL = revokeObjectURLSpy
     vi.spyOn(document, 'createElement').mockReturnValue({
       href: '',
       download: '',

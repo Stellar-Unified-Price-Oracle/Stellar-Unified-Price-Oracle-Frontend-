@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    branches: [main, staging, develop]
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  id-token: write # OIDC identity used to sign the build provenance attestation
+  attestations: write # publish the signed attestation to the repo's attestation store
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_USE_MOCK: 'true'
+
+      - name: Run tests
+        run: npm run test:run
+
+      - name: Release
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 24.0.0
+          branches: |
+            [
+              "main",
+              {"name": "develop", "prerelease": true},
+              {"name": "staging", "prerelease": "rc"}
+            ]
+          dry_run: false
+          ci: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Package release artifact
+        if: success() && github.ref == 'refs/heads/main'
+        run: tar -C dist -czf dist.tar.gz .
+
+      # Generates a signed SLSA-style provenance attestation binding this exact
+      # artifact hash to the commit, workflow, and runner that built it, using
+      # GitHub's OIDC-backed Sigstore signing (no stored keys). A failure here
+      # stops the job, so an unattested build is never deployed from this workflow.
+      - name: Generate build provenance attestation
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'dist.tar.gz'
+
+      - name: Upload to CDN (on main release)
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          echo "Build artifacts ready for deployment:"
+          ls -lah dist/
+        # Replace with actual CDN upload command (e.g., AWS S3, Vercel, etc.)
+
+      - name: Create GitHub Release Summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const lines = changelog.split('\n');
+            const latestEntry = lines.slice(0, 50).join('\n');
+            
+            core.notice(`Release complete! Check CHANGELOG.md for details.`);

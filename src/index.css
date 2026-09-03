@@ -22,23 +22,102 @@ body {
   box-sizing: border-box;
 }
 
+/* ── Skeleton shimmer ───────────────────────────────────────────── */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #e5e7eb;
+}
+
+.dark .skeleton-shimmer {
+  background-color: #1f2937;
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: skeleton-shimmer-sweep 1.6s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+}
+
+@keyframes skeleton-shimmer-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Reduced motion: disable shimmer animation but keep the placeholder visible */
+.reduced-motion .skeleton-shimmer::after {
+  animation: none !important;
+  background-image: none !important;
+}
+
+/* Off-screen skeleton rows/cards skip layout & paint until scrolled into view. */
+.skeleton-offscreen {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 180px;
+}
+
+/* Smooth skeleton → real content handoff. */
+.skeleton-fade-in {
+  animation: skeleton-fade-in 0.25s ease-out;
+}
+
+@keyframes skeleton-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: instant fade-in */
+.reduced-motion .skeleton-fade-in {
+  animation: none !important;
+  opacity: 1 !important;
+}
+
 /* ── Accessibility: Reduced Motion ─────────────────────────────── */
-.reduced-motion *,
-.reduced-motion *::before,
-.reduced-motion *::after {
-  animation-duration: 0.01ms !important;
+/* When user enables reduced-motion toggle or system prefers-reduced-motion: reduce */
+.reduced-motion * {
+  animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
   scroll-behavior: auto !important;
+}
+
+/* Effectively disable keyframe animations when reduced-motion is active */
+.reduced-motion @keyframes {
+  from { }
+  to { }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
 }
@@ -90,4 +169,227 @@ body {
 
 .large-text .text-xs {
   font-size: 0.875rem !important;
+}
+
+/* ── Print Styles (#296) ────────────────────────────────────────── */
+@media print {
+  /* Reset page */
+  * {
+    color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+    margin: 0;
+  }
+
+  /* Hide interactive and decorative chrome */
+  nav,
+  footer,
+  .print\:hidden,
+  [role="status"],
+  [aria-live],
+  button,
+  .ConnectionBadge,
+  .AlertPanel,
+  .FilterPanel,
+  .PairSearchBar {
+    display: none !important;
+  }
+
+  /* Reset backgrounds and shadows for ink efficiency */
+  .bg-gray-900,
+  .bg-gray-950,
+  .dark\:bg-gray-900,
+  .dark\:bg-gray-950,
+  .dark\:bg-gray-800 {
+    background: #ffffff !important;
+  }
+
+  /* Price cards: readable border layout */
+  [class*='rounded-xl'],
+  [class*='rounded-lg'] {
+    border-radius: 4px !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: none !important;
+  }
+
+  /* Text color normalisation */
+  .text-white,
+  .text-gray-100,
+  .text-gray-200,
+  .dark\:text-white,
+  .dark\:text-gray-100 {
+    color: #111827 !important;
+  }
+
+  .text-gray-400,
+  .text-gray-500,
+  .dark\:text-gray-400,
+  .dark\:text-gray-500 {
+    color: #6b7280 !important;
+  }
+
+  .text-cyan-400,
+  .dark\:text-cyan-400 {
+    color: #0891b2 !important;
+  }
+
+  /* Grid: 3 columns on print */
+  .grid.grid-cols-1 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8pt !important;
+  }
+
+  /* Page breaks */
+  h1, h2 {
+    page-break-after: avoid;
+  }
+
+  section {
+    page-break-inside: avoid;
+  }
+
+  /* Print header: show URL */
+  @page {
+    margin: 1.5cm;
+  }
+
+  /* Utility: explicitly show print-only elements */
+  .print\:block {
+    display: block !important;
+  }
+
+  .print\:flex {
+    display: flex !important;
+  }
+
+  .print\:table {
+    display: table !important;
+  }
+
+  /* Ensure font-mono prices are rendered clearly */
+  .font-mono {
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+}
+
+/* ── Sticky Table Columns (mobile horizontal scroll) ────────── */
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.sticky-col-header {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+tr:hover .sticky-col,
+tr:hover .sticky-col-header {
+  background-color: rgb(31 41 55 / 0.5);
+}
+
+tr.bg-cyan-900\/20 .sticky-col,
+tr.bg-cyan-900\/20:hover .sticky-col {
+  background-color: rgb(0 150 136 / 0.2);
+}
+
+/* ── RTL: Logical Properties & Directional Overrides ────────── */
+/*
+ * Anything that was built with physical properties (left/right) needs an RTL
+ * counterpart. We rely on `[dir="rtl"]` set on <html> by applyRtl().
+ *
+ * Strategy:
+ *  1. Use logical properties inline where Tailwind doesn't cover them.
+ *  2. Flip sticky column anchors (left → right).
+ *  3. Mirror the skeleton shimmer sweep direction.
+ *  4. Flip the settings panel slide-in side (left border → right border).
+ *  5. Mirror any explicit translate-x animations.
+ */
+
+/* --- Skip-to-content link: left → right in RTL --- */
+[dir="rtl"] a[href="#main-content"].focus\:left-2:focus {
+  left: auto;
+  right: 0.5rem;
+}
+
+/* --- Sticky table columns: anchor to the right in RTL --- */
+[dir="rtl"] .sticky-col,
+[dir="rtl"] .sticky-col-header {
+  left: auto;
+  right: 0;
+}
+
+/* --- Skeleton shimmer: sweep right-to-left in RTL --- */
+[dir="rtl"] .skeleton-shimmer::after {
+  transform: translateX(100%);
+}
+
+@keyframes skeleton-shimmer-sweep-rtl {
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+[dir="rtl"] .skeleton-shimmer::after {
+  animation-name: skeleton-shimmer-sweep-rtl;
+}
+
+/* --- Settings panel: open from left side in RTL --- */
+/*
+ * SettingsPanel uses `justify-end` + a panel with `border-l`.
+ * In RTL the panel should slide in from the left, so we override the flex
+ * direction and the border side.
+ */
+[dir="rtl"] .rtl-panel-container {
+  justify-content: flex-start;
+}
+
+[dir="rtl"] .rtl-panel-container > [class*="border-l"] {
+  border-left: none;
+  border-right: 1px solid rgb(31 41 55);
+}
+
+/* --- Notification badge: flip absolute corner in RTL --- */
+/*
+ * Badges positioned with `-top-1 -right-1` use physical right.
+ * We redirect them to the physical left so they appear in the logical
+ * start corner (which is the right side in LTR, left side in RTL).
+ */
+[dir="rtl"] .rtl-badge-flip {
+  right: auto;
+  left: -0.25rem;
+}
+
+/* --- Active nav tab indicator: flip translate-x in RTL --- */
+/*
+ * The active bottom-nav indicator uses `left-1/2 -translate-x-1/2`.
+ * No change needed; that pattern is already symmetric. But for any
+ * component that uses a fixed positive/negative translateX, mirror it:
+ */
+[dir="rtl"] .rtl-mirror-x {
+  transform: scaleX(-1);
+}
+
+/* --- Undo/redo icon arrows: mirror in RTL --- */
+[dir="rtl"] .rtl-icon-mirror {
+  transform: scaleX(-1);
+}
+
+/* --- Page transition: reverse slide direction in RTL --- */
+@keyframes slide-in-from-right-rtl {
+  from { transform: translateX(-24px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+[dir="rtl"] .rtl-slide-in {
+  animation-name: slide-in-from-right-rtl;
 }

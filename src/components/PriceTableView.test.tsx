@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { PriceTableView } from './PriceTableView'
 import type { PriceData } from '../types'
 import { checkAccessibility } from '../test/accessibility'
+import { PriceTableView } from './PriceTableView'
 
 afterEach(cleanup)
 

@@ -1,0 +1,38 @@
+# ── Build artefacts ────────────────────────────────────────────────────────────
+dist/
+node_modules/
+coverage/
+reports/
+
+# ── Environment secrets ────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Test output ───────────────────────────────────────────────────────────────
+e2e/results/
+e2e/test-results/
+test-results/
+playwright-report/
+
+# ── Editor / OS artefacts ─────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── Git ────────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── CI / AI agent directories ─────────────────────────────────────────────────
+.github/
+.kiro/
+.cursor/
+
+# ── Docker Compose overrides (contain local credentials) ──────────────────────
+docker-compose.override.yml
+
+# ── TypeScript incremental build ──────────────────────────────────────────────
+*.tsbuildinfo
