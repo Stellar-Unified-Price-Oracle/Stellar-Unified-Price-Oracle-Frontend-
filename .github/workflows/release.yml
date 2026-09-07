@@ -67,7 +67,7 @@ jobs:
       # stops the job, so an unattested build is never deployed from this workflow.
       - name: Generate build provenance attestation
         if: success() && github.ref == 'refs/heads/main'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: 'dist.tar.gz'
 
