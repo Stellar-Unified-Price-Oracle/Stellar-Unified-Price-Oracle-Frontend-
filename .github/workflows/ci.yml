@@ -152,6 +152,10 @@ jobs:
   # Builds with the visualizer enabled, enforces the size-limit budgets
   # configured in package.json, uploads the visualization for historical
   # inspection, and (on PRs) comments the size diff against the base branch.
+  #
+  # Note: deliberately builds WITHOUT VITE_USE_MOCK. The mock build bundles
+  # MSW handlers and fixture data (~72 kB) that never ships to users; the
+  # budget gate exists to catch bloat in what users actually download.
   bundle-analysis:
     needs: [frontend]
     if: ${{ !cancelled() }}
@@ -174,8 +178,6 @@ jobs:
 
       - name: Build with bundle visualization
         run: npm run build:analyze
-        env:
-          VITE_USE_MOCK: 'true'
 
       # Machine-readable budget results (name/size/sizeLimit/passed per
       # check), captured before the pass/fail step below so a breach is still

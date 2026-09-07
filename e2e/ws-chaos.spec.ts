@@ -27,6 +27,10 @@ function priceUpdate(overrides: Partial<(typeof BASE_PRICES)[number]> & { seq?: 
   }
 }
 
+// Block service workers so MSW can't intercept /api/* before the page.route
+// mocks in this file (the SW handles requests ahead of Playwright routing).
+test.use({ serviceWorkers: 'block' })
+
 async function mockPricesApi(page: import('@playwright/test').Page) {
   await page.route('**/api/prices**', (route) => {
     route.fulfill({ contentType: 'application/json', body: JSON.stringify(BASE_PRICES) })
@@ -57,7 +61,7 @@ test.describe('WebSocket chaos', () => {
       ws.send(JSON.stringify(priceUpdate({ price: 61_234, seq: 1 })))
     })
 
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
@@ -85,7 +89,7 @@ test.describe('WebSocket chaos', () => {
       ws.send(JSON.stringify(priceUpdate({ price: 70_000, seq: 5 })))
     })
 
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
@@ -111,7 +115,7 @@ test.describe('WebSocket chaos', () => {
       }, 3_000)
     })
 
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
     await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
@@ -148,7 +152,7 @@ test.describe('WebSocket chaos', () => {
       }
     })
 
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
     await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText(/40,000|40000/).first()).toBeVisible({ timeout: 10_000 })
@@ -183,7 +187,7 @@ test.describe('WebSocket chaos', () => {
       // that simply never arrives (silent drop), simulating packet loss.
     })
 
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     // The dashboard still renders correctly from the REST snapshot alone —

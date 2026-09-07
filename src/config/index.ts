@@ -5,13 +5,23 @@ import { validateEnv } from './validateEnv'
 // and logs a warning + uses defaults in production.
 const env = validateEnv(import.meta.env as Record<string, string | undefined>)
 
+const useMock = env.VITE_USE_MOCK === 'true'
+
+// In mock mode MSW intercepts same-origin requests, so the API/WS URLs must
+// point at the page origin — otherwise the values baked in by .env.production
+// (e.g. api.example.com) are used and every request falls through to the real
+// network. `apiUrl` is an origin prefix (rest.ts concatenates `apiUrl + path`
+// where path is `/api/prices`, so `''` yields the same-origin `/api/prices`).
+const mockApiUrl = ''
+const mockWsUrl = 'ws://localhost:3000'
+
 export const config = {
-  apiUrl: env.VITE_API_URL,
-  wsUrl: env.VITE_WS_URL,
+  apiUrl: useMock ? mockApiUrl : env.VITE_API_URL,
+  wsUrl: useMock ? mockWsUrl : env.VITE_WS_URL,
   openApiSpecUrl: env.VITE_OPENAPI_SPEC_URL,
   oracleNetwork: env.VITE_ORACLE_NETWORK,
   analyticsEndpoint: env.VITE_ANALYTICS_URL,
-  useMock: env.VITE_USE_MOCK === 'true',
+  useMock,
   logLevel: env.VITE_LOG_LEVEL,
   stellarNetwork: env.VITE_STELLAR_NETWORK,
   auth: {

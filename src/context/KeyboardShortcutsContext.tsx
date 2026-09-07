@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useKeyboardShortcuts, type ShortcutDefinition } from '../hooks/useKeyboardShortcuts'
 import { KeyboardShortcutHelp } from '../components/KeyboardShortcutHelp'
@@ -47,7 +40,7 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
         keys: 'g d',
         description: 'Go to Dashboard',
         category: 'Navigation',
-        handler: () => navigate('/'),
+        handler: () => navigate('/dashboard'),
       },
       {
         keys: 'g a',
@@ -126,7 +119,9 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
 
       // ── Help ─────────────────────────────────────────────────────────
       {
-        keys: '?',
+        // '?' is a shifted character on keyboard layouts, so register it with
+        // shift to match the actual keydown (otherwise it never fires).
+        keys: 'shift+?',
         description: 'Show keyboard shortcut help',
         category: 'Help',
         handler: () => setHelpOpen((prev) => !prev),
@@ -145,9 +140,7 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
   return (
     <KeyboardShortcutsContext.Provider value={value}>
       {children}
-      {helpOpen && (
-        <KeyboardShortcutHelp shortcuts={shortcuts} onClose={closeHelp} />
-      )}
+      {helpOpen && <KeyboardShortcutHelp shortcuts={shortcuts} onClose={closeHelp} />}
     </KeyboardShortcutsContext.Provider>
   )
 }

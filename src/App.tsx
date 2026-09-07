@@ -1,4 +1,5 @@
-import { useEffect, type ReactElement } from 'react'
+import { useEffect, useRef, type ReactElement } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -40,10 +41,41 @@ import { scheduleIdlePreload } from './utils/preloadCache'
 
 const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
 
+// React Query provider for PriceContext (and any other data hooks). Without it
+// the Dashboard throws "No QueryClient set" (regression from #ab91b30, which
+// moved to code splitting but dropped the provider).
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5_000,
+      retry: 3,
+    },
+  },
+})
+
 export function AppContent(): ReactElement {
   const location = useLocation()
   useAccessibility()
   useAnalyticsRouting()
+
+  // Route-change focus management: move focus to the main content region so
+  // keyboard/screen-reader users don't lose their place when navigating.
+  // (#501 — focus must not silently drop to <body> between routes.)
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    // Never steal focus on the initial paint — that would defeat the
+    // skip-to-content link. Only manage focus on actual navigations.
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    const main = document.getElementById('main-content')
+    // Only move focus when focus actually fell back to <body> (e.g. the
+    // clicked nav link unmounted) — never yank it from an interactive element.
+    if (main && document.activeElement === document.body) {
+      main.focus({ preventScroll: true })
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     if (location.pathname === '/') {
@@ -136,20 +168,22 @@ export default function App(): ReactElement {
 
   return (
     <BrowserRouter basename={BASENAME}>
-      <ErrorReporterProvider>
-        <PreferencesProvider>
-          <ToastProvider>
-            <AuthProvider>
-              <WalletProvider>
-                <PriceProvider>
-                  <AppContent />
-                  {import.meta.env.DEV && <PerformanceOverlay />}
-                </PriceProvider>
-              </WalletProvider>
-            </AuthProvider>
-          </ToastProvider>
-        </PreferencesProvider>
-      </ErrorReporterProvider>
+      <QueryClientProvider client={queryClient}>
+        <ErrorReporterProvider>
+          <PreferencesProvider>
+            <ToastProvider>
+              <AuthProvider>
+                <WalletProvider>
+                  <PriceProvider>
+                    <AppContent />
+                    {import.meta.env.DEV && <PerformanceOverlay />}
+                  </PriceProvider>
+                </WalletProvider>
+              </AuthProvider>
+            </ToastProvider>
+          </PreferencesProvider>
+        </ErrorReporterProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   )
 }

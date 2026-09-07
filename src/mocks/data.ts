@@ -6,10 +6,9 @@ import { getContractRegistryEntry } from '../lib/contractRegistry'
 
 const SOURCES = ['chainlink', 'redstone', 'band', 'reflector'] as const
 
-function randomPrice(base: number) {
-  return +(base * (0.98 + Math.random() * 0.04)).toFixed(6)
-}
-
+// Deterministic per-pair fixtures: prices/confidence/sources are fixed so the
+// mock build is stable across runs. Random values made E2E assertions and
+// visual-regression screenshots non-reproducible.
 const BASE_PRICES: Record<string, number> = {
   'XLM/USD': 0.12,
   'BTC/USD': 65000,
@@ -17,14 +16,34 @@ const BASE_PRICES: Record<string, number> = {
   'USDC/USD': 1.0,
 }
 
+const CONFIDENCE: Record<string, number> = {
+  'XLM/USD': 0.97,
+  'BTC/USD': 0.988,
+  'ETH/USD': 0.95,
+  'USDC/USD': 0.96,
+}
+
+const PAIR_SOURCES: Record<string, readonly string[]> = {
+  'XLM/USD': ['chainlink', 'redstone', 'band'],
+  'BTC/USD': ['chainlink', 'redstone'],
+  'ETH/USD': ['band', 'reflector'],
+  'USDC/USD': ['chainlink'],
+}
+
+/** Small deterministic per-pair price offset so sources/history vary slightly. */
+function stablePrice(base: number, seed: number): number {
+  return +(base * (1 + (((seed * 37) % 40) - 20) / 1000)).toFixed(6)
+}
+
 /** Mock pair for the default XLM/USD case to satisfy tree-shaking imports. */
 export function mockPriceData(pair = 'XLM/USD'): PriceData {
+  const seed = pair.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
   return {
     assetPair: pair,
-    price: randomPrice(BASE_PRICES[pair] ?? 1),
+    price: stablePrice(BASE_PRICES[pair] ?? 1, seed),
     timestamp: Date.now(),
-    confidence: 0.92 + Math.random() * 0.08,
-    sources: SOURCES.slice(0, 2 + Math.floor(Math.random() * 3)),
+    confidence: CONFIDENCE[pair] ?? 0.95,
+    sources: [...(PAIR_SOURCES[pair] ?? SOURCES.slice(0, 2))],
   }
 }
 
@@ -53,14 +72,15 @@ let mockLedger = 52_000_000
 export function mockOnChainPrice(network: OracleNetwork, asset: string): OnChainPriceRecord {
   const entry = getContractRegistryEntry(network, asset)
   const base = BASE_PRICES_BY_ASSET[entry.asset] ?? 1
-  const publishDelayMs = 15_000 + Math.random() * 4 * 60_000
-  mockLedger += 1 + Math.floor(Math.random() * 3)
+  const publishDelayMs = 15_000 + 90_000 // deterministic
+  const seed = asset.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 7)
+  mockLedger += 2
 
   return {
     asset: entry.asset,
     network: entry.network,
     contractId: entry.contractId,
-    price: randomPrice(base),
+    price: stablePrice(base, seed),
     publishedAt: Date.now() - publishDelayMs,
     ledger: mockLedger,
   }
@@ -75,7 +95,8 @@ export function mockPriceProof(pair: string, timestamp: number | undefined = Dat
   const base = BASE_PRICES[pair]
   if (!base) return null
   const ts = timestamp ?? Date.now()
-  const price = randomPrice(base)
+  const seed = pair.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 11)
+  const price = stablePrice(base, seed)
   const record = mockOnChainPrice('testnet', pair.split('/')[0] ?? pair)
   return {
     record: {
@@ -106,13 +127,16 @@ export function mockPriceProof(pair: string, timestamp: number | undefined = Dat
 export function mockHistory(pair: string, count = 100): PriceHistoryResponse {
   const base = BASE_PRICES[pair] ?? 1
   const now = Date.now()
+  const seed = pair.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
   return {
     pair,
     history: Array.from({ length: count }, (_, i) => ({
-      price: randomPrice(base),
+      // Deterministic gentle drift around the base price so charts and
+      // assertions are reproducible across runs.
+      price: +(base * (1 + (((seed + i) % 40) - 20) / 1000)).toFixed(6),
       timestamp: now - (count - i) * 60_000,
-      confidence: 0.9 + Math.random() * 0.1,
-      sources: SOURCES.slice(0, 2),
+      confidence: 0.94,
+      sources: [...(PAIR_SOURCES[pair] ?? SOURCES.slice(0, 2))],
     })),
   }
 }

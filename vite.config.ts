@@ -58,7 +58,9 @@ function buildProxyConfig(env: Record<string, string>): ProxyConfig {
   const proxyConfig: ProxyConfig = {}
 
   const apiTarget = parseProxyTarget(env, 'VITE_PROXY_API')
-  if (apiTarget) proxyConfig['/api'] = apiTarget
+  // Trailing slash so only real API paths (/api/prices, /api/version, ...) are
+  // proxied — the SPA route /api-docs must reach the frontend, not the backend.
+  if (apiTarget) proxyConfig['/api/'] = apiTarget
 
   const wsTarget = parseProxyTarget(env, 'VITE_PROXY_WS')
   if (wsTarget) proxyConfig['/ws'] = wsTarget
@@ -76,7 +78,7 @@ function buildProxyConfig(env: Record<string, string>): ProxyConfig {
   }
 
   if (Object.keys(proxyConfig).length === 0) {
-    proxyConfig['/api'] = { target: env.VITE_API_URL || 'http://localhost:3000', changeOrigin: true }
+    proxyConfig['/api/'] = { target: env.VITE_API_URL || 'http://localhost:3000', changeOrigin: true }
     proxyConfig['/ws'] = { target: env.VITE_WS_URL || 'ws://localhost:3000', ws: true }
   }
 
@@ -169,7 +171,10 @@ export default defineConfig(({ mode }) => {
           ]
         : []),
     ],
-    base: '/Stellar-Unified-Price-Oracle-Frontend-/',
+    // Served at the domain root: Vercel is the only deploy target in CI (no
+    // GitHub Pages workflow exists), and the preview server used by Playwright
+    // E2E/visual tests must serve bare paths like /dashboard directly.
+    base: '/',
     build: {
       // Generate hidden source maps (not inlined into JS — kept as separate .map files).
       // These are NOT uploaded to the CDN/static host; a post-build CI step strips them

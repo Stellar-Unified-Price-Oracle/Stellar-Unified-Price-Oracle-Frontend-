@@ -109,7 +109,7 @@ test.describe('@mobile Dashboard — Layout Integrity', () => {
 
     test(`no horizontal overflow on ${viewportKey}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
-      await page.goto('/')
+      await page.goto('/dashboard')
       await page.waitForLoadState('networkidle')
       await page
         .getByRole('heading', { name: 'Price Oracle Dashboard' })
@@ -122,7 +122,7 @@ test.describe('@mobile Dashboard — Layout Integrity', () => {
 
     test(`dashboard is visible and readable on ${viewportKey}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
-      await page.goto('/')
+      await page.goto('/dashboard')
       await page.waitForLoadState('networkidle')
 
       // Heading should be visible
@@ -147,7 +147,7 @@ test.describe('@mobile Dashboard — Layout Integrity', () => {
 test.describe('@mobile Touch Target Accessibility', () => {
   test('all interactive elements meet 44×44px minimum touch target on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
     await page
       .getByRole('heading', { name: 'Price Oracle Dashboard' })
@@ -169,7 +169,7 @@ test.describe('@mobile Touch Target Accessibility', () => {
 
   test('navigation buttons are easily tappable on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     // Find all navigation buttons
@@ -194,7 +194,7 @@ test.describe('@mobile Touch Target Accessibility', () => {
 test.describe('@mobile Navigation on Mobile Devices', () => {
   test('hamburger menu is visible on small phones', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneSmall)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const hamburger = page.getByRole('button', { name: /menu|toggle|hamburger/i }).first()
@@ -208,7 +208,7 @@ test.describe('@mobile Navigation on Mobile Devices', () => {
 
   test('navigation links are accessible on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     // Should be able to navigate to dashboard
@@ -239,7 +239,7 @@ test.describe('@mobile Navigation on Mobile Devices', () => {
 test.describe('@mobile Price Cards — Mobile Layout', () => {
   test('price cards are stacked vertically on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     // Get first two price cards
@@ -261,7 +261,7 @@ test.describe('@mobile Price Cards — Mobile Layout', () => {
 
   test('price cards are full-width on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const card = page.locator('[data-testid="price-card"], [class*="price-card"]').first()
@@ -280,7 +280,7 @@ test.describe('@mobile Price Cards — Mobile Layout', () => {
 test.describe('@mobile Modals and Dialogs on Mobile', () => {
   test('modals fit within mobile viewport', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     // Try to open alerts panel
@@ -310,10 +310,10 @@ test.describe('@mobile Modals and Dialogs on Mobile', () => {
 test.describe('@mobile Search and Filtering on Mobile', () => {
   test('search input is easily accessible on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
-    const searchInput = page.getByRole('textbox', { name: /search/i })
+    const searchInput = page.getByRole('combobox', { name: /search/i })
     await expect(searchInput)
       .toBeVisible({ timeout: 5_000 })
       .catch(() => {
@@ -329,10 +329,10 @@ test.describe('@mobile Search and Filtering on Mobile', () => {
 
   test('search results are readable on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
-    const searchInput = page.getByRole('textbox', { name: /search/i })
+    const searchInput = page.getByRole('combobox', { name: /search/i })
     if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill('BTC')
       await page.waitForLoadState('networkidle')
@@ -350,7 +350,7 @@ test.describe('@mobile Search and Filtering on Mobile', () => {
 test.describe('@mobile Text Legibility on Mobile', () => {
   test('headings are large enough to read on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const headings = page.locator('h1, h2, h3').filter({ hasNot: page.locator('[role="status"]') })
@@ -367,7 +367,7 @@ test.describe('@mobile Text Legibility on Mobile', () => {
 
   test('body text is readable on mobile', async ({ page }) => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const texts = await getTextElements(page)
@@ -384,7 +384,7 @@ test.describe('@mobile Text Legibility on Mobile', () => {
 
 test.describe('@mobile All Pages on Mobile Viewport', () => {
   const pages = [
-    { url: '/', name: 'Dashboard' },
+    { url: '/dashboard', name: 'Dashboard' },
     { url: '/prices/BTC%2FUSD', name: 'Price Detail' },
     { url: '/api-docs', name: 'API Docs' },
     { url: '/nonexistent', name: '404 Not Found' },
@@ -417,7 +417,7 @@ test.describe('@mobile All Pages on Mobile Viewport', () => {
 test.describe('@mobile Tablet Viewport (Landscape & Portrait)', () => {
   test('dashboard renders on tablet landscape', async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 768 })
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const overflow = await hasHorizontalOverflow(page)
@@ -443,7 +443,7 @@ test.describe('@mobile Responsive Design Breakpoints', () => {
   test('layout adapts correctly as viewport size changes', async ({ page }) => {
     // Start at desktop
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const desktopOverflow = await hasHorizontalOverflow(page)

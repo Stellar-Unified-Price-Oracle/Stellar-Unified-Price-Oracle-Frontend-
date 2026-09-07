@@ -333,7 +333,7 @@ export function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{t('dashboard.title')}</h1>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{t('dashboard.subtitle')}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('dashboard.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PairSearchBar
@@ -355,7 +355,7 @@ export function Dashboard() {
             className={`relative min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
               filterPanelOpen
                 ? 'bg-cyan-600 border-cyan-500 text-white'
-                : 'border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                : 'border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'
             }`}
             aria-pressed={filterPanelOpen}
             aria-label={t('dashboard.filter.ariaLabel')}
@@ -383,7 +383,7 @@ export function Dashboard() {
               className={`min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                 selectMode
                   ? 'bg-cyan-600 border-cyan-500 text-white'
-                  : 'border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                  : 'border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600'
               }`}
               aria-pressed={selectMode}
               aria-label={t('dashboard.select.ariaLabel')}
@@ -414,7 +414,7 @@ export function Dashboard() {
               <button
                 type="button"
                 onClick={() => startTransition(() => setDashboardView('card'))}
-                className={`min-h-[44px] min-w-[44px] flex items-center justify-center px-3 py-1.5 text-sm transition-colors ${dashboardView === 'card' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                className={`min-h-[44px] min-w-[44px] flex items-center justify-center px-3 py-1.5 text-sm transition-colors ${dashboardView === 'card' ? 'bg-gray-700 text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'}`}
                 aria-pressed={dashboardView === 'card'}
                 aria-label={t('dashboard.viewToggle.card')}
               >
@@ -433,7 +433,7 @@ export function Dashboard() {
                 }}
                 onMouseEnter={preloadPriceTable}
                 onFocus={preloadPriceTable}
-                className={`min-h-[44px] min-w-[44px] flex items-center justify-center px-3 py-1.5 text-sm transition-colors ${dashboardView === 'table' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                className={`min-h-[44px] min-w-[44px] flex items-center justify-center px-3 py-1.5 text-sm transition-colors ${dashboardView === 'table' ? 'bg-gray-700 text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'}`}
                 aria-pressed={dashboardView === 'table'}
                 aria-label={t('dashboard.viewToggle.table')}
               >
@@ -449,7 +449,7 @@ export function Dashboard() {
           <button
             type="button"
             onClick={() => setNotifModalOpen(true)}
-            className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+            className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600 transition-colors"
             aria-label={t('dashboard.alerts.ariaLabel')}
             title={t('dashboard.alerts.title')}
           >
@@ -466,7 +466,7 @@ export function Dashboard() {
           <button
             type="button"
             onClick={() => setScheduledExportsOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600 transition-colors"
             aria-label={t('scheduledExports.title', { defaultValue: 'Scheduled exports' }) as string}
             title={t('scheduledExports.title', { defaultValue: 'Scheduled exports' }) as string}
           >

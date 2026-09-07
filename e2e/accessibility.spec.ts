@@ -1,10 +1,17 @@
 import { test, expect } from '@playwright/test'
 
+// The app renders lazily (~1s after networkidle), so keyboard tests must wait
+// for the dashboard to be interactive before pressing keys.
+async function gotoDashboard(page: import('@playwright/test').Page) {
+  await page.goto('/dashboard')
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible({ timeout: 15_000 })
+}
+
 // ─── Accessibility: keyboard navigation ──────────────────────────────────────
 
 test('main navigation links are reachable via Tab', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
 
   // Tab from body into the nav
   await page.keyboard.press('Tab')
@@ -16,23 +23,21 @@ test('main navigation links are reachable via Tab', async ({ page }) => {
 })
 
 test('search input is reachable via Tab', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
 
   // Tab through nav items to reach the search box
   for (let i = 0; i < 10; i++) {
     await page.keyboard.press('Tab')
     const label = await page.evaluate(() => (document.activeElement as HTMLElement)?.getAttribute('aria-label'))
-    if (label === 'Search by asset pair') break
+    if (label === 'Search asset pairs') break
   }
 
   const label = await page.evaluate(() => (document.activeElement as HTMLElement)?.getAttribute('aria-label'))
-  expect(label).toBe('Search by asset pair')
+  expect(label).toBe('Search asset pairs')
 })
 
 test('filter toggle button has correct aria-pressed state', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
 
   const filterBtn = page.getByRole('button', { name: 'Toggle filter panel' })
   await expect(filterBtn).toHaveAttribute('aria-pressed', 'false')
@@ -45,11 +50,12 @@ test('filter toggle button has correct aria-pressed state', async ({ page }) => 
 })
 
 test('alert modal traps focus inside dialog', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
-  const alertBtn = page.locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]').first()
+  const alertBtn = page
+    .locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]')
+    .first()
   if (!(await alertBtn.isVisible())) return
 
   await alertBtn.click()
@@ -69,11 +75,12 @@ test('alert modal traps focus inside dialog', async ({ page }) => {
 })
 
 test('Escape key closes alert modal and returns focus', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
-  const alertBtn = page.locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]').first()
+  const alertBtn = page
+    .locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]')
+    .first()
   if (!(await alertBtn.isVisible())) return
 
   await alertBtn.click()
@@ -86,26 +93,22 @@ test('Escape key closes alert modal and returns focus', async ({ page }) => {
 // ─── Accessibility: ARIA roles and landmarks ──────────────────────────────────
 
 test('page has main navigation landmark', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 10_000 })
 })
 
 test('page has main content landmark', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await expect(page.locator('main')).toBeVisible({ timeout: 10_000 })
 })
 
 test('connection badge has role=status', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await expect(page.locator('[role="status"]').first()).toBeVisible({ timeout: 10_000 })
 })
 
 test('price feeds grid has aria-label', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
 
   const grid = page.locator('[aria-label="Price feeds"]')
   const loading = page.locator('[aria-label="Loading price cards"]')
@@ -113,8 +116,7 @@ test('price feeds grid has aria-label', async ({ page }) => {
 })
 
 test('API docs page is accessible via nav link', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
 
   await page.getByRole('link', { name: 'API Docs' }).click()
   await page.waitForLoadState('networkidle')
@@ -125,8 +127,7 @@ test('API docs page is accessible via nav link', async ({ page }) => {
 // ─── Accessibility: view toggle aria-pressed ─────────────────────────────────
 
 test('card view button reflects aria-pressed state', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
   const cardBtn = page.getByRole('button', { name: 'Card view' })

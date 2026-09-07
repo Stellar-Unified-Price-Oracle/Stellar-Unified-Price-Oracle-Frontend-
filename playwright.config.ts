@@ -6,12 +6,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI
-    ? [['list'], ['html', { outputFolder: 'reports/playwright', open: 'never' }]]
-    : 'list',
+  reporter: process.env.CI ? [['list'], ['html', { outputFolder: 'reports/playwright', open: 'never' }]] : 'list',
   use: {
     // Set by the preview-deployment workflow to point E2E runs at a live PR
     // preview instead of a locally-built server (#378).
+    // The app is served at the domain root (vite `base` is '/'), so bare
+    // paths like /dashboard resolve directly against the preview server.
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4173',
     trace: 'on-first-retry',
   },

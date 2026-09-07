@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 // ─── Alerts: alert panel ──────────────────────────────────────────────────────
 
 test('alert panel opens via bell icon in nav', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
 
   await page.getByRole('button', { name: 'Toggle price alerts' }).click()
@@ -11,7 +11,7 @@ test('alert panel opens via bell icon in nav', async ({ page }) => {
 })
 
 test('alert panel shows empty state when no alerts exist', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
 
   await page.getByRole('button', { name: 'Toggle price alerts' }).click()
@@ -19,7 +19,7 @@ test('alert panel shows empty state when no alerts exist', async ({ page }) => {
 })
 
 test('alert panel closes when close button is clicked', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
 
   await page.getByRole('button', { name: 'Toggle price alerts' }).click()
@@ -31,7 +31,7 @@ test('alert panel closes when close button is clicked', async ({ page }) => {
 })
 
 test('alert panel closes when backdrop is clicked', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
 
   await page.getByRole('button', { name: 'Toggle price alerts' }).click()
@@ -45,12 +45,14 @@ test('alert panel closes when backdrop is clicked', async ({ page }) => {
 // ─── Alerts: alert modal (create) ────────────────────────────────────────────
 
 test('alert modal opens when alert button on a price card is clicked', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
   // Each price card has an alert/bell button
-  const alertBtn = page.locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]').first()
+  const alertBtn = page
+    .locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]')
+    .first()
   if (await alertBtn.isVisible()) {
     await alertBtn.click()
     await expect(page.getByRole('dialog', { name: /price alert/i })).toBeVisible({ timeout: 5_000 })
@@ -58,11 +60,13 @@ test('alert modal opens when alert button on a price card is clicked', async ({ 
 })
 
 test('alert modal can be closed with Escape key', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
-  const alertBtn = page.locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]').first()
+  const alertBtn = page
+    .locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]')
+    .first()
   if (!(await alertBtn.isVisible())) return
 
   await alertBtn.click()
@@ -73,11 +77,13 @@ test('alert modal can be closed with Escape key', async ({ page }) => {
 })
 
 test('alert modal shows validation error when submitted with no thresholds', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
-  const alertBtn = page.locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]').first()
+  const alertBtn = page
+    .locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]')
+    .first()
   if (!(await alertBtn.isVisible())) return
 
   await alertBtn.click()
@@ -85,15 +91,17 @@ test('alert modal shows validation error when submitted with no thresholds', asy
 
   // Submit without filling thresholds
   await page.getByRole('button', { name: /create alert/i }).click()
-  await expect(page.getByText(/at least one threshold/i)).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByText(/at least one threshold/i).first()).toBeVisible({ timeout: 5_000 })
 })
 
 test('alert can be created with an upper threshold', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
-  const alertBtn = page.locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]').first()
+  const alertBtn = page
+    .locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]')
+    .first()
   if (!(await alertBtn.isVisible())) return
 
   await alertBtn.click()
@@ -107,7 +115,7 @@ test('alert can be created with an upper threshold', async ({ page }) => {
 })
 
 test('notification channels modal opens', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 

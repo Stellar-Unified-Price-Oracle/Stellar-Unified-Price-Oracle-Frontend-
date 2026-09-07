@@ -50,4 +50,21 @@ export const handlers = [
   }),
 
   http.get('/health', () => HttpResponse.json({ status: 'ok', uptime: Math.floor(Math.random() * 86400) })),
+
+  // Version endpoint — without this the client's /api/version probe falls
+  // through to the Vite dev/preview proxy (api.example.com) and returns 502.
+  // Echo the client's own build version so the compatibility banner stays
+  // silent in the mock build (a real backend would report its own version).
+  http.get('/api/version', () =>
+    HttpResponse.json({
+      success: true,
+      version: '0.0.0',
+      serverVersion: '0.0.0',
+      minClientVersion: undefined,
+      maxClientVersion: undefined,
+      breaking: false,
+      deprecated: false,
+      supportedFeatures: [],
+    }),
+  ),
 ]

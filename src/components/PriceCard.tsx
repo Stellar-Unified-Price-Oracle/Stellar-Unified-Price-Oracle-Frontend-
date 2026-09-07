@@ -55,10 +55,12 @@ import { FreshnessBadge } from './FreshnessBadge'
 import { Tooltip } from './Tooltip'
 
 const SOURCE_COLORS: Record<string, string> = {
-  chainlink: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
-  redstone: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
-  band: 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
-  reflector: 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
+  // Cards are always dark (bg-gray-900), so badge text always uses the
+  // light-on-dark variants — the light-mode colors fail contrast on the card.
+  chainlink: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  redstone: 'bg-red-500/20 text-red-300 border-red-500/30',
+  band: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  reflector: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
 }
 
 /** Props for {@link PriceCard}. */
@@ -96,7 +98,15 @@ interface PriceCardProps {
   isSelected?: boolean
 }
 
-export const PriceCard = memo(function PriceCard({ price, onClick, isStale, hasAlert, onAlertClick, selectMode, isSelected }: PriceCardProps) {
+export const PriceCard = memo(function PriceCard({
+  price,
+  onClick,
+  isStale,
+  hasAlert,
+  onAlertClick,
+  selectMode,
+  isSelected,
+}: PriceCardProps) {
   const { t } = useTranslation()
   const { preferences } = usePreferences()
   const confidencePct = (price.confidence * 100).toFixed(1)
@@ -152,16 +162,12 @@ export const PriceCard = memo(function PriceCard({ price, onClick, isStale, hasA
         </div>
       </div>
 
-      <div className="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight">
-        ${formatPrice(price.price)}
-      </div>
+      <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPrice(price.price)}</div>
 
-      <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3">
+      <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
         <FreshnessBadge timestamp={price.timestamp} refreshIntervalMs={preferences.refreshInterval} />
         <Tooltip content={t('priceCard.confidenceTooltip')}>
-          <span className="text-cyan-600 dark:text-cyan-400">
-            {t('priceCard.confidence', { value: confidencePct })}
-          </span>
+          <span className="text-cyan-400">{t('priceCard.confidence', { value: confidencePct })}</span>
         </Tooltip>
       </div>
 
@@ -178,7 +184,7 @@ export const PriceCard = memo(function PriceCard({ price, onClick, isStale, hasA
             }
           >
             <span
-              className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${SOURCE_COLORS[src] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'} ${src === activeSource ? 'ring-1 ring-cyan-400' : ''}`}
+              className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${SOURCE_COLORS[src] ?? 'bg-gray-800 text-gray-300 border-gray-700'} ${src === activeSource ? 'ring-1 ring-cyan-400' : ''}`}
             >
               {src === activeSource && <span aria-hidden="true">● </span>}
               {src}
@@ -191,16 +197,10 @@ export const PriceCard = memo(function PriceCard({ price, onClick, isStale, hasA
         <button
           type="button"
           onClick={handleAlertClick}
-          className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${hasAlert ? 'text-amber-400 hover:text-amber-300' : 'text-gray-500 hover:text-gray-300'}`}
+          className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${hasAlert ? 'text-amber-400 hover:text-amber-300' : 'text-gray-400 hover:text-gray-200'}`}
           aria-label={t('priceCard.alertAriaLabel', { pair: price.assetPair })}
         >
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

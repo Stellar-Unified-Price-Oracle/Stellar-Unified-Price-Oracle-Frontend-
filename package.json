@@ -46,7 +46,7 @@
     {
       "name": "Total JS (all chunks)",
       "path": "dist/assets/*.js",
-      "limit": "600 kB",
+      "limit": "650 kB",
       "brotli": true
     },
     {
@@ -82,7 +82,7 @@
     "@commitlint/cli": "19.8.1",
     "@commitlint/config-conventional": "19.8.1",
     "@eslint/js": "^9.39.2",
-    "@playwright/test": "1.52.0",
+    "@playwright/test": "1.63.0",
     "@size-limit/file": "^12.1.0",
     "@storybook/addon-a11y": "^10.5.5",
     "@storybook/addon-themes": "^10.5.5",

@@ -14,7 +14,7 @@ test('navigating to a price detail page renders the pair heading', async ({ page
 })
 
 test('back button on price detail returns to dashboard', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/dashboard')
   await page.waitForLoadState('networkidle')
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
@@ -24,7 +24,7 @@ test('back button on price detail returns to dashboard', async ({ page }) => {
   await page.waitForLoadState('networkidle')
 
   // Confirm we left the dashboard
-  await expect(page).not.toHaveURL('/', { timeout: 5_000 })
+  await expect(page).not.toHaveURL('/dashboard', { timeout: 5_000 })
 
   // Click the back button
   const backBtn = page.getByRole('button', { name: /go back to dashboard/i })

@@ -191,7 +191,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
       </div>
 
       {/* ── Footer (desktop only) ──────────────────────────────────── */}
-      <footer className="hidden sm:block border-t border-gray-200 dark:border-gray-800 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+      <footer className="hidden sm:block border-t border-gray-200 dark:border-gray-800 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
         {t('footer.text')}
         <span aria-hidden="true"> · </span>
         <NavLink to="/security" className="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400">

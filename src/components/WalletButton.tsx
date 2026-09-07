@@ -9,8 +9,7 @@ import { useWallet } from '../wallet/WalletContext'
  */
 export function WalletButton(): ReactElement {
   const { t } = useTranslation()
-  const { status, address, network, balance, balanceLoading, error, errorCode, connect, disconnect } =
-    useWallet()
+  const { status, address, network, balance, balanceLoading, error, errorCode, connect, disconnect } = useWallet()
   const [menuOpen, setMenuOpen] = useState(false)
 
   if (status !== 'connected') {
@@ -20,7 +19,7 @@ export function WalletButton(): ReactElement {
           type="button"
           onClick={() => void connect()}
           disabled={status === 'connecting'}
-          className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cyan-600 text-white hover:bg-cyan-700 disabled:opacity-60 transition-colors"
+          className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cyan-700 text-white hover:bg-cyan-600 disabled:opacity-60 transition-colors"
         >
           {status === 'connecting' ? t('wallet.connecting') : t('wallet.connect')}
         </button>

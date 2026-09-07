@@ -1,6 +1,14 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
+// The app renders lazily (~1s after networkidle: MSW worker + route chunks), so
+// tests that interact immediately must wait for the dashboard to be visible.
+async function gotoDashboard(page: import('@playwright/test').Page) {
+  await page.goto('/dashboard')
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible({ timeout: 15_000 })
+}
+
 // ─── Full-page axe audits across all routes ──────────────────────────────────
 
 const ROUTES = ['/', '/dashboard', '/prices/BTC%2FUSD', '/api-docs', '/this-does-not-exist']
@@ -10,9 +18,7 @@ for (const route of ROUTES) {
     await page.goto(route)
     await page.waitForLoadState('networkidle')
 
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
-      .analyze()
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
 
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
   })
@@ -20,9 +26,10 @@ for (const route of ROUTES) {
 
 // ─── Tab order: every interactive element on the dashboard is reachable ──────
 
-test('tab order through the dashboard reaches nav, search, and filter controls without getting stuck', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+test('tab order through the dashboard reaches nav, search, and filter controls without getting stuck', async ({
+  page,
+}) => {
+  await gotoDashboard(page)
 
   const seenLabels = new Set<string>()
   for (let i = 0; i < 25; i++) {
@@ -42,11 +49,12 @@ test('tab order through the dashboard reaches nav, search, and filter controls w
 // ─── Focus management: modal open/close and route changes ───────────────────
 
 test('focus returns to a sensible element after closing the alert modal', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
-  const alertBtn = page.locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]').first()
+  const alertBtn = page
+    .locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]')
+    .first()
   if (!(await alertBtn.isVisible())) return
 
   await alertBtn.click()
@@ -63,8 +71,7 @@ test('focus returns to a sensible element after closing the alert modal', async 
 })
 
 test('no focus loss when navigating between routes', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
 
   await page.getByRole('link', { name: 'API Docs' }).click()
   await page.waitForLoadState('networkidle')
@@ -77,8 +84,7 @@ test('no focus loss when navigating between routes', async ({ page }) => {
 // ─── Screen reader announcements ─────────────────────────────────────────────
 
 test('connection status changes are announced via a live region', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
 
   const status = page.locator('[role="status"]').first()
   await expect(status).toBeVisible({ timeout: 10_000 })
@@ -101,8 +107,7 @@ const CONTRAST_VIEWPORTS = [
 for (const viewport of CONTRAST_VIEWPORTS) {
   test(`dashboard passes color-contrast audit at ${viewport.name} viewport`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height })
-    await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await gotoDashboard(page)
 
     const results = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze()
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
@@ -113,8 +118,7 @@ for (const viewport of CONTRAST_VIEWPORTS) {
 
 test('animations are disabled when prefers-reduced-motion is set', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
 
   const hasInstantTransitions = await page.evaluate(() => {
     const el = document.querySelector('[class*="animate"], [class*="transition"]') || document.body
@@ -128,8 +132,7 @@ test('animations are disabled when prefers-reduced-motion is set', async ({ page
 // ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 
 test('"?" opens the keyboard shortcut help dialog', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await page.locator('body').click() // ensure focus isn't in an input first
 
   await page.keyboard.press('?')
@@ -141,11 +144,10 @@ test('"?" opens the keyboard shortcut help dialog', async ({ page }) => {
 })
 
 test('"/" focuses the search input', async ({ page }) => {
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await gotoDashboard(page)
   await page.locator('body').click()
 
   await page.keyboard.press('/')
   const label = await page.evaluate(() => (document.activeElement as HTMLElement)?.getAttribute('aria-label'))
-  expect(label).toBe('Search by asset pair')
+  expect(label).toBe('Search asset pairs')
 })

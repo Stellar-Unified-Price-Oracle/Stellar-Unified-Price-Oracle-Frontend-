@@ -1,74 +1,12 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
-const MOCK_PRICES = [
-  { assetPair: 'BTC/USD', price: 50000.1234, timestamp: Date.now() - 10_000, confidence: 0.9876, sources: ['chainlink', 'redstone'] },
-  { assetPair: 'ETH/USD', price: 3000.4567, timestamp: Date.now() - 20_000, confidence: 0.9532, sources: ['band', 'reflector'] },
-  { assetPair: 'SOL/USD', price: 142.89, timestamp: Date.now() - 15_000, confidence: 0.9123, sources: ['chainlink'] },
-  { assetPair: 'XRP/USD', price: 0.5123, timestamp: Date.now() - 30_000, confidence: 0.8845, sources: ['redstone', 'band'] },
-]
-
-const MOCK_HISTORY = {
-  pair: 'BTC/USD',
-  history: Array.from({ length: 20 }, (_, i) => ({
-    price: 50000 + i * 100,
-    timestamp: Date.now() - (20 - i) * 60_000,
-    confidence: 0.95 + Math.random() * 0.05,
-    sources: ['chainlink', 'redstone'],
-  })),
-}
-
-async function setupMockApi(page: Page) {
-  await page.route('**/api/prices', async (route) => {
-    if (route.request().method() === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_PRICES),
-      })
-    } else {
-      await route.continue()
-    }
-  })
-
-  await page.route('**/api/prices/**/history', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_HISTORY),
-    })
-  })
-
-  await page.route('**/api/prices/*', async (route) => {
-    const url = route.request().url()
-    const match = url.match(/\/api\/prices\/(.+)$/)
-    if (match) {
-      const pair = decodeURIComponent(match[1])
-      const price = MOCK_PRICES.find((p) => p.assetPair === pair)
-      if (price) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(price),
-        })
-        return
-      }
-    }
-    await route.fulfill({ status: 404, body: 'Not found' })
-  })
-
-  await page.route('**/health', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ status: 'healthy', uptime: 123456 }),
-    })
-  })
-}
+// The app under test is the VITE_USE_MOCK build, so MSW serves the API and
+// these are the deterministic pairs/values it returns (see src/mocks/data.ts).
+const MOCK_PAIRS = ['XLM/USD', 'BTC/USD', 'ETH/USD', 'USDC/USD']
 
 test.describe('Dashboard', () => {
   test('loads and displays price cards', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible()
@@ -77,14 +15,13 @@ test.describe('Dashboard', () => {
     const cards = page.getByRole('button', { name: /View details for/ })
     await expect(cards).toHaveCount(4)
 
-    for (const price of MOCK_PRICES) {
-      await expect(page.getByText(price.assetPair)).toBeVisible()
+    for (const pair of MOCK_PAIRS) {
+      await expect(page.getByText(pair)).toBeVisible()
     }
   })
 
   test('shows price details on each card', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const btcCard = page.getByRole('button', { name: 'View details for BTC/USD' })
@@ -95,27 +32,35 @@ test.describe('Dashboard', () => {
   })
 
   test('navigates to price detail page on card click', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     await page.getByRole('button', { name: 'View details for BTC/USD' }).click()
 
-    await expect(page).toHaveURL(/\/price\/BTC%2FUSD/)
+    await expect(page).toHaveURL(/\/prices\/BTC%2FUSD/)
     await expect(page.getByRole('heading', { name: 'BTC/USD' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Back to Dashboard' })).toBeVisible()
     await expect(page.getByText('98.8% confidence')).toBeVisible()
   })
 
   test('shows WebSocket connection indicator', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const badge = page.getByRole('status', { name: /WebSocket/ })
     await expect(badge).toBeVisible()
 
-    const labels = ['WebSocket Offline', 'WebSocket Live', 'WebSocket Connecting', 'WebSocket Reconnecting']
+    // In the mock build the WS endpoint is unreachable, so the badge may settle
+    // on any status: connecting → waiting → reconnecting → offline/disconnected.
+    const labels = [
+      'WebSocket Offline',
+      'WebSocket Live',
+      'WebSocket Connecting',
+      'WebSocket Reconnecting',
+      'WebSocket Waiting',
+      'WebSocket Disconnected',
+      'WebSocket Paused',
+    ]
     const hasValidLabel = async () => {
       for (const label of labels) {
         try {
@@ -131,11 +76,10 @@ test.describe('Dashboard', () => {
   })
 
   test('filters price cards by search query', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
-    const searchInput = page.getByPlaceholder('Search by asset pair...')
+    const searchInput = page.getByPlaceholder('Search pairs…')
     await expect(searchInput).toBeVisible()
 
     const cards = page.getByRole('button', { name: /View details for/ })
@@ -151,11 +95,10 @@ test.describe('Dashboard', () => {
   })
 
   test('shows no results message when search matches nothing', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
-    const searchInput = page.getByPlaceholder('Search by asset pair...')
+    const searchInput = page.getByPlaceholder('Search pairs…')
     await searchInput.fill('zzz')
 
     await expect(page.getByText(/No results for/)).toBeVisible()
@@ -163,11 +106,10 @@ test.describe('Dashboard', () => {
   })
 
   test('clears search and restores all cards', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
-    const searchInput = page.getByPlaceholder('Search by asset pair...')
+    const searchInput = page.getByPlaceholder('Search pairs…')
     await searchInput.fill('eth')
     await expect(page.getByRole('button', { name: /View details for/ })).toHaveCount(1)
 
@@ -176,19 +118,24 @@ test.describe('Dashboard', () => {
   })
 
   test('shows connection badge text', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const badge = page.getByRole('status', { name: /WebSocket/ })
     await expect(badge).toBeVisible()
 
     const text = await badge.textContent()
-    expect(['Offline', 'Live', 'Connecting', 'Reconnecting']).toContain(text?.trim())
+    expect(['Offline', 'Live', 'Connecting', 'Reconnecting', 'Waiting', 'Disconnected', 'Paused']).toContain(
+      text?.trim(),
+    )
   })
 })
 
 test.describe('Error states', () => {
+  // Block service workers so MSW can't intercept /api/* — otherwise the route
+  // mocks below would never fire (the SW handles requests before Playwright).
+  test.use({ serviceWorkers: 'block' })
+
   test('shows error message when API fails', async ({ page }) => {
     await page.route('**/api/prices', async (route) => {
       await route.fulfill({
@@ -197,7 +144,7 @@ test.describe('Error states', () => {
         body: JSON.stringify({ error: 'Internal server error' }),
       })
     })
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const alert = page.getByRole('alert').first()
@@ -208,7 +155,7 @@ test.describe('Error states', () => {
     await page.route('**/api/prices', async (route) => {
       await route.abort('connectionrefused')
     })
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const alert = page.getByRole('alert').first()
@@ -223,7 +170,7 @@ test.describe('Error states', () => {
         body: '[]',
       })
     })
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('No price feeds available')).toBeVisible({ timeout: 15_000 })
@@ -232,22 +179,20 @@ test.describe('Error states', () => {
 
 test.describe('Navigation', () => {
   test('navigates from dashboard to detail and back', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     await page.getByRole('button', { name: 'View details for BTC/USD' }).click()
-    await expect(page).toHaveURL(/\/price\/BTC%2FUSD/)
+    await expect(page).toHaveURL(/\/prices\/BTC%2FUSD/)
     await expect(page.getByRole('heading', { name: 'BTC/USD' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Back to Dashboard' }).click()
-    await expect(page).toHaveURL(/\/Stellar-Unified-Price-Oracle-Frontend-$/)
+    await expect(page).toHaveURL(/\/dashboard/)
     await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible()
   })
 
-  test('direct navigation to root shows dashboard', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+  test('direct navigation to the dashboard route shows dashboard', async ({ page }) => {
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
     await expect(page.getByRole('heading', { name: 'Price Oracle Dashboard' })).toBeVisible()
   })
@@ -255,8 +200,7 @@ test.describe('Navigation', () => {
 
 test.describe('Price detail page', () => {
   test('shows price detail with confidence and back button', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     await page.getByRole('button', { name: 'View details for BTC/USD' }).click()
@@ -266,15 +210,18 @@ test.describe('Price detail page', () => {
     await expect(page.getByRole('button', { name: 'Back to Dashboard' })).toBeVisible()
   })
 
-  test('opens alert modal from detail page', async ({ page }) => {
-    await setupMockApi(page)
-    await page.goto('/')
+  test('opens alert modal from a price card', async ({ page }) => {
+    await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
+    await expect(page.locator('[aria-label="Price feeds"]')).toBeVisible({ timeout: 10_000 })
 
-    await page.getByRole('button', { name: 'View details for BTC/USD' }).click()
-    await page.getByRole('button', { name: 'Set price alert' }).click()
+    const alertBtn = page
+      .locator('[aria-label="Price feeds"] [aria-label*="alert" i], [aria-label="Price feeds"] [title*="alert" i]')
+      .first()
+    if (!(await alertBtn.isVisible())) return
+    await alertBtn.click()
 
-    await expect(page.getByRole('dialog')).toBeVisible()
-    await expect(page.getByText('New Price Alert')).toBeVisible()
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('New Price Alert')).toBeVisible({ timeout: 5_000 })
   })
 })

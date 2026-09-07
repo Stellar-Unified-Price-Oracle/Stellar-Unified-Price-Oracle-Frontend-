@@ -21,13 +21,13 @@ exports[`snapshots > default 1`] = `
     </div>
   </div>
   <div
-    class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
+    class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
   >
     $
     50,000.12
   </div>
   <div
-    class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
+    class="flex items-center justify-between text-xs text-gray-400 mb-3"
   >
     <span
       class="relative inline-flex items-center"
@@ -57,7 +57,7 @@ exports[`snapshots > default 1`] = `
         tabindex="0"
       >
         <span
-          class="text-cyan-600 dark:text-cyan-400"
+          class="text-cyan-400"
         >
           98.8% confidence
         </span>
@@ -75,7 +75,7 @@ exports[`snapshots > default 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 ring-1 ring-cyan-400"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
         >
           <span
             aria-hidden="true"
@@ -94,7 +94,7 @@ exports[`snapshots > default 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 "
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
         >
           redstone
         </span>
@@ -106,7 +106,7 @@ exports[`snapshots > default 1`] = `
   >
     <button
       aria-label="Set alert for BTC/USD"
-      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-500 hover:text-gray-300"
+      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
       type="button"
     >
       <svg
@@ -150,13 +150,13 @@ exports[`snapshots > hasAlert 1`] = `
     </div>
   </div>
   <div
-    class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
+    class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
   >
     $
     50,000.12
   </div>
   <div
-    class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
+    class="flex items-center justify-between text-xs text-gray-400 mb-3"
   >
     <span
       class="relative inline-flex items-center"
@@ -186,7 +186,7 @@ exports[`snapshots > hasAlert 1`] = `
         tabindex="0"
       >
         <span
-          class="text-cyan-600 dark:text-cyan-400"
+          class="text-cyan-400"
         >
           98.8% confidence
         </span>
@@ -204,7 +204,7 @@ exports[`snapshots > hasAlert 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 ring-1 ring-cyan-400"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
         >
           <span
             aria-hidden="true"
@@ -223,7 +223,7 @@ exports[`snapshots > hasAlert 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 "
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
         >
           redstone
         </span>
@@ -279,13 +279,13 @@ exports[`snapshots > isLive 1`] = `
     </div>
   </div>
   <div
-    class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
+    class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
   >
     $
     50,000.12
   </div>
   <div
-    class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
+    class="flex items-center justify-between text-xs text-gray-400 mb-3"
   >
     <span
       class="relative inline-flex items-center"
@@ -315,7 +315,7 @@ exports[`snapshots > isLive 1`] = `
         tabindex="0"
       >
         <span
-          class="text-cyan-600 dark:text-cyan-400"
+          class="text-cyan-400"
         >
           98.8% confidence
         </span>
@@ -333,7 +333,7 @@ exports[`snapshots > isLive 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 ring-1 ring-cyan-400"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
         >
           <span
             aria-hidden="true"
@@ -352,7 +352,7 @@ exports[`snapshots > isLive 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 "
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
         >
           redstone
         </span>
@@ -364,7 +364,7 @@ exports[`snapshots > isLive 1`] = `
   >
     <button
       aria-label="Set alert for BTC/USD"
-      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-500 hover:text-gray-300"
+      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
       type="button"
     >
       <svg
@@ -408,13 +408,13 @@ exports[`snapshots > isStale 1`] = `
     </div>
   </div>
   <div
-    class="text-3xl font-bold text-gray-900 dark:text-white mb-3 font-mono tracking-tight"
+    class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
   >
     $
     50,000.12
   </div>
   <div
-    class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
+    class="flex items-center justify-between text-xs text-gray-400 mb-3"
   >
     <span
       class="relative inline-flex items-center"
@@ -444,7 +444,7 @@ exports[`snapshots > isStale 1`] = `
         tabindex="0"
       >
         <span
-          class="text-cyan-600 dark:text-cyan-400"
+          class="text-cyan-400"
         >
           98.8% confidence
         </span>
@@ -462,7 +462,7 @@ exports[`snapshots > isStale 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 ring-1 ring-cyan-400"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
         >
           <span
             aria-hidden="true"
@@ -481,7 +481,7 @@ exports[`snapshots > isStale 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 "
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
         >
           redstone
         </span>
@@ -493,7 +493,7 @@ exports[`snapshots > isStale 1`] = `
   >
     <button
       aria-label="Set alert for BTC/USD"
-      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-500 hover:text-gray-300"
+      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
       type="button"
     >
       <svg
