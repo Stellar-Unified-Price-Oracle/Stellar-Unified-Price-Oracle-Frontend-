@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
+import type { PriceData, Alert } from '../types'
 import {
   useAnnounce,
   getAnnouncementRegistry as _getAnnouncementRegistry,
   resetAnnouncementRegistry,
-} from '../useAnnounce'
-import { usePriceAnnouncer } from '../usePriceAnnouncer'
-import { useAlertAnnouncer } from '../useAlertAnnouncer'
-import { useChartAnnouncer } from '../useChartAnnouncer'
-import { useA11yConfig, setA11yConfig, DEFAULT_A11Y_CONFIG, A11Y_LOW_FREQUENCY } from '../useA11yConfig'
-import type { PriceData, Alert } from '../../types'
+} from './useAnnounce'
+import { usePriceAnnouncer } from './usePriceAnnouncer'
+import { useAlertAnnouncer } from './useAlertAnnouncer'
+import { useChartAnnouncer } from './useChartAnnouncer'
+import { useA11yConfig, setA11yConfig, DEFAULT_A11Y_CONFIG, A11Y_LOW_FREQUENCY } from './useA11yConfig'
 
 describe('useAnnounce', () => {
   beforeEach(() => {
@@ -75,10 +75,13 @@ describe('useAnnounce', () => {
     expect(listener).toHaveBeenCalledTimes(1)
 
     // Wait for dedup window to expire
-    await vi.waitFor(() => {
-      const announced = result.current.announce('Test')
-      expect(announced).toBe(true)
-    }, { timeout: 200 })
+    await vi.waitFor(
+      () => {
+        const announced = result.current.announce('Test')
+        expect(announced).toBe(true)
+      },
+      { timeout: 200 },
+    )
 
     expect(listener).toHaveBeenCalledTimes(2)
   })
@@ -117,10 +120,9 @@ describe('usePriceAnnouncer', () => {
       } as PriceData,
     ]
 
-    const { rerender } = renderHook(
-      ({ prices: p }) => usePriceAnnouncer(p, { minPercentageChange: 1 }),
-      { initialProps: { prices: [prices[0]] } },
-    )
+    const { rerender } = renderHook(({ prices: p }) => usePriceAnnouncer(p, { minPercentageChange: 1 }), {
+      initialProps: { prices: [prices[0]] },
+    })
 
     // Rerender with new price (1.5% change)
     rerender({
@@ -147,10 +149,9 @@ describe('usePriceAnnouncer', () => {
       } as PriceData,
     ]
 
-    const { rerender } = renderHook(
-      ({ prices: p }) => usePriceAnnouncer(p, { minPercentageChange: 2 }),
-      { initialProps: { prices: [prices[0]] } },
-    )
+    const { rerender } = renderHook(({ prices: p }) => usePriceAnnouncer(p, { minPercentageChange: 2 }), {
+      initialProps: { prices: [prices[0]] },
+    })
 
     // Rerender with only 0.5% change (below threshold)
     rerender({
@@ -189,14 +190,11 @@ describe('useAlertAnnouncer', () => {
         percentageThreshold: null,
         percentageWindow: null,
         snoozedUntil: null,
-        enabled: true,
+        active: true,
       } as unknown as Alert,
     ]
 
-    const { rerender } = renderHook(
-      ({ alerts: a }) => useAlertAnnouncer(a),
-      { initialProps: { alerts } },
-    )
+    const { rerender } = renderHook(({ alerts: a }) => useAlertAnnouncer(a), { initialProps: { alerts } })
 
     // Rerender with alert that has fired (fireCount increased)
     rerender({
@@ -230,7 +228,7 @@ describe('useAlertAnnouncer', () => {
         percentageThreshold: null,
         percentageWindow: null,
         snoozedUntil: null,
-        enabled: true,
+        active: true,
       } as unknown as Alert,
     ]
 
@@ -284,10 +282,9 @@ describe('useChartAnnouncer', () => {
       current: 72500,
     }
 
-    const { rerender } = renderHook(
-      ({ range }) => useChartAnnouncer(range, { minRangeChangePercent: 5 }),
-      { initialProps: { range: range1 } },
-    )
+    const { rerender } = renderHook(({ range }) => useChartAnnouncer(range, { minRangeChangePercent: 5 }), {
+      initialProps: { range: range1 },
+    })
 
     // Reset listener call count after initial announcement
     listener.mockClear()
@@ -388,7 +385,7 @@ describe('Announcement integration', () => {
           percentageThreshold: null,
           percentageWindow: null,
           snoozedUntil: null,
-          enabled: true,
+          active: true,
         } as unknown as Alert,
       ]),
     )

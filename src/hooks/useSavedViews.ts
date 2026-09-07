@@ -11,10 +11,10 @@
  */
 
 import { useCallback, useMemo } from 'react'
-import { useIdbQuery, useIdbMutation } from './useIdbQuery'
 import { useToast } from '../context/ToastContext'
 import { savedViewToUrlParams } from '../services/indexedDB'
 import type { SavedView } from '../services/indexedDB'
+import { useIdbQuery, useIdbMutation } from './useIdbQuery'
 
 const STORE = 'preferences' as const
 const KEY = 'saved-views'
@@ -59,10 +59,7 @@ export function useSavedViews(): UseSavedViewsReturn {
    * Derive a stable, newest-first list so callers don't need to sort
    * themselves. `raw` already triggers re-renders via the IDB subscription.
    */
-  const views = useMemo(
-    () => [...raw].sort((a, b) => b.createdAt - a.createdAt),
-    [raw],
-  )
+  const views = useMemo(() => [...raw].sort((a, b) => b.createdAt - a.createdAt), [raw])
 
   const saveView = useCallback(
     (view: Omit<SavedView, 'id' | 'createdAt' | 'updatedAt'>): SavedView => {

@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 import { useToast, type Toast, type ToastType, type ToastPriority } from '../context/ToastContext'
 import { useAnnounce } from '../hooks/useAnnounce'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 
 const ICONS: Record<ToastType, React.ReactNode> = {
   success: (
@@ -16,12 +17,22 @@ const ICONS: Record<ToastType, React.ReactNode> = {
   ),
   warning: (
     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+      />
     </svg>
   ),
   info: (
     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
     </svg>
   ),
 }
@@ -45,12 +56,14 @@ const PRIORITY_ACCENT: Record<ToastPriority, string> = {
   low: '',
   normal: '',
   high: 'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-amber-400 before:rounded-l-xl',
-  critical: 'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-red-500 before:rounded-l-xl',
+  critical:
+    'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-red-500 before:rounded-l-xl',
 }
 
 function ToastItem({ toast, index }: { toast: Toast; index: number }) {
   const { removeToast } = useToast()
   const { announce } = useAnnounce()
+  const reducedMotion = useReducedMotion()
   const ref = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
   const announcedRef = useRef(false)
@@ -61,7 +74,7 @@ function ToastItem({ toast, index }: { toast: Toast; index: number }) {
       announcedRef.current = true
       const priority = toast.priority ?? 'normal'
       const isUrgent = priority === 'critical' || priority === 'high'
-      
+
       // Build announcement message
       let message = toast.message
       if (toast.description) {
@@ -70,7 +83,7 @@ function ToastItem({ toast, index }: { toast: Toast; index: number }) {
       if (toast.type !== 'info') {
         message = `${toast.type.charAt(0).toUpperCase() + toast.type.slice(1)}: ${message}`
       }
-      
+
       // Announce with appropriate priority
       announce(message, isUrgent ? 'assertive' : 'polite')
     }
@@ -93,7 +106,7 @@ function ToastItem({ toast, index }: { toast: Toast; index: number }) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    
+
     // If reduced motion is active, show toast immediately without animation
     if (reducedMotion) {
       el.style.opacity = '1'
@@ -101,7 +114,7 @@ function ToastItem({ toast, index }: { toast: Toast; index: number }) {
       el.style.transition = 'none'
       return
     }
-    
+
     el.style.opacity = '0'
     el.style.transform = 'translateX(1rem) scale(0.97)'
     requestAnimationFrame(() => {
@@ -132,9 +145,7 @@ function ToastItem({ toast, index }: { toast: Toast; index: number }) {
         {ICONS[toast.type]}
         <div className="flex-1 min-w-0">
           <p className="text-gray-100 leading-snug">{toast.message}</p>
-          {toast.description && (
-            <p className="mt-0.5 text-xs text-gray-400 leading-snug">{toast.description}</p>
-          )}
+          {toast.description && <p className="mt-0.5 text-xs text-gray-400 leading-snug">{toast.description}</p>}
         </div>
         <button
           type="button"

@@ -13,11 +13,11 @@ const fr = {
   },
 
   dashboard: {
-    title: "Tableau de bord Oracle des Prix",
+    title: 'Tableau de bord Oracle des Prix',
     subtitle: 'Agrégé depuis Chainlink, Redstone, Band & Reflector',
     search: {
-      placeholder: 'Rechercher une paire d\'actifs...',
-      ariaLabel: 'Rechercher une paire d\'actifs',
+      placeholder: "Rechercher une paire d'actifs...",
+      ariaLabel: "Rechercher une paire d'actifs",
     },
     filter: {
       toggle: 'Filtrer',
@@ -49,7 +49,7 @@ const fr = {
       noFeedsDetail: "Connectez-vous à l'API de l'agrégateur pour voir les données.",
       noResults: 'Aucun résultat',
       noResultsSearch: 'Aucun résultat pour "{{search}}"',
-      noResultsFilterHint: 'Essayez d\'ajuster vos filtres.',
+      noResultsFilterHint: "Essayez d'ajuster vos filtres.",
       noResultsSearchHint: 'Essayez un terme de recherche différent.',
     },
     loadingAriaLabel: 'Chargement des cartes de prix',
@@ -81,7 +81,7 @@ const fr = {
       ariaLabel: 'Sens de tri : {{direction}}',
     },
     updatedWithin: {
-      all: 'N\'importe quand',
+      all: "N'importe quand",
       '1h': '1 h',
       '6h': '6 h',
       '24h': '24 h',
@@ -137,22 +137,22 @@ const fr = {
 
   alertModal: {
     titleNew: 'Nouvelle alerte de prix',
-    titleEdit: 'Modifier l\'alerte',
+    titleEdit: "Modifier l'alerte",
     ariaLabelNew: 'Créer une alerte de prix',
     ariaLabelEdit: 'Modifier une alerte de prix',
     close: 'Fermer la fenêtre',
     firedOnceNotice: 'Cette alerte a été déclenchée le {{time}} ({{count}} au total). Réactivez-la pour la réutiliser.',
     fireCount: 'Déclenchée {{count}} fois',
     fields: {
-      assetPair: 'Paire d\'actifs',
+      assetPair: "Paire d'actifs",
       assetPairPlaceholder: 'ex. BTC/USD',
       upperThreshold: 'Seuil supérieur',
       upperPlaceholder: 'Prix maximum',
       lowerThreshold: 'Seuil inférieur',
       lowerPlaceholder: 'Prix minimum',
       triggerOnce: 'Déclencher une fois',
-      triggerOnceDescription: 'L\'alerte se désactive après avoir été déclenchée',
-      alertMode: 'Mode d\'alerte',
+      triggerOnceDescription: "L'alerte se désactive après avoir été déclenchée",
+      alertMode: "Mode d'alerte",
       alertModeAbsolute: 'Prix absolu',
       alertModePercentage: '% Mouvement de prix',
       percentageThreshold: 'Seuil de variation',
@@ -169,21 +169,30 @@ const fr = {
       relativeToOpen: 'Ouverture de période',
       relativeToPreviousClose: 'Clôture précédente',
       relativeToMovingAverage: 'Moyenne mobile',
-      alertType: 'Type d\'alerte',
+      alertType: "Type d'alerte",
       alertTypeOneTime: 'Unique',
       alertTypePersistent: 'Persistante',
       alertTypeOneTimeDesc: 'Se déclenche une fois et se désactive. Réactivez pour réutiliser.',
       alertTypePersistentDesc: 'Se déclenche à chaque fois que la condition est remplie.',
+      // Cooldown (#310)
+      cooldown: 'Délai entre alertes',
+      cooldownOff: 'Désactivé (déclenchement immédiat)',
+      cooldown1min: '1 minute',
+      cooldown5min: '5 minutes',
+      cooldown15min: '15 minutes',
+      cooldown1hr: '1 heure',
+      cooldownDesc:
+        'Temps minimum entre deux déclenchements, pour éviter les notifications répétées lorsque le prix oscille autour de votre seuil.',
     },
     actions: {
-      delete: 'Supprimer l\'alerte',
+      delete: "Supprimer l'alerte",
       cancel: 'Annuler',
       save: 'Enregistrer',
-      create: 'Créer l\'alerte',
-      reEnable: 'Réactiver l\'alerte',
+      create: "Créer l'alerte",
+      reEnable: "Réactiver l'alerte",
     },
     validation: {
-      assetPairRequired: 'La paire d\'actifs est requise',
+      assetPairRequired: "La paire d'actifs est requise",
       atLeastOneThreshold: 'Au moins un seuil est requis',
       mustBePositive: 'Doit être un nombre positif',
       upperGreaterThanLower: 'Doit être supérieur au seuil inférieur',
@@ -215,17 +224,38 @@ const fr = {
       delayLabel: "Délai en minutes de l'étape {{step}}",
       removeStep: "Supprimer l'étape {{step}}",
       minutesSuffix: 'min',
-      channel_inApp: 'Dans l\'application',
+      channel_inApp: "Dans l'application",
       channel_email: 'E-mail',
       channel_webPush: 'Web Push',
       channel_webhook: 'Webhook',
       channel_telegram: 'Telegram',
       channel_discord: 'Discord',
-      error_invalidDelay: "Étape {{step}} : le délai doit être un nombre de minutes non négatif",
+      error_invalidDelay: 'Étape {{step}} : le délai doit être un nombre de minutes non négatif',
       error_outOfOrder: "Étape {{step}} : le délai ne peut pas être antérieur à celui de l'étape précédente",
     },
+    // ── Price-level retest detection (#491) ──────────────────────────────
+    retest: {
+      title: 'Notifier en cas de re-test',
+      description: 'Se déclenche aussi si le prix revient dans ce niveau franchi après en être sorti.',
+    },
+    // ── Alert simulation (#490) ──────────────────────────────────────────
+    simulate: {
+      title: "Tester l'alerte",
+      run: 'Lancer la simulation',
+      description:
+        "Rejoue une série de prix synthétique dans la même logique d'évaluation qu'en direct, en marquant exactement où cette alerte se déclencherait.",
+      idle: 'Lancez une simulation pour voir comment cette alerte se comporte sans toucher à votre configuration en direct.',
+    },
+    // ── Per-alert channel routing (#492) ──────────────────────────────────
+    channels: {
+      title: 'Notifier via',
+      description:
+        'Choisissez où cette alerte est livrée. Laissez vide pour utiliser les canaux configurés dans vos paramètres de notification.',
+      useGlobal: 'Utiliser les valeurs par défaut globales',
+      noneConfigured: "Aucun canal configuré — configurez d'abord les canaux dans les paramètres de notification.",
+    },
     presets: {
-      title: 'Partir d\'un modèle',
+      title: "Partir d'un modèle",
       myPresets: 'Mes modèles',
       deleteCustom: 'Supprimer le modèle {{name}}',
       nameLabel: 'Nom du modèle',
@@ -239,7 +269,7 @@ const fr = {
     title: 'Alertes de prix',
     newBadge: '{{count}} Nouvelle(s)',
     empty: 'Aucune alerte configurée',
-    close: 'Fermer le panneau d\'alertes',
+    close: "Fermer le panneau d'alertes",
     sections: {
       triggered: 'Déclenchées',
       active: 'Alertes actives',
@@ -248,18 +278,18 @@ const fr = {
       firedOnce: 'Déclenchées (Unique)',
     },
     triggered: {
-      justNow: 'À l\'instant',
+      justNow: "À l'instant",
       priceCrossed: 'Le prix a franchi',
       markRead: 'Marquer comme lu',
       delete: 'Supprimer',
     },
     active: {
       pause: 'Mettre en pause',
-      delete: 'Supprimer l\'alerte',
+      delete: "Supprimer l'alerte",
     },
     inactive: {
       resume: 'Reprendre',
-      delete: 'Supprimer l\'alerte',
+      delete: "Supprimer l'alerte",
     },
     snooze: {
       button: 'Mettre en veille',
@@ -268,7 +298,7 @@ const fr = {
       '1hr': '1 heure',
       '4hr': '4 heures',
       '24hr': '24 heures',
-      tomorrow: 'Jusqu\'à demain (8h)',
+      tomorrow: "Jusqu'à demain (8h)",
       expiresInMins: 'En veille {{mins}} min',
       expiresInHrs: 'En veille {{hrs}} h',
     },
@@ -278,9 +308,19 @@ const fr = {
       snoozed: 'En veille',
       fired: 'Déclenchée',
     },
+    // Alert health checks (#493)
+    health: {
+      badge: 'Peut ne jamais se déclencher',
+      review: 'Vérifier',
+      dismiss: 'Ignorer',
+      title: 'Contrôle de santé',
+      reasonNeverSatisfiable: "Ce seuil n'a jamais été atteint dans l'historique observé.",
+      reasonInsufficientHistory: "Pas encore assez d'historique de prix pour juger cette condition.",
+      suggestion: 'Les données observées suggèrent {{value}} à la place.',
+    },
     fired: {
       at: 'Déclenchée le {{time}}',
-      reEnable: 'Réactiver l\'alerte',
+      reEnable: "Réactiver l'alerte",
     },
     conditions: {
       between: 'Entre ${{lower}} et ${{upper}}',
@@ -292,40 +332,84 @@ const fr = {
       dir_down: '↓ Baisse',
       dir_either: '↕ Les deux',
     },
+    tabs: {
+      alerts: 'Alertes',
+      history: 'Historique',
+    },
+    history: {
+      empty: "Aucune alerte ne s'est encore déclenchée",
+      searchPlaceholder: "Rechercher par paire d'actifs…",
+      noResults: 'Aucune entrée ne correspond à votre recherche',
+      clear: "Effacer l'historique",
+      clearConfirm: "Effacer tout l'historique des alertes ? Cette action est irréversible.",
+      exportCsv: 'Exporter en CSV',
+      exportJson: 'Exporter en JSON',
+      count_one: '{{count}} alerte déclenchée',
+      count_other: '{{count}} alertes déclenchées',
+      priceAt: 'Prix : ${{price}}',
+    },
     escalation: {
-      label: "Escalade :",
+      label: 'Escalade :',
       progress: '{{fired}} étape(s) sur {{total}} déclenchée(s)',
       historyBadge: 'Escalade · {{channel}}',
+    },
+    // ── Price-level retest detection (#491) ───────────────────────────────
+    retest: {
+      inBreach: 'Dans le niveau',
+      exited: 'Hors du niveau',
+      idle: 'Surveillance',
+      historyBadge: 'Re-test',
     },
   },
 
   alertPresets: {
     whaleMove: {
       name: 'Mouvement de baleine',
-      description: 'Un fort mouvement de prix dans une direction ou l\'autre sur une courte période.',
-      useCase: 'Repérez les mouvements soudains d\'un gros détenteur avant que le marché ne réagisse.',
+      description: "Un fort mouvement de prix dans une direction ou l'autre sur une courte période.",
+      useCase: "Repérez les mouvements soudains d'un gros détenteur avant que le marché ne réagisse.",
     },
     breakout: {
       name: 'Cassure',
-      description: "Élan confirmé sur deux fenêtres : un fort mouvement sur 1 heure qui accélère encore sur les 15 dernières minutes.",
-      useCase: "Repérez un mouvement qui dépasse le simple bruit : la tendance est confirmée, pas seulement amorcée.",
+      description:
+        'Élan confirmé sur deux fenêtres : un fort mouvement sur 1 heure qui accélère encore sur les 15 dernières minutes.',
+      useCase: 'Repérez un mouvement qui dépasse le simple bruit : la tendance est confirmée, pas seulement amorcée.',
     },
     pegBreak: {
       name: 'Rupture de parité stablecoin',
-      description: 'Le prix s\'écarte de plus de 1 % de sa parité à 1,00 $ dans une direction ou l\'autre.',
+      description: "Le prix s'écarte de plus de 1 % de sa parité à 1,00 $ dans une direction ou l'autre.",
       useCase: 'Soyez alerté tôt si un stablecoin que vous détenez perd sa parité.',
     },
   },
 
+  // ── ConnectionStatus ──────────────────────────────────────────────────────
+  connection: {
+    live: 'En direct',
+    connecting: 'Connexion',
+    reconnecting: 'Reconnexion',
+    offline: 'Hors ligne',
+    rateLimited: 'Limite atteinte',
+    rateLimitedWithTimer: 'Limite atteinte ({{seconds}}s)',
+    ariaLabel: 'WebSocket {{status}}',
+    rateLimitedAriaLabel: 'API limitée',
+    tooltips: {
+      connected: 'Le WebSocket est connecté. Les mises à jour de prix sont diffusées en temps réel.',
+      connecting: "Établissement d'une connexion WebSocket au serveur de flux de prix.",
+      reconnecting: 'La connexion WebSocket a été perdue. Tentative de reconnexion automatique.',
+      disconnected: 'Le WebSocket est hors ligne. Les prix sont mis à jour uniquement par interrogation REST.',
+      rateLimited:
+        "L'API est temporairement limitée. Les requêtes reprendront après expiration du délai de nouvelle tentative.",
+    },
+  },
+
   error: {
-    title: 'Une erreur s\'est produite',
-    defaultMessage: 'Une erreur inattendue s\'est produite.',
+    title: "Une erreur s'est produite",
+    defaultMessage: "Une erreur inattendue s'est produite.",
     reload: 'Recharger la page',
   },
 
   network: {
     offline: 'Pas de connexion internet',
-    offlineDetail: 'Les données peuvent être obsolètes jusqu\'à la reconnexion',
+    offlineDetail: "Les données peuvent être obsolètes jusqu'à la reconnexion",
   },
 
   pwa: {
@@ -345,6 +429,89 @@ const fr = {
     backToDashboard: 'Retour au tableau de bord',
   },
 
+  priceDetail: {
+    back: 'Retour',
+    backAriaLabel: 'Revenir au tableau de bord',
+    sections: {
+      currentPrice: 'Prix actuel',
+      oracleSources: 'Sources Oracle',
+      priceHistory: 'Historique des prix (paginé)',
+      importData: 'Importer des données de prix',
+    },
+    live: 'EN DIRECT',
+    confidence: '{{value}}% de confiance',
+    updated: 'Mis à jour {{time}}',
+    historyError: "Échec du chargement de l'historique des prix : {{message}}",
+    emptyState: {
+      title: 'Aucune donnée de prix disponible',
+      detail: 'Aucune donnée de prix disponible pour cette paire.',
+    },
+    tabs: {
+      overview: 'Aperçu',
+      proof: 'Preuve',
+    },
+    proof: {
+      loadingLabel: 'Chargement de la preuve en chaîne',
+      historicalSelectorLabel: "Vérifier l'enregistrement",
+      latestOption: 'La plus récente',
+      unsupported: {
+        title: 'Preuve en chaîne indisponible',
+        detail:
+          "Cette paire d'actifs n'a pas encore de représentation Stellar canonique en chaîne, donc aucun enregistrement d'oracle Soroban à vérifier. Consultez la feuille de route de l'oracle en chaîne pour savoir ce qu'il faut pour amener un flux en chaîne.",
+      },
+      error: 'Échec du chargement de la preuve en chaîne : {{message}}',
+      retry: 'Réessayer',
+      aggregateSection: 'Engagement agrégé',
+      aggregateSignature: 'Signature agrégée',
+      contractId: 'Contrat',
+      transaction: 'Transaction',
+      ledger: 'Ledger #{{sequence}}',
+      viewOnExplorer: "Voir dans l'explorateur",
+      contributionsSection: 'Contributions des sources',
+      contributionsCount: '{{count}} sources ont contribué à cet enregistrement',
+      copy: 'Copier',
+      copyProofPayload: 'Copier la charge utile de preuve',
+      copied: 'Copié dans le presse-papiers',
+      copyFailed: 'Échec de la copie dans le presse-papiers',
+    },
+  },
+
+  csv: {
+    imported: 'Données CSV importées — affichées en superposition sur le graphique',
+    clear: 'Effacer',
+    dropOrBrowse: 'Déposez un fichier CSV ou',
+    browse: 'parcourir',
+    hint: 'Colonnes : timestamp, price — 5 Mo max',
+    uploadAriaLabel: 'Importer un fichier CSV pour les données de prix',
+    errors: {
+      tooLarge: 'Le fichier dépasse la limite de 5 Mo',
+      invalidType: 'Seuls les fichiers CSV sont pris en charge',
+      empty: 'Le fichier est vide',
+      noValidRows: 'Aucune ligne valide trouvée. Colonnes attendues : timestamp, price',
+    },
+  },
+
+  export: {
+    button: 'Exporter',
+    ariaLabel: 'Exporter les données',
+    exportAs: 'Exporter en {{format}}',
+    langSelector: "Langage de l'extrait de code",
+    columns: {
+      button: 'Colonnes',
+      title: "Sélectionner les colonnes d'exportation",
+      preset: {
+        minimal: 'Minimal',
+        standard: 'Standard',
+        full: 'Complet',
+      },
+      search: 'Filtrer les colonnes…',
+      available: 'Disponibles',
+      noMatches: 'Aucune colonne correspondante',
+      selectedOrder: 'Sélectionnées (glisser pour réordonner)',
+      preview: 'Aperçu',
+    },
+  },
+
   settings: {
     title: 'Paramètres',
     close: 'Fermer les paramètres',
@@ -357,7 +524,7 @@ const fr = {
     fields: {
       refreshInterval: 'Intervalle de rafraîchissement',
       chartTimeRange: 'Plage de temps du graphique',
-      staleThreshold: 'Seuil d\'actif obsolète',
+      staleThreshold: "Seuil d'actif obsolète",
     },
     accessibility: {
       reducedMotion: 'Mouvement réduit',
@@ -368,11 +535,11 @@ const fr = {
       largeTextDesc: 'Augmente la taille de la police de base dans tout le tableau de bord',
     },
     privacy: {
-      enableAnalytics: 'Activer l\'analyse',
+      enableAnalytics: "Activer l'analyse",
       enableAnalyticsDesc: 'Autoriser les analyses axées sur la confidentialité (désactivable).',
     },
     language: {
-      label: 'Langue de l\'interface',
+      label: "Langue de l'interface",
       rtlOverride: 'Forcer la mise en page RTL',
       rtlOverrideDesc: 'Forcer le sens RTL pour les tests sans changer de langue',
     },
@@ -384,20 +551,33 @@ const fr = {
       redoShortcut: 'Ctrl+Shift+Z',
       redoAriaLabel: 'Rétablir la dernière modification annulée',
       clear: 'Effacer',
-      clearAriaLabel: 'Effacer l\'historique d\'annulation',
+      clearAriaLabel: "Effacer l'historique d'annulation",
     },
   },
 
   apiDocs: {
     title: 'Documentation API',
-    subtitle: 'Endpoints REST et WebSocket exposés par l\'Agrégateur Oracle de Prix Stellar.',
+    subtitle: "Endpoints REST et WebSocket exposés par l'Agrégateur Oracle de Prix Stellar.",
     openSpec: 'Ouvrir la spécification OpenAPI',
     baseUrl: 'URL de base :',
     ws: 'WS :',
+    cacheStatus: 'Cache :',
     tryItOut: 'Essayer',
     sending: 'Envoi…',
     copy: 'Copier',
     copied: 'Copié !',
+  },
+
+  // ── Source descriptions (PriceCard tooltips) ──────────────────────────────
+  sources: {
+    chainlink:
+      "Chainlink est un réseau d'oracles décentralisé qui fournit des données de prix infalsifiables provenant de fournisseurs de données premium.",
+    redstone:
+      'RedStone est un oracle modulaire qui diffuse des flux de prix signés à la demande, réduisant les coûts de gaz en stockant les données hors chaîne.',
+    band: 'Band Protocol agrège des données du monde réel provenant de plusieurs sources et les rend disponibles en chaîne via des validateurs délégués.',
+    reflector:
+      'Reflector est un oracle natif de Stellar qui publie les prix des actifs directement sur le réseau Stellar.',
+    defaultTooltip: '{{source}} a contribué un flux de prix à cette valeur agrégée.',
   },
 
   // ── Landing / Hero (#297) ─────────────────────────────────────────────────
@@ -407,14 +587,14 @@ const fr = {
       liveStatus: 'En direct · Tous les oracles actifs',
       title: 'Stellar Unified Price Oracle',
       subtitle:
-        'Prix d\'actifs en temps réel agrégés depuis Chainlink, Redstone, Band et Reflector — diffusés vers votre application via REST & WebSocket.',
+        "Prix d'actifs en temps réel agrégés depuis Chainlink, Redstone, Band et Reflector — diffusés vers votre application via REST & WebSocket.",
       cta: 'Ouvrir le tableau de bord',
-      ctaAriaLabel: 'Ouvrir le tableau de bord de l\'oracle de prix',
+      ctaAriaLabel: "Ouvrir le tableau de bord de l'oracle de prix",
       apiDocs: 'Docs API',
     },
     stats: {
       totalPairs: 'Paires suivies',
-      totalPairsDetail: 'paires d\'actifs surveillées',
+      totalPairsDetail: "paires d'actifs surveillées",
       activeSources: 'Sources oracle',
       activeSourcesDetail: 'fournisseurs de données actifs',
       avgConfidence: 'Confiance moy.',
@@ -441,6 +621,22 @@ const fr = {
   },
 
   // ── Touch gestures / Pull-to-refresh (#293) ───────────────────────────────
+  wallet: {
+    connect: 'Connecter le portefeuille',
+    connecting: 'Connexion…',
+    disconnect: 'Déconnecter',
+    installFreighter: 'Installer Freighter',
+    network: 'Réseau',
+    address: 'Adresse',
+    balance: 'Solde',
+    balanceUnfunded: 'Non approvisionné',
+    ariaConnected: 'Portefeuille connecté : {{address}}',
+    gate: {
+      title: 'Portefeuille requis',
+      description:
+        "Connectez un portefeuille Stellar pour utiliser les fonctions en chaîne comme le déploiement et la publication sur le contrat d'oracle.",
+    },
+  },
 } as const
 
 export default fr

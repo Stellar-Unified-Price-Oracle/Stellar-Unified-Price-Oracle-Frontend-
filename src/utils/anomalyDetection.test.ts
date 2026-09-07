@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { detectAnomalies, anomalySeverity } from './anomalyDetection'
 import type { PriceHistoryEntry } from '../types/price'
+import { detectAnomalies, anomalySeverity } from './anomalyDetection'
+import type { AnomalyEvent } from './anomalyDetection'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -123,10 +124,7 @@ describe('detectAnomalies – source-drop', () => {
   })
 
   it('records prevSourceCount and sourceCount', () => {
-    const sources = [
-      ['chainlink', 'redstone', 'band'],
-      ['chainlink'],
-    ]
+    const sources = [['chainlink', 'redstone', 'band'], ['chainlink']]
     const history = makeHistory([100, 100], sources)
     const result = detectAnomalies(history, { detectSourceDrop: true, gapThresholdPercent: 100 })
     const event = result.find((a) => a.reasons.includes('source-drop'))
@@ -173,7 +171,9 @@ describe('detectAnomalies – determinism', () => {
 describe('anomalySeverity', () => {
   it('critical when both zscore and gap fire', () => {
     const event: AnomalyEvent = {
-      index: 1, timestamp: 0, price: 100,
+      index: 1,
+      timestamp: 0,
+      price: 100,
       reasons: ['zscore', 'gap'],
       explanation: '',
       zScore: 4,
@@ -184,7 +184,9 @@ describe('anomalySeverity', () => {
 
   it('critical when zscore >= 5', () => {
     const event: AnomalyEvent = {
-      index: 1, timestamp: 0, price: 100,
+      index: 1,
+      timestamp: 0,
+      price: 100,
       reasons: ['zscore'],
       explanation: '',
       zScore: 6,
@@ -194,7 +196,9 @@ describe('anomalySeverity', () => {
 
   it('warning for a single gap', () => {
     const event: AnomalyEvent = {
-      index: 1, timestamp: 0, price: 100,
+      index: 1,
+      timestamp: 0,
+      price: 100,
       reasons: ['gap'],
       explanation: '',
       gapPercent: 10,

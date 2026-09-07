@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import type { PathParams } from 'msw'
 import { isOracleNetwork, UnknownAssetError, UnknownNetworkError } from '../lib/contractRegistry'
-import { mockAllPrices, mockPriceData, mockHistory, mockOnChainPrice } from './data'
+import { mockAllPrices, mockPriceData, mockHistory, mockOnChainPrice, mockPriceProof } from './data'
 
 export const handlers = [
   http.get<PathParams<'network' | 'asset'>>('/api/onchain/:network/:asset', ({ params }) => {

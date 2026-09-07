@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { PriceProvider } from '../context/PriceContext'
 import { AlertsProvider, useAlerts } from '../hooks/useAlerts'
+import { ToastProvider } from '../context/ToastContext'
+import { makeAlertInput } from '../test/fixtures'
 import { PreferencesProvider, usePreferences } from '../preferences/PreferencesContext'
 
 // ---------------------------------------------------------------------------
@@ -16,23 +18,23 @@ import { PreferencesProvider, usePreferences } from '../preferences/PreferencesC
 // WebSocket price_update flows through the real PriceProvider into real
 // AlertsProvider's alert-evaluation effect, driving a real fired-alert entry.
 
-let messageHandler: ((msg: {
-  type: 'price_update'
-  assetPair: string
-  price: number
-  timestamp: number
-  confidence: number
-  sources: string[]
-}) => void) | null = null
+let messageHandler:
+  | ((msg: {
+      type: 'price_update'
+      assetPair: string
+      price: number
+      timestamp: number
+      confidence: number
+      sources: string[]
+    }) => void)
+  | null = null
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
     useQuery: vi.fn(() => ({
-      data: [
-        { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
-      ],
+      data: [{ assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] }],
       isLoading: false,
       error: null,
       isFetching: false,
@@ -48,16 +50,47 @@ vi.mock('../api/rest', () => ({
   // firing (which reacts to the optimistic livePrices update directly) but
   // keeps the provider's own confirmation flow from throwing unhandled errors.
   fetchPricesBatched: vi.fn((pair: string) =>
-    Promise.resolve({ assetPair: pair, price: 56000, timestamp: 1700000001000, confidence: 0.99, sources: ['chainlink'] }),
+    Promise.resolve({
+      assetPair: pair,
+      price: 56000,
+      timestamp: 1700000001000,
+      confidence: 0.99,
+      sources: ['chainlink'],
+    }),
   ),
 }))
 
-vi.mock('../api/websocket', () => ({
+// BroadcastChannel exists in jsdom, so a real WsLeaderElection would delay
+// opening the socket until its 200ms CLAIM timeout. Force the synchronous
+// fallback path instead (channel unavailable → open own socket immediately)
+// so the test can drive `messageHandler` right after render.
+vi.mock('../api/wsLeaderElection', () => ({
+  WsLeaderElection: vi.fn(function (callbacks: {
+    onBecomeLeader: () => void
+    onBecomeFollower: () => void
+    onFollowerMessage: (msg: unknown) => void
+    onLeaderFallback: () => void
+  }) {
+    return {
+      start: vi.fn(() => callbacks.onLeaderFallback()),
+      destroy: vi.fn(),
+      relayMessage: vi.fn(),
+    }
+  }),
+}))
+
+vi.mock('../api/realtimeClient', () => ({
   // A real `function`, not an arrow function, so vitest's mock can be invoked
-  // with `new` (PriceProvider does `new WebSocketClient()`).
-  WebSocketClient: vi.fn(function WebSocketClient() {
+  // with `new` (PriceProvider does `new RealtimeClient()`).
+  RealtimeClient: vi.fn(function RealtimeClient() {
     return {
       status: 'connected',
+      diagnostics: {
+        retryCount: 0,
+        lastConnectedAt: null,
+        totalDisconnections: 0,
+        transport: 'ws',
+      },
       connect: vi.fn(),
       disconnect: vi.fn(),
       onMessage: vi.fn((handler: typeof messageHandler) => {
@@ -67,7 +100,6 @@ vi.mock('../api/websocket', () => ({
       onStatusChange: vi.fn(() => vi.fn()),
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
-      send: vi.fn(),
     }
   }),
 }))
@@ -79,9 +111,11 @@ function makeQueryClient() {
 function AlertsWrapper({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={makeQueryClient()}>
-      <PriceProvider>
-        <AlertsProvider>{children}</AlertsProvider>
-      </PriceProvider>
+      <ToastProvider>
+        <PriceProvider>
+          <AlertsProvider>{children}</AlertsProvider>
+        </PriceProvider>
+      </ToastProvider>
     </QueryClientProvider>
   )
 }
@@ -98,13 +132,7 @@ describe('PriceContext + useAlerts + WebSocket integration', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsWrapper })
 
     act(() => {
-      result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 55000,
-        lowerThreshold: null,
-        triggerOnce: true,
-        active: true,
-      })
+      result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 55000, triggerOnce: true }))
     })
     expect(result.current.alerts).toHaveLength(1)
 
@@ -128,9 +156,12 @@ describe('PriceContext + useAlerts + WebSocket integration', () => {
     expect(result.current.alerts[0].fireCount).toBe(1)
     expect(result.current.alerts[0].active).toBe(false)
 
-    // Persisted to localStorage as part of the same real-hook flow.
-    const storedHistory = JSON.parse(localStorage.getItem('alert-history') ?? '[]')
-    expect(storedHistory).toHaveLength(1)
+    // Persisted to localStorage as part of the same real-hook flow. The write
+    // is debounced (#510), so wait for it rather than reading synchronously.
+    await waitFor(() => {
+      const storedHistory = JSON.parse(localStorage.getItem('alert-history') ?? '[]')
+      expect(storedHistory).toHaveLength(1)
+    })
   })
 })
 

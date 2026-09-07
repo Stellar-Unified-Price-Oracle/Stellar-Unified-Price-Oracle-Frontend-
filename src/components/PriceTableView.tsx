@@ -62,8 +62,12 @@
  * - Each row has `role="button"` and `tabIndex={0}` for keyboard activation.
  * - `aria-selected` is set on rows only when `selectMode` is active.
  * - Live and alert status dots carry `role="status"` with `aria-label`.
- * - Rows carry `aria-rowindex` (1-based, header row is 1) so screen readers
- *   announce position even when only a windowed subset is in the DOM.
+ * - The header row carries `aria-rowindex="1"`. Clickable rows are exposed as
+ *   `role="button"`, so they must not carry `aria-rowindex` (not allowed on
+ *   button semantics); their on-screen order is announced via the table's
+ *   `aria-rowcount`.
+ *
+ * ## Virtual scrolling
  *
  * ## Virtual scrolling
  * Lists longer than {@link VIRTUALIZE_THRESHOLD} rows are windowed with
@@ -162,8 +166,7 @@ export const PriceTableView = memo(function PriceTableView({
   const virtualRows = isVirtual ? rowVirtualizer.getVirtualItems() : null
   const totalSize = isVirtual ? rowVirtualizer.getTotalSize() : sorted.length * ROW_HEIGHT_PX
   const paddingTop = virtualRows && virtualRows.length > 0 ? virtualRows[0].start : 0
-  const paddingBottom =
-    virtualRows && virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0
+  const paddingBottom = virtualRows && virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0
 
   const focusRow = useCallback(
     (index: number) => {
@@ -184,12 +187,21 @@ export const PriceTableView = memo(function PriceTableView({
       <tr
         key={p.assetPair}
         data-row-index={rowIndex}
-        aria-rowindex={rowIndex + 2}
-        onClick={() => { if (selectMode) { onToggleSelect?.(p.assetPair) } else { onRowClick(p.assetPair) } }}
+        onClick={() => {
+          if (selectMode) {
+            onToggleSelect?.(p.assetPair)
+          } else {
+            onRowClick(p.assetPair)
+          }
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
-            if (selectMode) { onToggleSelect?.(p.assetPair) } else { onRowClick(p.assetPair) }
+            if (selectMode) {
+              onToggleSelect?.(p.assetPair)
+            } else {
+              onRowClick(p.assetPair)
+            }
           } else if (e.key === 'ArrowDown') {
             e.preventDefault()
             focusRow(rowIndex + 1)
@@ -293,12 +305,17 @@ export const PriceTableView = memo(function PriceTableView({
                   {sortKey === key ? (
                     <span aria-hidden="true">{sortDir === 'asc' ? '↑' : '↓'}</span>
                   ) : (
-                    <span className="text-gray-700" aria-hidden="true">↕</span>
+                    <span className="text-gray-700" aria-hidden="true">
+                      ↕
+                    </span>
                   )}
                 </span>
               </th>
             ))}
-            <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">
+            <th
+              scope="col"
+              className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap"
+            >
               {t('table.columns.alert')}
             </th>
           </tr>
@@ -309,9 +326,7 @@ export const PriceTableView = memo(function PriceTableView({
               <td style={{ height: paddingTop, padding: 0, border: 0 }} colSpan={columnCount} />
             </tr>
           )}
-          {(virtualRows ?? sorted.map((_, index) => ({ index }))).map((row) =>
-            renderRow(sorted[row.index], row.index),
-          )}
+          {(virtualRows ?? sorted.map((_, index) => ({ index }))).map((row) => renderRow(sorted[row.index], row.index))}
           {paddingBottom > 0 && (
             <tr aria-hidden="true">
               <td style={{ height: paddingBottom, padding: 0, border: 0 }} colSpan={columnCount} />

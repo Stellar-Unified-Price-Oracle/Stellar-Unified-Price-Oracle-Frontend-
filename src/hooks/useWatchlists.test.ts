@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { useWatchlists } from './useWatchlists'
 import type { WatchlistEntry } from '../services/watchlistIndexedDB'
+import { useWatchlists } from './useWatchlists'
 
 // ---------- Mock IndexedDB service ----------
 

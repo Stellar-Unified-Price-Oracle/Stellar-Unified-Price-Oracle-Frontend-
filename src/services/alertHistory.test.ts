@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import type { Alert, EscalationStep } from '../types'
 import {
   loadAlertHistory,
   saveAlertHistory,
@@ -7,7 +8,6 @@ import {
   appendHistoryEntries,
   HISTORY_LIMIT,
 } from './alertHistory'
-import type { Alert, EscalationStep } from '../types'
 
 const STORAGE_KEY = 'alert-history'
 
@@ -30,6 +30,9 @@ const mockAlert: Alert = {
   conditionGroup: null,
   escalationPolicy: null,
   escalationState: null,
+  channels: null,
+  retestMode: false,
+  retestState: null,
   active: true,
   createdAt: Date.now(),
   lastTriggeredAt: null,

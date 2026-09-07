@@ -28,9 +28,9 @@ const INDICATOR_COLOR: Record<string, string> = {
   rsi: '#a78bfa',
 }
 
-const RSI_PANEL_RATIO = 0.2  // bottom 20% for RSI
+const RSI_PANEL_RATIO = 0.2 // bottom 20% for RSI
 const PADDING = { top: 20, right: 16, bottom: 24, left: 52 }
-const RSI_DIVIDER_H = 24     // height of the divider strip between panels
+const RSI_DIVIDER_H = 24 // height of the divider strip between panels
 
 function mapX(index: number, total: number, left: number, right: number): number {
   if (total <= 1) return left
@@ -143,7 +143,11 @@ function drawChart(
   history.forEach((h, i) => {
     const x = mapX(i, history.length, left, right)
     const y = mapY(h.price, priceMin, priceMax, priceTop, priceBottom)
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    if (i === 0) {
+      ctx.moveTo(x, y)
+    } else {
+      ctx.lineTo(x, y)
+    }
   })
   ctx.stroke()
   ctx.restore()
@@ -156,8 +160,12 @@ function drawChart(
       series.values,
       INDICATOR_COLOR[series.type],
       1.5,
-      left, right, priceTop, priceBottom,
-      priceMin, priceMax,
+      left,
+      right,
+      priceTop,
+      priceBottom,
+      priceMin,
+      priceMax,
     )
   }
 
@@ -206,14 +214,7 @@ function drawChart(
 
     for (const series of indicatorSeries) {
       if (series.type !== 'rsi') continue
-      drawLine(
-        ctx,
-        series.values,
-        INDICATOR_COLOR.rsi,
-        1.5,
-        left, right, rsiTop, rsiBottom,
-        0, 100,
-      )
+      drawLine(ctx, series.values, INDICATOR_COLOR.rsi, 1.5, left, right, rsiTop, rsiBottom, 0, 100)
     }
   }
 
@@ -315,24 +316,12 @@ export const PriceChartCanvas = memo(function PriceChartCanvas({
   }, [history, indicatorSeries, exportMode, width, height])
 
   if (width !== undefined && height !== undefined) {
-    return (
-      <canvas
-        ref={canvasRef}
-        aria-label='Price chart'
-        role='img'
-        className='block'
-      />
-    )
+    return <canvas ref={canvasRef} aria-label="Price chart" role="img" className="block" />
   }
 
   return (
-    <div ref={containerRef} className='h-full w-full'>
-      <canvas
-        ref={canvasRef}
-        aria-label='Price chart'
-        role='img'
-        className='block'
-      />
+    <div ref={containerRef} className="h-full w-full">
+      <canvas ref={canvasRef} aria-label="Price chart" role="img" className="block" />
     </div>
   )
 })

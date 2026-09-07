@@ -21,7 +21,12 @@ interface AlertPresetPickerProps {
 const ICONS: Record<AlertPreset['icon'], ReactElement> = {
   whale: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"
+      />
     </svg>
   ),
   breakout: (
@@ -31,17 +36,31 @@ const ICONS: Record<AlertPreset['icon'], ReactElement> = {
   ),
   peg: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m9-8a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
     </svg>
   ),
   custom: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+      />
     </svg>
   ),
 }
 
-export function AlertPresetPicker({ onSelectPreset, onSelectCustom, onSaveCurrent }: AlertPresetPickerProps): ReactElement {
+export function AlertPresetPicker({
+  onSelectPreset,
+  onSelectCustom,
+  onSaveCurrent,
+}: AlertPresetPickerProps): ReactElement {
   const { t } = useTranslation()
   const [customPresets, setCustomPresets] = useState<CustomAlertPreset[]>([])
   const [showSaveForm, setShowSaveForm] = useState(false)
@@ -50,7 +69,10 @@ export function AlertPresetPicker({ onSelectPreset, onSelectCustom, onSaveCurren
   const [saving, setSaving] = useState(false)
 
   const refreshCustomPresets = (): void => {
-    presetStorage.list().then(setCustomPresets).catch(() => setCustomPresets([]))
+    presetStorage
+      .list()
+      .then(setCustomPresets)
+      .catch(() => setCustomPresets([]))
   }
 
   useEffect(() => {
@@ -89,10 +111,10 @@ export function AlertPresetPicker({ onSelectPreset, onSelectCustom, onSaveCurren
           >
             <div className="flex items-center gap-1.5 text-cyan-400 mb-1">
               {ICONS[preset.icon]}
-              <span className="text-sm font-semibold text-white">{t(preset.nameKey)}</span>
+              <span className="text-sm font-semibold text-white">{t(preset.nameKey, preset.nameKey)}</span>
             </div>
-            <p className="text-xs text-gray-400 mb-1">{t(preset.descriptionKey)}</p>
-            <p className="text-[11px] text-gray-500 italic">{t(preset.useCaseKey)}</p>
+            <p className="text-xs text-gray-400 mb-1">{t(preset.descriptionKey, preset.descriptionKey)}</p>
+            <p className="text-[11px] text-gray-500 italic">{t(preset.useCaseKey, preset.useCaseKey)}</p>
           </button>
         ))}
       </div>
@@ -104,7 +126,10 @@ export function AlertPresetPicker({ onSelectPreset, onSelectCustom, onSaveCurren
           </span>
           <ul className="space-y-1.5">
             {customPresets.map((preset) => (
-              <li key={preset.id} className="flex items-center gap-2 p-2 bg-gray-800/50 border border-gray-700 rounded-lg">
+              <li
+                key={preset.id}
+                className="flex items-center gap-2 p-2 bg-gray-800/50 border border-gray-700 rounded-lg"
+              >
                 <button
                   type="button"
                   onClick={() => onSelectCustom(preset)}
@@ -120,7 +145,12 @@ export function AlertPresetPicker({ onSelectPreset, onSelectCustom, onSaveCurren
                   className="text-gray-500 hover:text-red-400 p-1 rounded-lg hover:bg-red-400/10 transition-colors"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
               </li>

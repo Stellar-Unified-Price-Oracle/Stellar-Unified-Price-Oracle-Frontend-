@@ -75,11 +75,13 @@ class AnnouncementRegistry {
     this.history.set(id, announcement)
     if (this.history.size > this.config.maxHistorySize) {
       const firstKey = this.history.keys().next().value
-      this.history.delete(firstKey)
+      if (firstKey !== undefined) {
+        this.history.delete(firstKey)
+      }
     }
 
     // Notify all listeners
-    this.listeners.forEach(listener => listener(announcement))
+    this.listeners.forEach((listener) => listener(announcement))
 
     return true
   }
@@ -96,6 +98,13 @@ class AnnouncementRegistry {
    */
   getHistory(): Announcement[] {
     return Array.from(this.history.values())
+  }
+
+  /**
+   * Clear the announcement history (used by the test reset helper).
+   */
+  clearHistory(): void {
+    this.history.clear()
   }
 
   /**
@@ -153,12 +162,9 @@ export function useAnnounce(config?: Partial<AnnouncerConfig>) {
     }
   }, [config])
 
-  const announce = useCallback(
-    (message: string, priority: AnnouncementPriority = 'polite'): boolean => {
-      return registryRef.current.announce(message, priority)
-    },
-    [],
-  )
+  const announce = useCallback((message: string, priority: AnnouncementPriority = 'polite'): boolean => {
+    return registryRef.current.announce(message, priority)
+  }, [])
 
   const subscribe = useCallback((listener: (announcement: Announcement) => void) => {
     return registryRef.current.subscribe(listener)
@@ -183,8 +189,10 @@ export function getAnnouncementRegistry(): AnnouncementRegistry {
 }
 
 /**
- * Reset registry for testing
+ * Reset registry for testing — clears both the deduplication window and the
+ * announcement history so a fresh test starts from an empty slate.
  */
 export function resetAnnouncementRegistry(): void {
   globalRegistry?.clearDeduplicationMap()
+  globalRegistry?.clearHistory()
 }

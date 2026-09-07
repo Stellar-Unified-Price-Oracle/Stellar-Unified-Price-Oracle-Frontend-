@@ -1,18 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { idbCache } from '../hooks/useIndexedDB'
 import { STORAGE_KEYS, clearAllData, readJson, readRaw, remove, writeJson, writeRaw } from './storage'
-
-vi.mock('../hooks/useIndexedDB', () => ({
-  idbCache: { clear: vi.fn(async () => {}) },
-}))
-
-const { idbCache } = await import('../hooks/useIndexedDB')
 
 beforeEach(() => {
   localStorage.clear()
+  idbCache._reset()
+  idbCache._disableSyncQueue()
   vi.clearAllMocks()
 })
 
 afterEach(() => {
+  idbCache._reset()
   vi.restoreAllMocks()
 })
 
@@ -95,10 +93,16 @@ describe('clearAllData', () => {
   })
 
   it('clears the IndexedDB caches', async () => {
+    // Seed the same stores clearAllData owns, then verify they are emptied.
+    await idbCache.set('prices', 'btc', { price: 50000 })
+    await idbCache.set('history', 'btc:123', { points: [1, 2] })
+    await idbCache.set('preferences', 'preferences', { theme: 'dark' })
+
     await clearAllData()
-    expect(idbCache.clear).toHaveBeenCalledWith('prices')
-    expect(idbCache.clear).toHaveBeenCalledWith('history')
-    expect(idbCache.clear).toHaveBeenCalledWith('preferences')
+
+    expect(await idbCache.get('prices', 'btc')).toBeNull()
+    expect(await idbCache.get('history', 'btc:123')).toBeNull()
+    expect(await idbCache.get('preferences', 'preferences')).toBeNull()
   })
 })
 

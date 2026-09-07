@@ -87,11 +87,7 @@ export class DataTransformer {
    * Safely rename a property on all entries in a store.
    * Returns the count of transformed entries.
    */
-  static renameProperty(
-    store: IDBObjectStore,
-    oldName: string,
-    newName: string,
-  ): Promise<number> {
+  static renameProperty(store: IDBObjectStore, oldName: string, newName: string): Promise<number> {
     return new Promise((resolve, reject) => {
       const req = store.getAll()
       let count = 0
@@ -246,8 +242,7 @@ export class MigrationRunner {
   /**
    * Get the current migration version from metadata.
    * Returns 0 if no migrations have been applied.
-   */
-  async getCurrentVersion(db: IDBDatabase): Promise<number> {
+   */ async getCurrentVersion(db: IDBDatabase): Promise<number> {
     return new Promise((resolve, reject) => {
       if (!db.objectStoreNames.contains(this.metadataStore)) {
         resolve(0)
@@ -256,11 +251,13 @@ export class MigrationRunner {
 
       const tx = db.transaction(this.metadataStore, 'readonly')
       const store = tx.objectStore(this.metadataStore)
-      const req = store.get('version')
+      // History records are keyed by their numeric `version` (keyPath), so the
+      // current version is the highest applied migration version.
+      const req = store.getAll()
 
       req.onsuccess = () => {
-        const meta = req.result as MigrationMetadata | undefined
-        resolve(meta?.version ?? 0)
+        const entries = (req.result as MigrationMetadata[]).filter((m) => m.version > 0)
+        resolve(entries.length === 0 ? 0 : Math.max(...entries.map((m) => m.version)))
       }
 
       req.onerror = () => reject(req.error)
@@ -302,12 +299,7 @@ export class MigrationRunner {
   /**
    * Record a successful migration in metadata.
    */
-  private recordMigration(
-    tx: IDBTransaction,
-    version: number,
-    name: string,
-    description?: string,
-  ): void {
+  private recordMigration(tx: IDBTransaction, version: number, name: string, description?: string): void {
     const store = tx.objectStore(this.metadataStore)
     const metadata: MigrationMetadata = {
       version,
@@ -319,81 +311,90 @@ export class MigrationRunner {
   }
 
   /**
-   * Execute pending migrations from fromVersion to toVersion (inclusive).
-   * Returns the number of migrations applied.
+   * Apply every registered migration up to `toVersion` that has not yet been
+   * recorded in the metadata store. Returns the number of migrations applied.
+   *
+   * MUST be invoked from within an `onupgradeneeded` handler — creating or
+   * altering object stores and indexes is only legal while a versionchange
+   * transaction is active, so the caller passes that transaction through (see
+   * {@link src/hooks/useIndexedDB.ts}).
+   *
+   * The metadata store is created, read, and recorded entirely through the
+   * supplied transaction, and migration steps are expected to be synchronous
+   * (the registered app migrations are). This keeps every schema/data request
+   * inside the versionchange transaction's active window: awaiting between
+   * requests can let the transaction commit before later writes are issued.
    *
    * Throws MigrationError if any migration fails.
    */
-  async run(db: IDBDatabase, _fromVersion: number, toVersion: number): Promise<number> {
-    const current = await this.getCurrentVersion(db)
-
-    if (current > toVersion) {
-      throw new MigrationError(
-        current,
-        'validation',
-        `Cannot migrate backward from v${current} to v${toVersion}`,
-      )
-    }
-
-    if (current === toVersion) {
-      return 0 // Already at target version
-    }
-
-    const migrations = this.registry.getRange(current, toVersion)
-    if (migrations.length === 0) {
-      throw new MigrationError(
-        toVersion,
-        'validation',
-        `No migrations found from v${current} to v${toVersion}`,
-      )
-    }
-
-    let applied = 0
-
-    for (const migration of migrations) {
-      try {
-        await this.executeMigration(db, migration)
-        applied++
-      } catch (error) {
-        throw new MigrationError(
-          migration.version,
-          'execute',
-          error instanceof Error ? error.message : 'Unknown error',
-          error instanceof Error ? error : undefined,
-        )
-      }
-    }
-
-    return applied
-  }
-
-  /**
-   * Execute a single migration step with transaction handling.
-   */
-  private async executeMigration(db: IDBDatabase, migration: MigrationStep): Promise<void> {
+  run(db: IDBDatabase, tx: IDBTransaction, toVersion: number): Promise<number> {
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(Array.from(db.objectStoreNames), 'readwrite')
-
-      // Ensure metadata store exists
-      this.ensureMetadataStore(db, tx)
-
       try {
-        const result = migration.up(db, tx)
-        if (result instanceof Promise) {
-          result.then(() => {
-            this.recordMigration(tx, migration.version, migration.name, migration.description)
-            tx.oncomplete = () => resolve()
-            tx.onerror = () => reject(tx.error)
-          }).catch(reject)
-        } else {
-          this.recordMigration(tx, migration.version, migration.name, migration.description)
-          tx.oncomplete = () => resolve()
-          tx.onerror = () => reject(tx.error)
-        }
+        // The metadata store must exist before we can read or record history.
+        this.ensureMetadataStore(db, tx)
       } catch (error) {
-        tx.abort()
-        reject(error)
+        reject(new MigrationError(0, 'metadata', error instanceof Error ? error.message : 'Unknown error'))
+        return
       }
+
+      // History records are keyed by their numeric `version` (keyPath), so the
+      // current version is the highest recorded migration version.
+      const read = tx.objectStore(this.metadataStore).getAll()
+      read.onsuccess = () => {
+        try {
+          const applied = (read.result as MigrationMetadata[]).filter((m) => m.version > 0)
+          const current = applied.length === 0 ? 0 : Math.max(...applied.map((m) => m.version))
+
+          if (current > toVersion) {
+            reject(
+              new MigrationError(current, 'validation', `Cannot migrate backward from v${current} to v${toVersion}`),
+            )
+            return
+          }
+
+          if (current === toVersion) {
+            resolve(0) // Already at target version
+            return
+          }
+
+          const migrations = this.registry.getRange(current, toVersion)
+          if (migrations.length === 0) {
+            reject(new MigrationError(toVersion, 'validation', `No migrations found from v${current} to v${toVersion}`))
+            return
+          }
+
+          for (const migration of migrations) {
+            const result = migration.up(db, tx)
+            if (result instanceof Promise) {
+              // Async steps are unsupported inside a versionchange transaction:
+              // requests issued from a later microtask can run after the
+              // transaction has committed. All registered app migrations are
+              // synchronous; DataTransformer helpers used by future data
+              // migrations must be invoked from within a request callback.
+              throw new MigrationError(
+                migration.version,
+                'execute',
+                'Async migration steps are not supported during a versionchange transaction',
+              )
+            }
+            this.recordMigration(tx, migration.version, migration.name, migration.description)
+          }
+
+          resolve(migrations.length)
+        } catch (error) {
+          reject(
+            error instanceof MigrationError
+              ? error
+              : new MigrationError(
+                  toVersion,
+                  'execute',
+                  error instanceof Error ? error.message : 'Unknown error',
+                  error instanceof Error ? error : undefined,
+                ),
+          )
+        }
+      }
+      read.onerror = () => reject(new MigrationError(0, 'metadata', 'Could not read migration history'))
     })
   }
 }

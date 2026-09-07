@@ -1,10 +1,28 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { cleanup, render, screen, within, fireEvent } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { PreferencesProvider } from '../preferences/PreferencesContext'
+import { cleanup, screen, within, fireEvent } from '@testing-library/react'
+import { Route, Routes } from 'react-router-dom'
+import { renderWithProviders } from '../test/render'
 import { PriceDetail } from './PriceDetail'
 
 afterEach(cleanup)
+
+vi.mock('../context/PriceContext', () => ({
+  usePriceContext: vi.fn(() => ({
+    prices: [],
+    pricesLoading: false,
+    pricesError: null,
+    pricesValidating: false,
+    livePrices: new Map(),
+    wsStatus: 'disconnected',
+    rateLimitStatus: 'ok' as const,
+    rateLimitRetryAfterMs: 0,
+    refetchPrices: vi.fn(),
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    attributionHistory: new Map(),
+    isWsLeader: null,
+  })),
+}))
 
 vi.mock('../components/PriceProofPanel', () => ({
   PriceProofPanel: () => <div data-testid="price-proof-panel" />,
@@ -53,14 +71,13 @@ vi.mock('../components/OnChainComparisonPanel', () => ({
 }))
 
 function renderWithPair(pair = 'BTC%2FUSD') {
-  return render(
-    <MemoryRouter initialEntries={[`/prices/${pair}`]}>
-      <PreferencesProvider>
-        <Routes>
-          <Route path="/prices/:pair" element={<PriceDetail />} />
-        </Routes>
-      </PreferencesProvider>
-    </MemoryRouter>,
+  // `withAlerts` because AnomalyBanner (rendered in Overview) reads useAlerts;
+  // usePriceContext is mocked at module level so AlertsProvider is safe here.
+  return renderWithProviders(
+    <Routes>
+      <Route path="/prices/:pair" element={<PriceDetail />} />
+    </Routes>,
+    { route: `/prices/${pair}`, withAlerts: true },
   )
 }
 
@@ -121,6 +138,7 @@ describe('PriceDetail', () => {
       data: undefined,
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -153,6 +171,7 @@ describe('PriceDetail', () => {
       data: mockPriceData,
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -169,6 +188,7 @@ describe('PriceDetail', () => {
       data: { ...mockPriceData, price: 50000 },
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -185,6 +205,7 @@ describe('PriceDetail', () => {
       data: { ...mockPriceData, confidence: 0.99 },
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -199,6 +220,7 @@ describe('PriceDetail', () => {
       data: { ...mockPriceData, confidence: 0.95 },
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -233,6 +255,7 @@ describe('PriceDetail', () => {
       data: { ...mockPriceData, timestamp: now - 30_000 },
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -248,6 +271,7 @@ describe('PriceDetail', () => {
       data: { ...mockPriceData, timestamp: fixedDate },
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -264,6 +288,7 @@ describe('PriceDetail', () => {
       data: { ...mockPriceData, sources: ['chainlink', 'redstone'] },
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -284,6 +309,7 @@ describe('PriceDetail', () => {
       data: mockPriceData,
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -309,6 +335,7 @@ describe('PriceDetail', () => {
       data: mockPriceData,
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -332,6 +359,7 @@ describe('PriceDetail', () => {
       data: mockPriceData,
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -353,6 +381,7 @@ describe('PriceDetail', () => {
       data: { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -375,6 +404,7 @@ describe('PriceDetail', () => {
       data: { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -398,6 +428,7 @@ describe('PriceDetail', () => {
       data: mockPriceData,
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })
@@ -415,6 +446,7 @@ describe('PriceDetail', () => {
       data: mockPriceData,
       loading: false,
       error: null,
+      errorMessage: null,
       isValidating: false,
       refetch: vi.fn(),
     })

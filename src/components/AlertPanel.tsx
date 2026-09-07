@@ -78,9 +78,16 @@ function EscalationProgress({ alert }: { alert: Alert }): ReactElement | null {
   const firedCount = alert.escalationState?.firedStepIds.length ?? 0
 
   return (
-    <div className="flex items-center gap-1.5 mt-1.5" title={t('alertPanel.escalation.progress', { fired: firedCount, total: policy.steps.length })}>
+    <div
+      className="flex items-center gap-1.5 mt-1.5"
+      title={t('alertPanel.escalation.progress', { fired: firedCount, total: policy.steps.length })}
+    >
       <span className="text-[10px] text-gray-500">{t('alertPanel.escalation.label')}</span>
-      <div className="flex items-center gap-1" role="img" aria-label={t('alertPanel.escalation.progress', { fired: firedCount, total: policy.steps.length })}>
+      <div
+        className="flex items-center gap-1"
+        role="img"
+        aria-label={t('alertPanel.escalation.progress', { fired: firedCount, total: policy.steps.length })}
+      >
         {policy.steps.map((step, index) => (
           <span
             key={step.id}
@@ -106,7 +113,11 @@ function RetestBadge({ alert }: { alert: Alert }): ReactElement | null {
         : 'bg-gray-800 text-gray-300 border-gray-700'
   return (
     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${style}`}>
-      {phase === 'inBreach' ? t('alertPanel.retest.inBreach') : phase === 'exited' ? t('alertPanel.retest.exited') : t('alertPanel.retest.idle')}
+      {phase === 'inBreach'
+        ? t('alertPanel.retest.inBreach')
+        : phase === 'exited'
+          ? t('alertPanel.retest.exited')
+          : t('alertPanel.retest.idle')}
     </span>
   )
 }
@@ -143,17 +154,16 @@ function HealthFlagBadge({ flag, onDismiss }: { flag: AlertHealthFlag; onDismiss
               {issue.suggestedValue !== null && (
                 <p className="text-cyan-400">
                   {t('alertPanel.health.suggestion', {
-                    value: issue.field === 'price' ? formatPrice(issue.suggestedValue) : `${issue.suggestedValue.toFixed(2)}%`,
+                    value:
+                      issue.field === 'price'
+                        ? formatPrice(issue.suggestedValue)
+                        : `${issue.suggestedValue.toFixed(2)}%`,
                   })}
                 </p>
               )}
             </div>
           ))}
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="text-gray-500 hover:text-gray-300 underline"
-          >
+          <button type="button" onClick={onDismiss} className="text-gray-500 hover:text-gray-300 underline">
             {t('alertPanel.health.dismiss')}
           </button>
         </div>
@@ -171,7 +181,18 @@ const SNOOZE_DURATIONS: { value: AlertSnoozeDuration; labelKey: string }[] = [
 ]
 
 export function AlertPanel(): ReactElement | null {
-  const { alerts, alertHistory, removeAlert, updateAlert, markAsRead, isPanelOpen, togglePanel, snoozeAlert, unsnoozeAlert, reEnableAlert } = useAlerts()
+  const {
+    alerts,
+    alertHistory,
+    removeAlert,
+    updateAlert,
+    markAsRead,
+    isPanelOpen,
+    togglePanel,
+    snoozeAlert,
+    unsnoozeAlert,
+    reEnableAlert,
+  } = useAlerts()
   const { t } = useTranslation()
   const [snoozeOpenId, setSnoozeOpenId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'alerts' | 'history'>('alerts')
@@ -190,20 +211,26 @@ export function AlertPanel(): ReactElement | null {
 
   const now = Date.now()
   const snoozedAlerts = alerts.filter((a) => a.snoozedUntil !== null && a.snoozedUntil > now)
-  const triggeredAlerts = alerts.filter((a) => a.lastTriggeredAt !== null && (a.snoozedUntil === null || a.snoozedUntil <= now))
-  const activeAlerts = alerts.filter((a) => a.active && a.lastTriggeredAt === null && (a.snoozedUntil === null || a.snoozedUntil <= now))
+  const triggeredAlerts = alerts.filter(
+    (a) => a.lastTriggeredAt !== null && (a.snoozedUntil === null || a.snoozedUntil <= now),
+  )
+  const activeAlerts = alerts.filter(
+    (a) => a.active && a.lastTriggeredAt === null && (a.snoozedUntil === null || a.snoozedUntil <= now),
+  )
   const firedOnceAlerts = alerts.filter((a) => !a.active && a.triggerOnce && a.lastTriggeredAt !== null)
-  const inactiveAlerts = alerts.filter((a) => !a.active && a.lastTriggeredAt === null && (a.snoozedUntil === null || a.snoozedUntil <= now))
+  const inactiveAlerts = alerts.filter(
+    (a) => !a.active && a.lastTriggeredAt === null && (a.snoozedUntil === null || a.snoozedUntil <= now),
+  )
 
-  const getConditionText = (alert: typeof alerts[0]): string => {
+  const getConditionText = (alert: (typeof alerts)[0]): string => {
     if (alert.percentageMode) {
       const dir = alert.percentageDirection ?? 'either'
       const pct = alert.percentageThreshold ?? 0
       const win = alert.percentageWindow ?? '1hr'
       return t('alertPanel.conditions.percentage', {
-        direction: t(`alertPanel.conditions.dir_${dir}`),
+        direction: t(`alertPanel.conditions.dir_${dir}`, dir),
         pct,
-        window: t(`alertModal.fields.window${win.charAt(0).toUpperCase() + win.slice(1)}`),
+        window: t(`alertModal.fields.window${win.charAt(0).toUpperCase() + win.slice(1)}`, win),
       })
     }
     const upper = alert.upperThreshold
@@ -235,11 +262,7 @@ export function AlertPanel(): ReactElement | null {
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-        onClick={togglePanel}
-        aria-hidden="true"
-      />
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={togglePanel} aria-hidden="true" />
       <div className="fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-gray-900 border-l border-gray-800 shadow-2xl flex flex-col overflow-hidden transform transition-transform">
         <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/80 backdrop-blur">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -301,8 +324,19 @@ export function AlertPanel(): ReactElement | null {
                     className="flex items-center gap-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg transition-colors"
                     title="Download alert effectiveness statistics as CSV"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
                     </svg>
                     Export Analytics
                   </button>
@@ -312,8 +346,18 @@ export function AlertPanel(): ReactElement | null {
             </>
           ) : alerts.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <svg className="w-12 h-12 mx-auto mb-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              <svg
+                className="w-12 h-12 mx-auto mb-3 text-gray-700"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                />
               </svg>
               <p>{t('alertPanel.empty')}</p>
             </div>
@@ -327,13 +371,18 @@ export function AlertPanel(): ReactElement | null {
                   </h3>
                   <div className="space-y-3">
                     {triggeredAlerts.map((alert) => (
-                      <div key={alert.id} className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 relative overflow-hidden">
+                      <div
+                        key={alert.id}
+                        className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 relative overflow-hidden"
+                      >
                         <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500" />
                         <div className="flex justify-between items-start mb-1">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-white">{alert.assetPair}</span>
                             {/* Alert type badge (#312) */}
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${alert.triggerOnce ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'}`}>
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${alert.triggerOnce ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'}`}
+                            >
                               {alert.triggerOnce ? t('alertPanel.badge.oneTime') : t('alertPanel.badge.persistent')}
                             </span>
                             {/* Fire count (#312) */}
@@ -366,8 +415,19 @@ export function AlertPanel(): ReactElement | null {
                               className="text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
                               title={t('alertPanel.snooze.button')}
                             >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
                               </svg>
                               {t('alertPanel.snooze.button')}
                             </button>
@@ -379,7 +439,7 @@ export function AlertPanel(): ReactElement | null {
                                     onClick={() => handleSnooze(alert.id, value)}
                                     className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
                                   >
-                                    {t(labelKey)}
+                                    {t(labelKey, labelKey)}
                                   </button>
                                 ))}
                               </div>
@@ -406,20 +466,36 @@ export function AlertPanel(): ReactElement | null {
                   </h3>
                   <div className="space-y-3">
                     {snoozedAlerts.map((alert) => (
-                      <div key={alert.id} className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between opacity-75">
+                      <div
+                        key={alert.id}
+                        className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between opacity-75"
+                      >
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="font-semibold text-gray-300 text-sm">{alert.assetPair}</span>
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 flex items-center gap-1">
-                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <svg
+                                className="w-2.5 h-2.5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
                               </svg>
                               {t('alertPanel.badge.snoozed')}
                             </span>
                           </div>
                           <div className="text-xs text-gray-500 font-mono">{getConditionText(alert)}</div>
                           {alert.snoozedUntil && (
-                            <div className="text-xs text-purple-400 mt-0.5">{formatSnoozeExpiry(alert.snoozedUntil)}</div>
+                            <div className="text-xs text-purple-400 mt-0.5">
+                              {formatSnoozeExpiry(alert.snoozedUntil)}
+                            </div>
                           )}
                         </div>
                         <button
@@ -428,7 +504,12 @@ export function AlertPanel(): ReactElement | null {
                           title={t('alertPanel.snooze.unsnooze')}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -445,17 +526,24 @@ export function AlertPanel(): ReactElement | null {
                   </h3>
                   <div className="space-y-3">
                     {activeAlerts.map((alert) => (
-                      <div key={alert.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 flex items-center justify-between group hover:border-gray-600 transition-colors">
+                      <div
+                        key={alert.id}
+                        className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 flex items-center justify-between group hover:border-gray-600 transition-colors"
+                      >
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="font-semibold text-white text-sm">{alert.assetPair}</span>
                             {/* Alert type badge (#312) */}
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${alert.triggerOnce ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'}`}>
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${alert.triggerOnce ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'}`}
+                            >
                               {alert.triggerOnce ? t('alertPanel.badge.oneTime') : t('alertPanel.badge.persistent')}
                             </span>
                             {/* Percentage mode badge (#307) */}
                             {alert.percentageMode && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300">%</span>
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+                                %
+                              </span>
                             )}
                             {/* Fire count (#312) */}
                             {alert.fireCount > 0 && (
@@ -464,9 +552,7 @@ export function AlertPanel(): ReactElement | null {
                             {/* Retest state marker (#491) */}
                             <RetestBadge alert={alert} />
                           </div>
-                          <div className="text-xs text-gray-400 font-mono">
-                            {getConditionText(alert)}
-                          </div>
+                          <div className="text-xs text-gray-400 font-mono">{getConditionText(alert)}</div>
                           <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                           <EscalationProgress alert={alert} />
                           <RoutingBadge alert={alert} />
@@ -484,7 +570,12 @@ export function AlertPanel(): ReactElement | null {
                             title={t('alertPanel.active.pause')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
                           </button>
                           <button
@@ -493,7 +584,12 @@ export function AlertPanel(): ReactElement | null {
                             title={t('alertPanel.active.delete')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -511,7 +607,10 @@ export function AlertPanel(): ReactElement | null {
                   </h3>
                   <div className="space-y-3 opacity-70">
                     {firedOnceAlerts.map((alert) => (
-                      <div key={alert.id} className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between">
+                      <div
+                        key={alert.id}
+                        className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between"
+                      >
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="font-semibold text-amber-200 text-sm">{alert.assetPair}</span>
@@ -535,7 +634,12 @@ export function AlertPanel(): ReactElement | null {
                             title={t('alertPanel.fired.reEnable')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                              />
                             </svg>
                           </button>
                           <button
@@ -544,7 +648,12 @@ export function AlertPanel(): ReactElement | null {
                             title={t('alertPanel.inactive.delete')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -562,17 +671,20 @@ export function AlertPanel(): ReactElement | null {
                   </h3>
                   <div className="space-y-3 opacity-60">
                     {inactiveAlerts.map((alert) => (
-                      <div key={alert.id} className="bg-gray-800/30 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+                      <div
+                        key={alert.id}
+                        className="bg-gray-800/30 border border-gray-800 rounded-xl p-4 flex items-center justify-between"
+                      >
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="font-semibold text-gray-300 text-sm">{alert.assetPair}</span>
                             {alert.percentageMode && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300">%</span>
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+                                %
+                              </span>
                             )}
                           </div>
-                          <div className="text-xs text-gray-500 font-mono">
-                            {getConditionText(alert)}
-                          </div>
+                          <div className="text-xs text-gray-500 font-mono">{getConditionText(alert)}</div>
                           <AlertAnalyticsStrip alertId={alert.id} stats={computeAlertStats(alert, alertHistory)} />
                         </div>
                         <div className="flex items-center gap-1">
@@ -582,8 +694,18 @@ export function AlertPanel(): ReactElement | null {
                             title={t('alertPanel.inactive.resume')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
                           </button>
                           <button
@@ -592,7 +714,12 @@ export function AlertPanel(): ReactElement | null {
                             title={t('alertPanel.inactive.delete')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
                             </svg>
                           </button>
                         </div>

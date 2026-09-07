@@ -1,3 +1,4 @@
+import type { BacktestPreset } from '../utils/backtest'
 import type {
   AccessibilityPreferences,
   DataPreferences,
@@ -6,7 +7,6 @@ import type {
   PrivacyPreferences,
   LocaleCode,
 } from './types'
-import type { BacktestPreset } from '../utils/backtest'
 
 export const DEFAULT_BACKTEST_PRESETS: BacktestPreset[] = [
   {

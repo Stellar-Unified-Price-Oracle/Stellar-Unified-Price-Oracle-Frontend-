@@ -126,15 +126,17 @@ export function setSentryUser(userId: string, email?: string, username?: string)
   if (!getSentryConfig().enabled) return
 
   try {
-    import('@sentry/react').then((Sentry) => {
-      Sentry.setUser({
-        id: userId,
-        email,
-        username,
+    import('@sentry/react')
+      .then((Sentry) => {
+        Sentry.setUser({
+          id: userId,
+          email,
+          username,
+        })
       })
-    }).catch(() => {
-      // Sentry not available
-    })
+      .catch(() => {
+        // Sentry not available
+      })
   } catch {
     // Sentry not available
   }
@@ -147,11 +149,13 @@ export function clearSentryUser(): void {
   if (!getSentryConfig().enabled) return
 
   try {
-    import('@sentry/react').then((Sentry) => {
-      Sentry.setUser(null)
-    }).catch(() => {
-      // Sentry not available
-    })
+    import('@sentry/react')
+      .then((Sentry) => {
+        Sentry.setUser(null)
+      })
+      .catch(() => {
+        // Sentry not available
+      })
   } catch {
     // Sentry not available
   }
@@ -160,18 +164,17 @@ export function clearSentryUser(): void {
 /**
  * Set custom context tags for error reporting.
  */
-export function setSentryContext(
-  name: string,
-  context: Record<string, unknown>,
-): void {
+export function setSentryContext(name: string, context: Record<string, unknown>): void {
   if (!getSentryConfig().enabled) return
 
   try {
-    import('@sentry/react').then((Sentry) => {
-      Sentry.setContext(name, context)
-    }).catch(() => {
-      // Sentry not available
-    })
+    import('@sentry/react')
+      .then((Sentry) => {
+        Sentry.setContext(name, context)
+      })
+      .catch(() => {
+        // Sentry not available
+      })
   } catch {
     // Sentry not available
   }
@@ -188,16 +191,18 @@ export function addSentryBreadcrumb(
   if (!getSentryConfig().enabled) return
 
   try {
-    import('@sentry/react').then((Sentry) => {
-      Sentry.addBreadcrumb({
-        message,
-        data,
-        level: level as any,
-        category: 'user-action',
+    import('@sentry/react')
+      .then((Sentry) => {
+        Sentry.addBreadcrumb({
+          message,
+          data,
+          level: level as import('@sentry/react').SeverityLevel,
+          category: 'user-action',
+        })
       })
-    }).catch(() => {
-      // Sentry not available
-    })
+      .catch(() => {
+        // Sentry not available
+      })
   } catch {
     // Sentry not available
   }
@@ -206,10 +211,7 @@ export function addSentryBreadcrumb(
 /**
  * Capture an error with additional context.
  */
-export function captureError(
-  error: Error | string,
-  context?: Record<string, unknown>,
-): string {
+export function captureError(error: Error | string, context?: Record<string, unknown>): string {
   if (!getSentryConfig().enabled) {
     console.error('Error captured (Sentry disabled):', error, context)
     return 'error-not-reported'
@@ -217,15 +219,17 @@ export function captureError(
 
   try {
     let eventId = 'unknown'
-    import('@sentry/react').then((Sentry) => {
-      eventId = Sentry.captureException(error, {
-        contexts: {
-          app: context,
-        },
+    import('@sentry/react')
+      .then((Sentry) => {
+        eventId = Sentry.captureException(error, {
+          contexts: {
+            app: context,
+          },
+        })
       })
-    }).catch(() => {
-      console.error('Failed to capture error with Sentry:', error)
-    })
+      .catch(() => {
+        console.error('Failed to capture error with Sentry:', error)
+      })
     return eventId
   } catch (err) {
     console.error('Error in captureError:', err)
@@ -247,11 +251,13 @@ export function captureMessage(
 
   try {
     let eventId = 'unknown'
-    import('@sentry/react').then((Sentry) => {
-      eventId = Sentry.captureMessage(message, level)
-    }).catch(() => {
-      console.log('Failed to capture message with Sentry:', message)
-    })
+    import('@sentry/react')
+      .then((Sentry) => {
+        eventId = Sentry.captureMessage(message, level)
+      })
+      .catch(() => {
+        console.log('Failed to capture message with Sentry:', message)
+      })
     return eventId
   } catch (err) {
     console.error('Error in captureMessage:', err)

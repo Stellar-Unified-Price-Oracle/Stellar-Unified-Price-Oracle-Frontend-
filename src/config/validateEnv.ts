@@ -6,19 +6,26 @@ import { z } from 'zod'
  * VITE_API_URL and VITE_WS_URL are required; all others are optional.
  * Unknown keys are stripped so extra variables do not cause validation errors.
  */
+// Vite injects `''` for declared-but-unset env vars. Treat an empty string as
+// unset so the documented defaults (e.g. `/api`) apply instead of failing
+// validation or leaking an empty URL into the app.
+const nonEmptyString = (message: string, fallback: string) =>
+  z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.string().min(1, message).default(fallback),
+  )
+
 const envSchema = z.object({
   // ── API ────────────────────────────────────────────────────────────────────
-  VITE_API_URL: z.string().min(1, 'VITE_API_URL must not be empty').default('/api'),
+  VITE_API_URL: nonEmptyString('VITE_API_URL must not be empty', '/api'),
 
-  VITE_WS_URL: z.string().min(1, 'VITE_WS_URL must not be empty').default('ws://localhost:3000'),
+  VITE_WS_URL: nonEmptyString('VITE_WS_URL must not be empty', 'ws://localhost:3000'),
 
   VITE_OPENAPI_SPEC_URL: z.string().default(''),
 
   // ── On-chain ───────────────────────────────────────────────────────────────
   // Soroban network the on-chain comparison panel reads from by default.
-  VITE_ORACLE_NETWORK: z
-    .enum(['mainnet', 'testnet', 'futurenet'])
-    .default('testnet'),
+  VITE_ORACLE_NETWORK: z.enum(['mainnet', 'testnet', 'futurenet']).default('testnet'),
 
   // ── Analytics ──────────────────────────────────────────────────────────────
   VITE_ANALYTICS_URL: z.string().default(''),

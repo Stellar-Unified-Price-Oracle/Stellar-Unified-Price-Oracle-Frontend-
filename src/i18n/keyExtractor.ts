@@ -77,9 +77,7 @@ export function getAllKeys(obj: Record<string, unknown>, prefix = ''): Set<strin
  * // Returns { en: Set(...), es: Set(...), fr: Set(...) }
  * ```
  */
-export function getKeysByLanguage(
-  locales: Record<string, Record<string, unknown>>,
-): Record<string, Set<string>> {
+export function getKeysByLanguage(locales: Record<string, Record<string, unknown>>): Record<string, Set<string>> {
   const result: Record<string, Set<string>> = {}
 
   for (const [lang, locale] of Object.entries(locales)) {
@@ -103,7 +101,9 @@ export function getKeysByLanguage(
  * ```
  */
 export function findMissingKeys(sourceKeys: Set<string>, targetKeys: Set<string>): string[] {
-  return Array.from(sourceKeys).filter((key) => !targetKeys.has(key)).sort()
+  return Array.from(sourceKeys)
+    .filter((key) => !targetKeys.has(key))
+    .sort()
 }
 
 /**
@@ -116,7 +116,9 @@ export function findMissingKeys(sourceKeys: Set<string>, targetKeys: Set<string>
  * @returns Array of extra key strings in target
  */
 export function findExtraKeys(sourceKeys: Set<string>, targetKeys: Set<string>): string[] {
-  return Array.from(targetKeys).filter((key) => !sourceKeys.has(key)).sort()
+  return Array.from(targetKeys)
+    .filter((key) => !sourceKeys.has(key))
+    .sort()
 }
 
 /**
@@ -189,7 +191,7 @@ export function getInterpolationVars(value: string): string[] {
   let match
 
   while ((match = regex.exec(value)) !== null) {
-    vars.push(match[1])
+    vars.push(match[1].trim())
   }
 
   return vars

@@ -26,9 +26,9 @@ describe('pearsonCorrelation', () => {
   })
 
   it('returns approximately 0 for uncorrelated data', () => {
-    // A genuinely decorrelated pair — alternating directions cancel out
+    // A genuinely decorrelated pair — deviations cancel out
     const a = [1, 2, 3, 4]
-    const b = [2, 1, 4, 3]
+    const b = [2, 4, 1, 3]
     const r = pearsonCorrelation(a, b)
     expect(r).toBeCloseTo(0, 1)
   })

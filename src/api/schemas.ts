@@ -226,6 +226,40 @@ export const WsMessageSchema = z.discriminatedUnion('type', [
   WsResumedMessageSchema,
 ])
 
+// ── On-chain price proof schemas ─────────────────────────────────────────────
+
+/** Per-source signed contribution embedded in a {@link PriceProof}. */
+const SourceContributionSchema = z.object({
+  source: z.string(),
+  price: z.number().finite(),
+  timestamp: z.number().int().min(0),
+  signature: z.string(),
+  publicKey: z.string(),
+})
+
+/**
+ * Validation schema for the on-chain price proof payload returned by
+ * `GET /api/prices/:pair/proof`. Mirrors {@link import('../types/onChainPrice').PriceProof}.
+ */
+export const PriceProofSchema = z.object({
+  record: z.object({
+    assetPair: z.string(),
+    price: z.number().finite(),
+    priceScaled: z.string(),
+    priceDecimals: z.number().int().min(0),
+    timestamp: z.number().int().min(0),
+    confidence: z.number().min(0).max(1),
+    sources: z.array(z.string()),
+    version: z.number().int().min(0),
+  }),
+  contributions: z.array(SourceContributionSchema),
+  aggregateSignature: z.string(),
+  contractId: z.string(),
+  ledgerSequence: z.number().int().min(0),
+  transactionHash: z.string(),
+  network: z.enum(['testnet', 'mainnet']),
+})
+
 // ── Type inference from schemas ──────────────────────────────────────────────
 
 export type PriceDataFromSchema = z.infer<typeof PriceDataSchema>

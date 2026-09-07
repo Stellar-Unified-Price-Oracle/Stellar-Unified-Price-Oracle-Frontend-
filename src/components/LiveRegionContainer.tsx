@@ -28,8 +28,8 @@ export function LiveRegionContainer(): ReactElement {
   const assertiveRef = useRef<HTMLDivElement>(null)
   const [politeMessage, setPoliteMessage] = useState('')
   const [assertiveMessage, setAssertiveMessage] = useState('')
-  const politeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>()
-  const assertiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>()
+  const politeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const assertiveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     const unsubscribe = subscribe((announcement: Announcement) => {

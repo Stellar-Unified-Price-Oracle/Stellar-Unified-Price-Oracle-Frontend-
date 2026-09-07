@@ -131,7 +131,7 @@ export function ConditionBuilder({ conditions, logic, percentageMode, onChange }
                     >
                       {WINDOWS.map((w) => (
                         <option key={w} value={w}>
-                          {t(`alertModal.fields.window${w.charAt(0).toUpperCase() + w.slice(1)}`)}
+                          {t(`alertModal.fields.window${w.charAt(0).toUpperCase() + w.slice(1)}`, w)}
                         </option>
                       ))}
                     </select>

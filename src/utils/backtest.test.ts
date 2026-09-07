@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { runBacktest, aggregatePrices, type BacktestConfig } from './backtest'
 import type { PriceHistoryEntry } from '../types'
+import { runBacktest, aggregatePrices, type BacktestConfig } from './backtest'
 
 describe('backtest.ts', () => {
   const defaultConfig: BacktestConfig = {
@@ -35,7 +35,11 @@ describe('backtest.ts', () => {
     it('computes trimmed_mean correctly when >= 3 sources', () => {
       const prices = [90, 100, 102, 110]
       const confs = [0.9, 0.9, 0.9, 0.9]
-      const val = aggregatePrices(prices, confs, { ...defaultConfig, mode: 'trimmed_mean', outlierThresholdPercent: 50 })
+      const val = aggregatePrices(prices, confs, {
+        ...defaultConfig,
+        mode: 'trimmed_mean',
+        outlierThresholdPercent: 50,
+      })
       expect(val).toBe(101) // 100 + 102 / 2
     })
   })

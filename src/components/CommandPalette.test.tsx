@@ -2,10 +2,10 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { CommandPalette } from './CommandPalette'
+import type { ReactNode } from 'react'
 import { idbCache } from '../hooks/useIndexedDB'
 import { ToastProvider } from '../context/ToastContext'
-import type { ReactNode } from 'react'
+import { CommandPalette } from './CommandPalette'
 
 afterEach(() => {
   cleanup()
@@ -62,7 +62,7 @@ describe('CommandPalette', () => {
         <CommandPalette isOpen onClose={vi.fn()} />
       </Wrapper>,
     )
-    expect(screen.getByText(/dashboard/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/dashboard/i).length).toBeGreaterThan(0)
   })
 
   it('filters commands as user types', async () => {
@@ -74,7 +74,7 @@ describe('CommandPalette', () => {
     )
     const input = screen.getByRole('combobox')
     await user.type(input, 'dashboard')
-    expect(screen.getByText(/dashboard/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/dashboard/i).length).toBeGreaterThan(0)
   })
 
   it('calls onClose when backdrop is clicked', () => {
@@ -85,7 +85,8 @@ describe('CommandPalette', () => {
       </Wrapper>,
     )
     // Click the backdrop (the outermost overlay element)
-    const backdrop = document.querySelector('[data-testid="palette-backdrop"]') ??
+    const backdrop =
+      document.querySelector('[data-testid="palette-backdrop"]') ??
       screen.getByRole('combobox').closest('[role="dialog"]')?.parentElement
     if (backdrop) {
       fireEvent.click(backdrop)

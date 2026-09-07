@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { computeAggregationBreakdown } from '../mocks/data'
-import { aggregationBreakdownToCsvRows } from './export'
 import type { PriceData } from '../types'
+import { aggregationBreakdownToCsvRows } from './export'
 
 const mockPrice: PriceData = {
   assetPair: 'XLM/USD',

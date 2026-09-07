@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { Alert } from '../types'
+import { makeAlert } from '../test/fixtures'
 import { checkAccessibility } from '../test/accessibility'
 import { AlertModal } from './AlertModal'
 
@@ -13,16 +13,7 @@ const defaultProps = {
   onSave: vi.fn(),
 }
 
-const mockAlert: Alert = {
-  id: '1',
-  assetPair: 'BTC/USD',
-  upperThreshold: 60000,
-  lowerThreshold: 40000,
-  triggerOnce: false,
-  active: true,
-  createdAt: Date.now(),
-  lastTriggeredAt: null,
-}
+const mockAlert = makeAlert({ id: '1', lowerThreshold: 40000 })
 
 describe('AlertModal', () => {
   beforeEach(() => {
@@ -127,6 +118,18 @@ describe('AlertModal', () => {
       upperThreshold: '60000',
       lowerThreshold: '',
       triggerOnce: false,
+      percentageMode: false,
+      percentageThreshold: '',
+      percentageWindow: '1hr',
+      percentageDirection: 'either',
+      percentageRelativeTo: 'open',
+      cooldownMinutes: '5',
+      extraConditions: [],
+      conditionsLogic: 'AND',
+      escalationEnabled: false,
+      escalationSteps: [],
+      channels: [],
+      retestMode: false,
     })
   })
 
@@ -142,6 +145,18 @@ describe('AlertModal', () => {
       upperThreshold: '',
       lowerThreshold: '2000',
       triggerOnce: false,
+      percentageMode: false,
+      percentageThreshold: '',
+      percentageWindow: '1hr',
+      percentageDirection: 'either',
+      percentageRelativeTo: 'open',
+      cooldownMinutes: '5',
+      extraConditions: [],
+      conditionsLogic: 'AND',
+      escalationEnabled: false,
+      escalationSteps: [],
+      channels: [],
+      retestMode: false,
     })
   })
 
@@ -153,17 +168,15 @@ describe('AlertModal', () => {
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
 
-  it('calls onSave with triggerOnce true when checkbox is checked', async () => {
+  it('calls onSave with triggerOnce true when One-Time is selected', async () => {
     const onSave = vi.fn()
     render(<AlertModal {...defaultProps} onSave={onSave} />)
     fireEvent.change(screen.getByLabelText('Asset Pair'), { target: { value: 'BTC' } })
     fireEvent.change(screen.getByLabelText('Upper Threshold'), { target: { value: '60000' } })
     const user = userEvent.setup()
-    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: /one-time/i }))
     await user.click(screen.getByText('Create Alert'))
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ triggerOnce: true }),
-    )
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ triggerOnce: true }))
   })
 
   it('has accessible dialog role and label', () => {

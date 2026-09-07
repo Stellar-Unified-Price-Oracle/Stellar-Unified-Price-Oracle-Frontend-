@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AggregationBreakdownPanel } from './AggregationBreakdownPanel'
 import type { AggregationBreakdown } from '../types/price'
+import { AggregationBreakdownPanel } from './AggregationBreakdownPanel'
 
 const mockBreakdown: AggregationBreakdown = {
   assetPair: 'XLM/USD',

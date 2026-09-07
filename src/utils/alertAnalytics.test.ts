@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import {
-  computeAlertStats,
-  computeThresholdHint,
-  formatTimeDuration,
-  alertStatsToExportRow,
-} from './alertAnalytics'
 import type { AlertHistoryEntry } from '../types'
+import { computeAlertStats, computeThresholdHint, formatTimeDuration, alertStatsToExportRow } from './alertAnalytics'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -28,14 +23,16 @@ function makeEntry(alertId: string, triggeredAt: number): AlertHistoryEntry {
   }
 }
 
-function makeAlert(overrides: Partial<{
-  id: string
-  upperThreshold: number | null
-  lowerThreshold: number | null
-  createdAt: number
-  percentageMode: boolean
-  percentageThreshold: number | null
-}> = {}) {
+function makeAlert(
+  overrides: Partial<{
+    id: string
+    upperThreshold: number | null
+    lowerThreshold: number | null
+    createdAt: number
+    percentageMode: boolean
+    percentageThreshold: number | null
+  }> = {},
+) {
   return {
     id: 'alert-1',
     upperThreshold: 0.15,
@@ -116,8 +113,8 @@ describe('computeAlertStats', () => {
     const alert = makeAlert({ id: 'alert-1', createdAt: base - 10 * 3_600_000 })
     const history = [
       makeEntry('alert-1', base),
-      makeEntry('alert-1', base + 1_000_000),  // 1000 s gap
-      makeEntry('alert-1', base + 5_000_000),  // 4000 s gap  ← max
+      makeEntry('alert-1', base + 1_000_000), // 1000 s gap
+      makeEntry('alert-1', base + 5_000_000), // 4000 s gap  ← max
     ]
 
     const stats = computeAlertStats(alert, history)
@@ -138,7 +135,7 @@ describe('computeAlertStats', () => {
     const alert = makeAlert({ id: 'alert-1', createdAt: base - 10 * 3_600_000 })
     const history = [
       makeEntry('alert-1', base + 3_600_000),
-      makeEntry('alert-1', base),               // out-of-order
+      makeEntry('alert-1', base), // out-of-order
       makeEntry('alert-1', base + 7_200_000),
     ]
 
@@ -152,9 +149,7 @@ describe('computeAlertStats', () => {
     // Alert was created exactly 4 days ago, fired 8 times → 2/day
     const createdAt = now - 4 * 24 * 60 * 60 * 1000
     const alert = makeAlert({ id: 'alert-1', createdAt })
-    const history = Array.from({ length: 8 }, (_, i) =>
-      makeEntry('alert-1', createdAt + (i + 1) * 10_000_000),
-    )
+    const history = Array.from({ length: 8 }, (_, i) => makeEntry('alert-1', createdAt + (i + 1) * 10_000_000))
 
     const stats = computeAlertStats(alert, history)
     expect(stats.hitRate).toBeCloseTo(2, 1)
@@ -201,9 +196,7 @@ describe('computeThresholdHint', () => {
     const now = Date.now()
     const createdAt = now - 3 * 60 * 60 * 1000 // 3 hours ago (< 24 h)
     const alert = makeAlert({ id: 'alert-noisy', createdAt })
-    const history = Array.from({ length: 21 }, (_, i) =>
-      makeEntry('alert-noisy', createdAt + (i + 1) * 5 * 60 * 1000),
-    )
+    const history = Array.from({ length: 21 }, (_, i) => makeEntry('alert-noisy', createdAt + (i + 1) * 5 * 60 * 1000))
 
     const hint = computeThresholdHint(alert, history)
     expect(hint?.type).toBe('high_false_positive')
@@ -214,9 +207,7 @@ describe('computeThresholdHint', () => {
     // Created 1 day ago, 10 fires → hitRate = 10/day > 5
     const createdAt = now - 24 * 60 * 60 * 1000
     const alert = makeAlert({ id: 'alert-high', createdAt })
-    const history = Array.from({ length: 10 }, (_, i) =>
-      makeEntry('alert-high', createdAt + (i + 1) * 60 * 60 * 1000),
-    )
+    const history = Array.from({ length: 10 }, (_, i) => makeEntry('alert-high', createdAt + (i + 1) * 60 * 60 * 1000))
 
     const hint = computeThresholdHint(alert, history)
     expect(hint?.type).toBe('high_false_positive')

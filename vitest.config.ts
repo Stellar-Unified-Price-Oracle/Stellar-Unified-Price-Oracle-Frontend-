@@ -4,6 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Match the build-time global in vite.config.ts so modules referencing it
+  // (src/api/version.ts) don't throw at import time in tests.
+  define: {
+    __NODE_VERSION__: JSON.stringify(process.version),
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

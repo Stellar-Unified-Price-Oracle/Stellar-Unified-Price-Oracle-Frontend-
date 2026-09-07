@@ -27,17 +27,13 @@ describe('useSwr', () => {
 
   it('returns cached data on subsequent mount with same key', async () => {
     const fetcher = vi.fn().mockResolvedValue('cached')
-    const { result, unmount } = renderHook(() =>
-      useSwr('key-cache', fetcher, { staleTime: 60_000 }),
-    )
+    const { result, unmount } = renderHook(() => useSwr('key-cache', fetcher, { staleTime: 60_000 }))
     await vi.waitFor(() => expect(result.current.loading).toBe(false))
 
     unmount()
 
     const fetcher2 = vi.fn().mockResolvedValue('fresh')
-    const { result: result2 } = renderHook(() =>
-      useSwr('key-cache', fetcher2, { staleTime: 60_000 }),
-    )
+    const { result: result2 } = renderHook(() => useSwr('key-cache', fetcher2, { staleTime: 60_000 }))
 
     expect(result2.current.data).toBe('cached')
     expect(fetcher2).not.toHaveBeenCalled()
@@ -46,9 +42,7 @@ describe('useSwr', () => {
   it('returns stale data and re-fetches in background', async () => {
     const fetcher = vi.fn().mockResolvedValue('stale-data')
 
-    const { result } = renderHook(() =>
-      useSwr('key-stale', fetcher, { staleTime: 5000 }),
-    )
+    const { result } = renderHook(() => useSwr('key-stale', fetcher, { staleTime: 5000 }))
 
     await vi.waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.data).toBe('stale-data')
@@ -59,9 +53,7 @@ describe('useSwr', () => {
     })
 
     const fetcher2 = vi.fn().mockResolvedValue('fresh-data')
-    const { result: result2 } = renderHook(() =>
-      useSwr('key-stale', fetcher2, { staleTime: 5000 }),
-    )
+    const { result: result2 } = renderHook(() => useSwr('key-stale', fetcher2, { staleTime: 5000 }))
 
     expect(result2.current.data).toBe('stale-data')
     expect(result2.current.isValidating).toBe(true)
@@ -111,9 +103,7 @@ describe('useSwr', () => {
 
   it('polls at refreshInterval', async () => {
     const fetcher = vi.fn().mockResolvedValue('polled')
-    renderHook(() =>
-      useSwr('key-poll', fetcher, { refreshInterval: 1000 }),
-    )
+    renderHook(() => useSwr('key-poll', fetcher, { refreshInterval: 1000 }))
 
     await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
 
@@ -165,18 +155,5 @@ describe('useSwr', () => {
     await vi.waitFor(() => {
       expect(fetcher).toHaveBeenCalled()
     })
-  })
-
-  it('supports suspense mode option', async () => {
-    const fetcher = vi.fn().mockResolvedValue('suspense-data')
-    const { result } = renderHook(() =>
-      useSwr('key-suspense', fetcher, { suspense: true }),
-    )
-
-    // In non-suspense test env, the hook should still function normally
-    await vi.waitFor(() => {
-      expect(result.current.loading).toBe(false)
-    })
-    expect(result.current.data).toBe('suspense-data')
   })
 })

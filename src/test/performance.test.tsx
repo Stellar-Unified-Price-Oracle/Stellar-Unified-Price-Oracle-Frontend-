@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { Profiler, type ProfilerOnRenderCallback } from 'react'
-import { cleanup, render } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Profiler, type ProfilerOnRenderCallback, type ReactElement } from 'react'
+import { cleanup } from '@testing-library/react'
+import { Route, Routes } from 'react-router-dom'
 import { Dashboard } from '../pages/Dashboard'
 import { PriceDetail } from '../pages/PriceDetail'
-import { AlertsProvider } from '../hooks/useAlerts'
+import { renderWithProviders } from './render'
 
 afterEach(cleanup)
 
@@ -12,15 +12,16 @@ afterEach(cleanup)
 // should not re-render more than once per commit. If memoization regresses
 // (e.g. a new object/array identity is passed down every render), this
 // count silently balloons — this test catches it in CI.
-function countCommits(node: React.ReactElement): { commits: number; unmount: () => void } {
+function countCommits(node: ReactElement, route = '/'): { commits: number; unmount: () => void } {
   let commits = 0
   const onRender: ProfilerOnRenderCallback = () => {
     commits++
   }
-  const { unmount } = render(
+  const { unmount } = renderWithProviders(
     <Profiler id="perf-test" onRender={onRender}>
       {node}
     </Profiler>,
+    { route, withAlerts: true },
   )
   return { commits, unmount }
 }
@@ -78,13 +79,7 @@ describe('render count regression: Dashboard', () => {
   })
 
   it('mounts within a bounded number of commits', () => {
-    const { commits, unmount } = countCommits(
-      <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
-      </MemoryRouter>,
-    )
+    const { commits, unmount } = countCommits(<Dashboard />)
     // A handful of effect-driven commits (skeleton -> data, analytics marks)
     // is expected; an unbounded number signals a re-render regression.
     expect(commits).toBeGreaterThan(0)
@@ -94,13 +89,7 @@ describe('render count regression: Dashboard', () => {
 
   it('mounts and unmounts within a reasonable time budget', () => {
     const start = performance.now()
-    const { unmount } = render(
-      <MemoryRouter>
-        <AlertsProvider>
-          <Dashboard />
-        </AlertsProvider>
-      </MemoryRouter>,
-    )
+    const { unmount } = renderWithProviders(<Dashboard />, { withAlerts: true })
     const mountedAt = performance.now()
     unmount()
     const unmountedAt = performance.now()
@@ -138,11 +127,10 @@ describe('render count regression: PriceDetail', () => {
 
   it('mounts within a bounded number of commits', () => {
     const { commits, unmount } = countCommits(
-      <MemoryRouter initialEntries={['/prices/BTC%2FUSD']}>
-        <Routes>
-          <Route path="/prices/:pair" element={<PriceDetail />} />
-        </Routes>
-      </MemoryRouter>,
+      <Routes>
+        <Route path="/prices/:pair" element={<PriceDetail />} />
+      </Routes>,
+      '/prices/BTC%2FUSD',
     )
     expect(commits).toBeGreaterThan(0)
     expect(commits).toBeLessThanOrEqual(4)
@@ -151,12 +139,11 @@ describe('render count regression: PriceDetail', () => {
 
   it('mounts and unmounts within a reasonable time budget', () => {
     const start = performance.now()
-    const { unmount } = render(
-      <MemoryRouter initialEntries={['/prices/BTC%2FUSD']}>
-        <Routes>
-          <Route path="/prices/:pair" element={<PriceDetail />} />
-        </Routes>
-      </MemoryRouter>,
+    const { unmount } = renderWithProviders(
+      <Routes>
+        <Route path="/prices/:pair" element={<PriceDetail />} />
+      </Routes>,
+      { route: '/prices/BTC%2FUSD' },
     )
     const mountedAt = performance.now()
     unmount()

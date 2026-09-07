@@ -46,10 +46,19 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   // this async load resolves, useUndoRedo's own state already exists and
   // won't re-sync to a later change in the value it was constructed with.
   useEffect(() => {
+    let cancelled = false
     idbCache.get<Preferences>('preferences', PREFS_IDB_KEY, Infinity).then((saved) => {
+      // Guard against state updates after unmount — the async read can resolve
+      // after the provider is torn down (e.g. at the end of a unit test), and
+      // calling setState there schedules a render against a destroyed
+      // environment, surfacing as an unhandled "window is not defined".
+      if (cancelled) return
       if (saved) reset({ ...DEFAULT_PREFERENCES, ...saved })
       setIdbLoaded(true)
     })
+    return () => {
+      cancelled = true
+    }
   }, [reset])
 
   // Persist to IndexedDB whenever preferences change

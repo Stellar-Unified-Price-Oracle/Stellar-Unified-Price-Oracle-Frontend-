@@ -12,8 +12,8 @@
  * `upperThreshold`/`lowerThreshold`/percentage fields — into the new condition-group
  * shape, so evaluation code has a single code path regardless of an alert's age.
  */
-import type { Alert, AlertPercentageDirection, AlertTimeWindow } from './index'
 import type { NotificationChannelId } from './notifications'
+import type { Alert, AlertPercentageDirection, AlertTimeWindow } from './index'
 
 // ---------------------------------------------------------------------------
 // Compound conditions (#485)
@@ -100,8 +100,20 @@ export function migrateLegacyAlertConditions(
     const window = alert.percentageWindow ?? '1hr'
     const direction: AlertPercentageDirection = alert.percentageDirection ?? 'either'
 
-    const up: AlertCondition = { id: nextConditionId(), field: 'percentageChange', operator: 'gte', value: threshold, window }
-    const down: AlertCondition = { id: nextConditionId(), field: 'percentageChange', operator: 'lte', value: -threshold, window }
+    const up: AlertCondition = {
+      id: nextConditionId(),
+      field: 'percentageChange',
+      operator: 'gte',
+      value: threshold,
+      window,
+    }
+    const down: AlertCondition = {
+      id: nextConditionId(),
+      field: 'percentageChange',
+      operator: 'lte',
+      value: -threshold,
+      window,
+    }
 
     if (direction === 'up') return singleConditionGroup(up)
     if (direction === 'down') return singleConditionGroup(down)

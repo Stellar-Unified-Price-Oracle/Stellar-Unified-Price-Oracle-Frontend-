@@ -28,7 +28,7 @@ export type RetestPhase = 'idle' | 'inBreach' | 'exited'
 /** Runtime state persisted on the alert between evaluation ticks. */
 export interface RetestState {
   phase: RetestPhase
-  /** Monotonic count of completed breach cycles (breach→exit), used for history. */
+  /** Monotonic count of breach cycles entered so far, used for history. */
   cycles: number
   /** Price at the most recent meaningful transition (breach/exit/retest). */
   lastEventPrice: number
@@ -50,7 +50,7 @@ export interface RetestEvent {
   price: number
   /** Unix ms when the event was detected. */
   timestamp: number
-  /** Which breach cycle this event belongs to (increments on each `exit`). */
+  /** Which breach cycle this event belongs to (increments on each `breach`). */
   cycle: number
 }
 
@@ -73,7 +73,7 @@ export function stepRetest(
     case 'idle':
       if (inZone) {
         return {
-          state: { ...state, phase: 'inBreach', lastEventPrice: price, lastEventAt: now },
+          state: { ...state, phase: 'inBreach', cycles: state.cycles + 1, lastEventPrice: price, lastEventAt: now },
           event: { ...baseEvent, kind: 'breach', cycle: state.cycles + 1 },
         }
       }
@@ -86,8 +86,8 @@ export function stepRetest(
       }
       // Left the breached zone.
       return {
-        state: { ...state, phase: 'exited', cycles: state.cycles + 1, lastEventPrice: price, lastEventAt: now },
-        event: { ...baseEvent, kind: 'exit', cycle: state.cycles + 1 },
+        state: { ...state, phase: 'exited', lastEventPrice: price, lastEventAt: now },
+        event: { ...baseEvent, kind: 'exit', cycle: state.cycles },
       }
 
     case 'exited':

@@ -8,6 +8,13 @@ export type {
   PriceHistoryResponse,
   SourceName,
   SourceHealth,
+  // Aggregation breakdown (#459)
+  AggregationMode,
+  SourceBreakdownItem,
+  AggregationBreakdown,
+  // Move attribution (#580)
+  MoveAttribution,
+  SourceDelta,
   WsSubscribeMessage,
   WsUnsubscribeMessage,
   WsHelloMessage,
@@ -66,7 +73,13 @@ export type {
   EscalationRuntimeState,
   EscalationValidationError,
 } from './alerts'
-export { isConditionGroup, migrateLegacyAlertConditions, validateEscalationPolicy, nextConditionId, singleConditionGroup } from './alerts'
+export {
+  isConditionGroup,
+  migrateLegacyAlertConditions,
+  validateEscalationPolicy,
+  nextConditionId,
+  singleConditionGroup,
+} from './alerts'
 
 import type { RetestState as _RetestState } from '../utils/retestDetector'
 import type {

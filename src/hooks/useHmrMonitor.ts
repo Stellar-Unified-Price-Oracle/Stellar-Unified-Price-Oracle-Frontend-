@@ -1,9 +1,9 @@
 /**
  * @file useHmrMonitor.ts
- * 
+ *
  * Development-only hook to monitor and log HMR activity.
  * Helps debug slow HMR, full reloads, and connection issues.
- * 
+ *
  * Usage:
  * ```tsx
  * // In your root App component
@@ -23,13 +23,9 @@ interface HmrEvent {
 }
 
 const events: HmrEvent[] = []
-const maxEvents = 100  // Keep last 100 events
+const maxEvents = 100 // Keep last 100 events
 
-function logHmrEvent(
-  type: HmrEvent['type'],
-  message?: string,
-  duration?: number,
-): void {
+function logHmrEvent(type: HmrEvent['type'], message?: string, duration?: number): void {
   const event: HmrEvent = {
     type,
     timestamp: Date.now(),
@@ -66,9 +62,9 @@ function logHmrEvent(
 
 /**
  * Monitor HMR activity for performance and debugging.
- * 
+ *
  * Logs to console and stores events in window.__hmrEvents for inspection.
- * 
+ *
  * In console, view all events:
  * ```
  * window.__hmrEvents
@@ -84,35 +80,35 @@ export function useHmrMonitor(): void {
 
     // Expose events for inspection
     if (typeof window !== 'undefined') {
-      ;(window as Record<string, unknown>).__hmrEvents = events
-      ;(window as Record<string, unknown>).__hmrClear = () => {
+      const win = window as unknown as Record<string, unknown>
+      win.__hmrEvents = events
+      win.__hmrClear = () => {
         events.length = 0
         console.log('[HMR] Events cleared')
       }
-    }
-
-    // Track HMR connection
-    const _handleConnect = () => {
-      logHmrEvent('connect', 'WebSocket connected')
-    }
-
-    const _handleDisconnect = () => {
-      logHmrEvent('disconnect', 'WebSocket disconnected')
     }
 
     const handleBeforeUpdate = () => {
       updateStartRef.current = Date.now()
     }
 
-    const handleUpdate = (payload: { event: string; updates?: Array<{ event: string; desc: string }> }) => {
+    // Payloads are widened to a structural subset so the handlers stay
+    // compatible with Vite's HMR payload types across versions.
+    const handleUpdate = (payload: { updates?: unknown[] }) => {
       const duration = updateStartRef.current ? Date.now() - updateStartRef.current : 0
       updateStartRef.current = null
 
-      const descriptions = payload.updates?.map(u => u.desc).join(', ') || 'unknown'
+      const descriptions =
+        payload.updates
+          ?.map((u) => {
+            const rec = u as { desc?: unknown }
+            return typeof rec.desc === 'string' ? rec.desc : 'unknown'
+          })
+          .join(', ') || 'unknown'
       logHmrEvent('update', descriptions, duration)
     }
 
-    const handleError = (payload: { event: string; err?: Error }) => {
+    const handleError = (payload: { err?: { message?: string } }) => {
       logHmrEvent('error', payload.err?.message || 'unknown error')
     }
 
@@ -172,18 +168,15 @@ export function analyzeHmrPerformance(): {
   errorCount: number
   fullReloadCount: number
 } {
-  const updates = events.filter(e => e.type === 'update')
-  const errors = events.filter(e => e.type === 'error')
-  const reloads = events.filter(e => e.type === 'full-reload')
+  const updates = events.filter((e) => e.type === 'update')
+  const errors = events.filter((e) => e.type === 'error')
+  const reloads = events.filter((e) => e.type === 'full-reload')
 
-  const avgUpdateTime =
-    updates.length > 0
-      ? updates.reduce((sum, e) => sum + (e.duration || 0), 0) / updates.length
-      : 0
+  const avgUpdateTime = updates.length > 0 ? updates.reduce((sum, e) => sum + (e.duration || 0), 0) / updates.length : 0
 
   const slowestUpdate =
     updates.length > 0
-      ? updates.reduce((slowest, e) => (e.duration || 0) > (slowest.duration || 0) ? e : slowest)
+      ? updates.reduce((slowest, e) => ((e.duration || 0) > (slowest.duration || 0) ? e : slowest))
       : ({} as HmrEvent)
 
   return {
@@ -197,14 +190,15 @@ export function analyzeHmrPerformance(): {
 
 /**
  * Console command to print HMR stats.
- * 
+ *
  * Usage in browser console:
  * ```
  * window.__hmrStats()
  * ```
  */
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-  ;(window as Record<string, unknown>).__hmrStats = () => {
+  const win = window as unknown as Record<string, unknown>
+  win.__hmrStats = () => {
     const stats = analyzeHmrPerformance()
     console.table(stats)
     console.log('Full events:', events)

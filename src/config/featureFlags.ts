@@ -38,6 +38,8 @@ export const FEATURE_FLAGS = {
   memoryWarningReporting: {
     description: 'Report a warning when JS heap usage exceeds the memory threshold.',
     defaultEnabled: true,
+    // Rolled out to every browser so the heap monitor is active everywhere by default.
+    rolloutPercentage: 100,
   },
 } as const satisfies Record<string, FeatureFlagDefinition>
 
@@ -112,9 +114,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   const w = window as WindowWithFeatureFlags
   w.__featureFlags = {
     list: () =>
-      Object.fromEntries(
-        (Object.keys(FEATURE_FLAGS) as FeatureFlagKey[]).map((key) => [key, isFeatureEnabled(key)]),
-      ),
+      Object.fromEntries((Object.keys(FEATURE_FLAGS) as FeatureFlagKey[]).map((key) => [key, isFeatureEnabled(key)])),
     override: (key, value) => {
       devOverrides.set(key, value)
       overrideSubscribers.forEach((fn) => fn())

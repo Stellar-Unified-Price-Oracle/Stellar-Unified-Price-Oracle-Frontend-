@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { BotNotificationPayload, TelegramChannelConfig, DiscordChannelConfig } from '../types'
 import {
   loadBotSecrets,
   saveBotSecrets,
@@ -9,7 +10,6 @@ import {
   sendDiscordMessage,
   shouldDispatch,
 } from './botNotifications'
-import type { BotNotificationPayload, TelegramChannelConfig, DiscordChannelConfig } from '../types'
 
 const payload: BotNotificationPayload = {
   assetPair: 'BTC/USD',
@@ -34,12 +34,17 @@ describe('bot secret storage (session-only)', () => {
 
   it('round-trips secrets through sessionStorage', () => {
     saveBotSecrets({ telegramBotToken: 'tg-token', discordWebhookUrl: 'https://discord.com/api/webhooks/x' })
-    expect(loadBotSecrets()).toEqual({ telegramBotToken: 'tg-token', discordWebhookUrl: 'https://discord.com/api/webhooks/x' })
+    expect(loadBotSecrets()).toEqual({
+      telegramBotToken: 'tg-token',
+      discordWebhookUrl: 'https://discord.com/api/webhooks/x',
+    })
   })
 
   it('never writes to localStorage', () => {
     saveBotSecrets({ telegramBotToken: 'tg-token', discordWebhookUrl: 'wh-url' })
-    expect(localStorage.length).toBe(0)
+    // Secrets must never appear in localStorage — other app keys may coexist,
+    // so assert on the secret key specifically rather than total length.
+    expect(localStorage.getItem('stellar-oracle-bot-secrets')).toBeNull()
     expect(sessionStorage.length).toBeGreaterThan(0)
   })
 
@@ -89,12 +94,21 @@ describe('buildDiscordPayload', () => {
 })
 
 describe('sendTelegramMessage / sendDiscordMessage', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    // setup.ts installs a shared vi.fn() as global.fetch. vi.spyOn on an
+    // already-mocked property can return that same mock (with its accumulated
+    // call history), so each test re-arms a clean fetch it fully owns.
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
   afterEach(() => {
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
   it('does not call fetch when the Telegram channel is disabled', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch')
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() => Promise.resolve({ ok: true } as Response))
     const config: TelegramChannelConfig = { chatId: '123', enabled: false }
     const result = await sendTelegramMessage(config, 'token', payload)
     expect(result.ok).toBe(false)
@@ -102,7 +116,7 @@ describe('sendTelegramMessage / sendDiscordMessage', () => {
   })
 
   it('does not call fetch when the Telegram bot token is missing', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch')
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() => Promise.resolve({ ok: true } as Response))
     const config: TelegramChannelConfig = { chatId: '123', enabled: true }
     const result = await sendTelegramMessage(config, '', payload)
     expect(result.ok).toBe(false)
@@ -114,7 +128,10 @@ describe('sendTelegramMessage / sendDiscordMessage', () => {
     const config: TelegramChannelConfig = { chatId: '123', enabled: true }
     const result = await sendTelegramMessage(config, 'tok', payload)
     expect(result.ok).toBe(true)
-    expect(fetchSpy).toHaveBeenCalledWith('https://api.telegram.org/bottok/sendMessage', expect.objectContaining({ method: 'POST' }))
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.telegram.org/bottok/sendMessage',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
   it('reports a Telegram API error response', async () => {
@@ -125,7 +142,7 @@ describe('sendTelegramMessage / sendDiscordMessage', () => {
   })
 
   it('does not call fetch when the Discord webhook URL is missing', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch')
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() => Promise.resolve({ ok: true } as Response))
     const config: DiscordChannelConfig = { channelId: 'c1', enabled: true }
     const result = await sendDiscordMessage(config, '', payload)
     expect(result.ok).toBe(false)
@@ -137,7 +154,10 @@ describe('sendTelegramMessage / sendDiscordMessage', () => {
     const config: DiscordChannelConfig = { channelId: 'c1', enabled: true }
     const result = await sendDiscordMessage(config, 'https://discord.com/api/webhooks/x', payload)
     expect(result.ok).toBe(true)
-    expect(fetchSpy).toHaveBeenCalledWith('https://discord.com/api/webhooks/x', expect.objectContaining({ method: 'POST' }))
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://discord.com/api/webhooks/x',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 
   it('handles a network failure gracefully', async () => {

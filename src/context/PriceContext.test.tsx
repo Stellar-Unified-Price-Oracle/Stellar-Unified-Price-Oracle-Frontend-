@@ -3,20 +3,23 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { fetchPricesBatched } from '../api/rest'
+import { ToastProvider } from './ToastContext'
 import { PriceProvider, usePriceContext } from './PriceContext'
 
 const mockConnect = vi.fn()
 const mockDisconnect = vi.fn()
 const mockSubscribe = vi.fn()
 const mockUnsubscribe = vi.fn()
-let messageHandler: ((msg: {
-  type: 'price_update'
-  assetPair: string
-  price: number
-  timestamp: number
-  confidence: number
-  sources: string[]
-}) => void) | null = null
+let messageHandler:
+  | ((msg: {
+      type: 'price_update'
+      assetPair: string
+      price: number
+      timestamp: number
+      confidence: number
+      sources: string[]
+    }) => void)
+  | null = null
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
@@ -42,7 +45,7 @@ vi.mock('../api/rest', () => ({
 
 vi.mock('../api/websocket', () => ({
   // A `vi.fn()` wrapping an arrow function can't be invoked with `new`
-  // (arrow functions have no `[[Construct]]`) — PriceContext calls
+  // (arrow functions have no `[[Construct]]`) — RealtimeClient calls
   // `new WebSocketClient()`, so this must be a regular `function` that
   // returns the mock instance (constructor return-value override).
   WebSocketClient: vi.fn(function () {
@@ -62,6 +65,26 @@ vi.mock('../api/websocket', () => ({
   }),
 }))
 
+// BroadcastChannel exists in jsdom, so a real WsLeaderElection would delay
+// opening the socket until its 200ms CLAIM timeout. Force the synchronous
+// fallback path instead (channel unavailable → open own socket immediately)
+// so tests can drive `messageHandler` right after render. The election
+// protocol itself has dedicated coverage in wsLeaderElection.test.ts.
+vi.mock('../api/wsLeaderElection', () => ({
+  WsLeaderElection: vi.fn(function (callbacks: {
+    onBecomeLeader: () => void
+    onBecomeFollower: () => void
+    onFollowerMessage: (msg: unknown) => void
+    onLeaderFallback: () => void
+  }) {
+    return {
+      start: vi.fn(() => callbacks.onLeaderFallback()),
+      destroy: vi.fn(),
+      relayMessage: vi.fn(),
+    }
+  }),
+}))
+
 function makeQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })
 }
@@ -69,7 +92,9 @@ function makeQueryClient() {
 function Wrapper({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={makeQueryClient()}>
-      <PriceProvider>{children}</PriceProvider>
+      <ToastProvider>
+        <PriceProvider>{children}</PriceProvider>
+      </ToastProvider>
     </QueryClientProvider>
   )
 }
@@ -107,9 +132,11 @@ describe('PriceProvider', () => {
   it('renders children', () => {
     render(
       <QueryClientProvider client={makeQueryClient()}>
-        <PriceProvider>
-          <div>child</div>
-        </PriceProvider>
+        <ToastProvider>
+          <PriceProvider>
+            <div>child</div>
+          </PriceProvider>
+        </ToastProvider>
       </QueryClientProvider>,
     )
     expect(screen.getByText('child')).toBeInTheDocument()
@@ -154,9 +181,11 @@ describe('PriceProvider', () => {
 
     render(
       <QueryClientProvider client={client}>
-        <PriceProvider>
-          <TestConsumer />
-        </PriceProvider>
+        <ToastProvider>
+          <PriceProvider>
+            <TestConsumer />
+          </PriceProvider>
+        </ToastProvider>
       </QueryClientProvider>,
     )
 
@@ -264,8 +293,6 @@ describe('usePriceContext', () => {
       return null
     }
 
-    expect(() => render(<BadComponent />)).toThrow(
-      'usePriceContext must be used within a PriceProvider',
-    )
+    expect(() => render(<BadComponent />)).toThrow('usePriceContext must be used within a PriceProvider')
   })
 })

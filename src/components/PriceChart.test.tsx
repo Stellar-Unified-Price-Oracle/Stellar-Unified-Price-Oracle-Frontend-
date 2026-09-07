@@ -1,6 +1,9 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { cleanup, render, screen, fireEvent } from '@testing-library/react'
+import { cleanup, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { checkAccessibility } from '../test/accessibility'
+import { renderWithProviders } from '../test/render'
 import { PriceChart } from './PriceChart'
 
 afterEach(cleanup)
@@ -12,30 +15,42 @@ const sampleData = [
 
 describe('PriceChart', () => {
   it('should have no accessibility violations (loading)', async () => {
-    await checkAccessibility(<PriceChart data={[]} pair="BTC/USD" loading />)
+    await checkAccessibility(<PriceChart data={[]} pair="BTC/USD" loading />, {
+      wrapper: (children) => (
+        <MemoryRouter>
+          <PreferencesProvider>{children}</PreferencesProvider>
+        </MemoryRouter>
+      ),
+    })
   })
 
   it('should have no accessibility violations (empty)', async () => {
-    await checkAccessibility(<PriceChart data={[]} pair="BTC/USD" loading={false} />)
+    await checkAccessibility(<PriceChart data={[]} pair="BTC/USD" loading={false} />, {
+      wrapper: (children) => (
+        <MemoryRouter>
+          <PreferencesProvider>{children}</PreferencesProvider>
+        </MemoryRouter>
+      ),
+    })
   })
 
   it('renders loading state', () => {
-    render(<PriceChart data={[]} pair="BTC/USD" loading />)
+    renderWithProviders(<PriceChart data={[]} pair="BTC/USD" loading />)
     expect(screen.getByRole('status')).toHaveAttribute('aria-label', 'Loading chart')
   })
 
   it('renders empty state', () => {
-    render(<PriceChart data={[]} pair="BTC/USD" loading={false} />)
+    renderWithProviders(<PriceChart data={[]} pair="BTC/USD" loading={false} />)
     expect(screen.getByText('No historical data available')).toBeInTheDocument()
   })
 
   it('renders chart with data', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" loading={false} />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" loading={false} />)
     expect(screen.getByText('BTC/USD Price History')).toBeInTheDocument()
   })
 
   it('renders all time range buttons', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     for (const label of ['1H', '24H', '7D', '30D', '1Y']) {
       expect(screen.getByRole('button', { name: `${label} time range` })).toBeInTheDocument()
     }
@@ -43,38 +58,38 @@ describe('PriceChart', () => {
 
   it('calls onTimeRangeChange when a range button is clicked', () => {
     const onChange = vi.fn()
-    render(<PriceChart data={sampleData} pair="BTC/USD" timeRange="24h" onTimeRangeChange={onChange} />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" timeRange="24h" onTimeRangeChange={onChange} />)
     fireEvent.click(screen.getByRole('button', { name: '7D time range' }))
     expect(onChange).toHaveBeenCalledWith('7d')
   })
 
   it('marks the active time range button as pressed', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" timeRange="7d" onTimeRangeChange={vi.fn()} />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" timeRange="7d" onTimeRangeChange={vi.fn()} />)
     expect(screen.getByRole('button', { name: '7D time range' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: '24H time range' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('renders full-screen toggle button', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     expect(screen.getByRole('button', { name: 'Enter full screen' })).toBeInTheDocument()
   })
 
   it('opens full-screen overlay when toggle is clicked', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter full screen' }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Exit full screen' })).toBeInTheDocument()
   })
 
   it('closes full-screen overlay with close button', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter full screen' }))
     fireEvent.click(screen.getByRole('button', { name: 'Exit full screen' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('closes full-screen overlay on Escape key', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter full screen' }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -82,7 +97,7 @@ describe('PriceChart', () => {
   })
 
   it('full-screen dialog has correct aria attributes', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter full screen' }))
     const dialog = screen.getByRole('dialog')
     expect(dialog).toHaveAttribute('aria-modal', 'true')
@@ -90,7 +105,7 @@ describe('PriceChart', () => {
   })
 
   it('uses internal timeRange state when no external props provided', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
     // Default is 24h
     expect(screen.getByRole('button', { name: '24H time range' })).toHaveAttribute('aria-pressed', 'true')
     // Clicking 1H updates internal state
@@ -99,27 +114,25 @@ describe('PriceChart', () => {
   })
 
   it('renders loading indicator when loadingMore is true', () => {
-    render(
+    renderWithProviders(
       <PriceChart data={sampleData} pair="BTC/USD" loading={false} loadingMore hasMore onLoadMore={vi.fn()} />,
     )
     expect(screen.getByText('Loading more...')).toBeInTheDocument()
   })
 
   it('shows "more data available" text when hasMore is true', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" loading={false} hasMore onLoadMore={vi.fn()} />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" loading={false} hasMore onLoadMore={vi.fn()} />)
     expect(screen.getByText(/More data available/)).toBeInTheDocument()
   })
 
   it('shows "all history loaded" when hasMore is false', () => {
-    render(<PriceChart data={sampleData} pair="BTC/USD" loading={false} hasMore={false} />)
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" loading={false} hasMore={false} />)
     expect(screen.getByText(/\d+ price points/)).toBeInTheDocument()
   })
 
   it('calls onLoadMore callback when prop is provided', () => {
     const onLoadMore = vi.fn()
-    render(
-      <PriceChart data={sampleData} pair="BTC/USD" loading={false} hasMore onLoadMore={onLoadMore} />,
-    )
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" loading={false} hasMore onLoadMore={onLoadMore} />)
     // Note: This is a simplified test. In a real scenario, you'd trigger the scroll event
     // or test the hook that calls this callback
     expect(onLoadMore).toBeDefined()

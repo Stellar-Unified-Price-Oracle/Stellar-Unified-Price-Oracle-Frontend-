@@ -29,9 +29,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...actual,
     useQuery: vi.fn(() => ({
-      data: [
-        { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] },
-      ],
+      data: [{ assetPair: 'BTC/USD', price: 50000, timestamp: Date.now(), confidence: 0.99, sources: ['chainlink'] }],
       isLoading: false,
       error: null,
       isFetching: false,
@@ -97,15 +95,13 @@ function makeQueryClient() {
 
 function Wrapper({ children }: { children: ReactNode }) {
   return (
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={['/dashboard']}>
       <QueryClientProvider client={makeQueryClient()}>
         <ErrorReporterProvider>
           <PreferencesProvider>
             <ToastProvider>
               <WalletProvider>
-                <PriceProvider>
-                  {children}
-                </PriceProvider>
+                <PriceProvider>{children}</PriceProvider>
               </WalletProvider>
             </ToastProvider>
           </PreferencesProvider>
@@ -125,9 +121,7 @@ describe('App provider hierarchy', () => {
   it('renders the Dashboard without throwing when PriceProvider wraps consumers for real', async () => {
     render(<AppContent />, { wrapper: Wrapper })
 
-    expect(
-      await screen.findByRole('heading', { name: 'Price Oracle Dashboard' }, FIND),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Price Oracle Dashboard' }, FIND)).toBeInTheDocument()
     expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
   })
 })

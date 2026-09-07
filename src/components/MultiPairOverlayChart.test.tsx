@@ -34,14 +34,7 @@ const sampleHistory: Record<string, PriceHistoryEntry[]> = {
 
 describe('MultiPairOverlayChart', () => {
   it('renders without crashing with basic props', () => {
-    expect(() =>
-      render(
-        <MultiPairOverlayChart
-          pairs={['BTC/USD', 'ETH/USD']}
-          history={sampleHistory}
-        />,
-      ),
-    ).not.toThrow()
+    expect(() => render(<MultiPairOverlayChart pairs={['BTC/USD', 'ETH/USD']} history={sampleHistory} />)).not.toThrow()
   })
 
   it('shows an empty state when pairs is empty', () => {
@@ -55,36 +48,19 @@ describe('MultiPairOverlayChart', () => {
   })
 
   it('renders legend entries for each pair', () => {
-    render(
-      <MultiPairOverlayChart
-        pairs={['BTC/USD', 'ETH/USD']}
-        history={sampleHistory}
-      />,
-    )
-    expect(screen.getByText('BTC/USD')).toBeInTheDocument()
-    expect(screen.getByText('ETH/USD')).toBeInTheDocument()
+    render(<MultiPairOverlayChart pairs={['BTC/USD', 'ETH/USD']} history={sampleHistory} />)
+    expect(screen.getAllByText('BTC/USD').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('ETH/USD').length).toBeGreaterThan(0)
   })
 
   it('labels the benchmark pair in the legend', () => {
-    render(
-      <MultiPairOverlayChart
-        pairs={['BTC/USD', 'ETH/USD']}
-        history={sampleHistory}
-        benchmarkPair="ETH/USD"
-      />,
-    )
+    render(<MultiPairOverlayChart pairs={['BTC/USD', 'ETH/USD']} history={sampleHistory} benchmarkPair="ETH/USD" />)
     expect(screen.getByText(/benchmark/i)).toBeInTheDocument()
   })
 
   it('calls onExport when the export button is clicked', () => {
     const onExport = vi.fn()
-    render(
-      <MultiPairOverlayChart
-        pairs={['BTC/USD', 'ETH/USD']}
-        history={sampleHistory}
-        onExport={onExport}
-      />,
-    )
+    render(<MultiPairOverlayChart pairs={['BTC/USD', 'ETH/USD']} history={sampleHistory} onExport={onExport} />)
     const exportBtn = screen.getByRole('button', { name: /export/i })
     fireEvent.click(exportBtn)
     expect(onExport).toHaveBeenCalledTimes(1)
@@ -95,24 +71,12 @@ describe('MultiPairOverlayChart', () => {
 
   it('renders in normalized mode without crashing', () => {
     expect(() =>
-      render(
-        <MultiPairOverlayChart
-          pairs={['BTC/USD', 'ETH/USD']}
-          history={sampleHistory}
-          normalizedMode
-        />,
-      ),
+      render(<MultiPairOverlayChart pairs={['BTC/USD', 'ETH/USD']} history={sampleHistory} normalizedMode />),
     ).not.toThrow()
   })
 
   it('shows a % label in normalized mode', () => {
-    render(
-      <MultiPairOverlayChart
-        pairs={['BTC/USD', 'ETH/USD']}
-        history={sampleHistory}
-        normalizedMode
-      />,
-    )
+    render(<MultiPairOverlayChart pairs={['BTC/USD', 'ETH/USD']} history={sampleHistory} normalizedMode />)
     // "% Change" appears in the header text in normalized mode
     expect(screen.getByText(/% Change/i)).toBeInTheDocument()
   })

@@ -60,9 +60,7 @@ export function generateSyntheticSeries(
   const pct = form.percentageThreshold ? Number.parseFloat(form.percentageThreshold) : null
 
   if (form.percentageMode && pct !== null && pct > 0) {
-    targetPrice = form.percentageDirection === 'down'
-      ? currentPrice * (1 - pct / 100)
-      : currentPrice * (1 + pct / 100)
+    targetPrice = form.percentageDirection === 'down' ? currentPrice * (1 - pct / 100) : currentPrice * (1 + pct / 100)
   } else if (lower !== null && upper !== null) {
     targetPrice = (lower + upper) / 2
   } else if (upper !== null) {
@@ -77,7 +75,15 @@ export function generateSyntheticSeries(
   }
 
   const baseline = seriesBaseline(currentPrice, targetPrice)
-  const amplitude = Math.abs(targetPrice - currentPrice) * SIMULATION_AMPLITUDE_RATIO || currentPrice * 0.02
+  // Amplitude large enough to cross a *nearby* threshold (so simulation shows
+  // fires) but capped at a small band around the current price — a threshold
+  // far from the current price should read as "won't fire in the window", not
+  // get crossed because the wave was scaled up to reach it.
+  const amplitude =
+    Math.min(
+      Math.abs(targetPrice - currentPrice) * SIMULATION_AMPLITUDE_RATIO,
+      Math.max(currentPrice * 0.05, currentPrice * 0.02),
+    ) || currentPrice * 0.02
   // Lift so the sine actually crosses `target` (not just touch it).
   const phase = Math.PI / 2
 
@@ -91,11 +97,7 @@ export function generateSyntheticSeries(
  * Replays a synthetic series through the production evaluation path and returns
  * per-point fire flags. Pure — callers must not persist the output.
  */
-export function simulateAlert(
-  form: AlertFormData,
-  currentPrice: number,
-  points = SIMULATION_POINTS,
-): SimulatedPoint[] {
+export function simulateAlert(form: AlertFormData, currentPrice: number, points = SIMULATION_POINTS): SimulatedPoint[] {
   const series = generateSyntheticSeries(form, currentPrice, points)
   const group = buildConditionGroupFromFormData(form)
   const baseline = series[0] ?? currentPrice

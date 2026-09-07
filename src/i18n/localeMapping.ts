@@ -21,11 +21,13 @@ import type { LocaleCode } from '../preferences/types'
  * Format: BCP 47 (e.g., 'en-US', 'de-DE')
  * @see https://www.iana.org/assignments/language-subtag-registry
  */
-const LANGUAGE_TO_LOCALE_MAP: Record<SupportedLanguage, LocaleCode> = {
+const LANGUAGE_TO_LOCALE_MAP: Record<SupportedLanguage, string> = {
   en: 'en-US',
   es: 'es-ES',
   fr: 'fr-FR',
   ja: 'ja-JP',
+  ar: 'ar-SA',
+  he: 'he',
 }
 
 /**
@@ -54,7 +56,7 @@ export function resolveLocale(locale: LocaleCode): string | undefined {
  * getLocaleFromLanguage('ja') // 'ja-JP'
  * ```
  */
-export function getLocaleFromLanguage(language: SupportedLanguage): LocaleCode {
+export function getLocaleFromLanguage(language: SupportedLanguage): string {
   return LANGUAGE_TO_LOCALE_MAP[language]
 }
 
@@ -68,6 +70,9 @@ export function getLocaleFromLanguage(language: SupportedLanguage): LocaleCode {
  * @param formatLocale - User's format locale preference ('auto', 'en-US', etc.)
  * @param currentLanguage - Current i18n language code
  * @returns Intl-compatible locale string, or undefined if 'auto' should use browser default
+ *
+ * Note: `LocaleCode` is a subset of what Intl accepts, so the mapping table
+ * returns a plain string (e.g. Hebrew resolves to 'he').
  *
  * @example
  * ```
@@ -91,16 +96,7 @@ export function getEffectiveLocale(formatLocale: LocaleCode, currentLanguage: Su
  * List of all supported IANA locale codes for Intl formatting.
  * Can be used to validate user selections or provide autocomplete.
  */
-export const SUPPORTED_LOCALES: LocaleCode[] = [
-  'auto',
-  'en-US',
-  'de-DE',
-  'fr-FR',
-  'ja-JP',
-  'es-ES',
-  'ar-SA',
-  'pt-BR',
-]
+export const SUPPORTED_LOCALES: LocaleCode[] = ['auto', 'en-US', 'de-DE', 'fr-FR', 'ja-JP', 'es-ES', 'ar-SA', 'pt-BR']
 
 /**
  * Checks if a given locale code is supported.

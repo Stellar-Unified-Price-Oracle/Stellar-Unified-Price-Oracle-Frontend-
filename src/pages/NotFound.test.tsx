@@ -33,7 +33,7 @@ describe('NotFound', () => {
     )
     const links = screen.getAllByText('Back to Dashboard')
     expect(links).toHaveLength(1)
-    expect(links[0].closest('a')).toHaveAttribute('href', '/')
+    expect(links[0].closest('a')).toHaveAttribute('href', '/dashboard')
   })
 })
 

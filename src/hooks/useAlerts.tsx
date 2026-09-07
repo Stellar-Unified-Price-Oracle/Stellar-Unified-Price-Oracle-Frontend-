@@ -1,5 +1,12 @@
 import { useState, useCallback, useEffect, useRef, createContext, useContext, ReactNode } from 'react'
-import type { Alert, AlertHistoryEntry, AlertsContextType, AlertSnoozeDuration, EscalationStep, PriceEvaluationState } from '../types'
+import type {
+  Alert,
+  AlertHistoryEntry,
+  AlertsContextType,
+  AlertSnoozeDuration,
+  EscalationStep,
+  PriceEvaluationState,
+} from '../types'
 import { migrateLegacyAlertConditions } from '../types/alerts'
 import { usePriceContext } from '../context/PriceContext'
 import { AlertsArraySchema } from '../api/schemas'
@@ -45,20 +52,38 @@ async function dispatchEmailChannel(cfg: NotifConfig, alert: Alert, currentPrice
     await fetch('/api/notifications/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: cfg.email.address, subject: 'Price Alert Triggered', message: body, assetPair: alert.assetPair, price: currentPrice }),
+      body: JSON.stringify({
+        to: cfg.email.address,
+        subject: 'Price Alert Triggered',
+        message: body,
+        assetPair: alert.assetPair,
+        price: currentPrice,
+      }),
     })
   } catch {
     // Best-effort; don't let a network error break the alert system
   }
 }
 
-async function dispatchWebhookChannel(cfg: NotifConfig, alert: Alert, currentPrice: number, body: string): Promise<void> {
+async function dispatchWebhookChannel(
+  cfg: NotifConfig,
+  alert: Alert,
+  currentPrice: number,
+  body: string,
+): Promise<void> {
   if (!cfg.webhook.enabled || !cfg.webhook.url) return
   try {
     await fetch(cfg.webhook.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'alert_triggered', assetPair: alert.assetPair, price: currentPrice, message: body, alertId: alert.id, timestamp: Date.now() }),
+      body: JSON.stringify({
+        type: 'alert_triggered',
+        assetPair: alert.assetPair,
+        price: currentPrice,
+        message: body,
+        alertId: alert.id,
+        timestamp: Date.now(),
+      }),
     })
   } catch {
     // Best-effort
@@ -74,11 +99,13 @@ async function dispatchTelegramChannel(
 ): Promise<void> {
   if (!cfg.telegram.enabled || !cfg.telegram.chatId) return
   const { telegramBotToken } = loadBotSecrets()
-  await sendTelegramMessage(
-    { chatId: cfg.telegram.chatId, enabled: cfg.telegram.enabled },
-    telegramBotToken,
-    { assetPair: alert.assetPair, price: currentPrice, message: body, timestamp: Date.now(), escalation },
-  )
+  await sendTelegramMessage({ chatId: cfg.telegram.chatId, enabled: cfg.telegram.enabled }, telegramBotToken, {
+    assetPair: alert.assetPair,
+    price: currentPrice,
+    message: body,
+    timestamp: Date.now(),
+    escalation,
+  })
 }
 
 async function dispatchDiscordChannel(
@@ -90,11 +117,13 @@ async function dispatchDiscordChannel(
 ): Promise<void> {
   if (!cfg.discord.enabled) return
   const { discordWebhookUrl } = loadBotSecrets()
-  await sendDiscordMessage(
-    { channelId: cfg.discord.channelId, enabled: cfg.discord.enabled },
-    discordWebhookUrl,
-    { assetPair: alert.assetPair, price: currentPrice, message: body, timestamp: Date.now(), escalation },
-  )
+  await sendDiscordMessage({ channelId: cfg.discord.channelId, enabled: cfg.discord.enabled }, discordWebhookUrl, {
+    assetPair: alert.assetPair,
+    price: currentPrice,
+    message: body,
+    timestamp: Date.now(),
+    escalation,
+  })
 }
 
 /**
@@ -168,11 +197,16 @@ function snoozeDurationMs(duration: AlertSnoozeDuration): number {
 /** Returns the window duration in milliseconds for a percentage alert window */
 function windowMs(window: string): number {
   switch (window) {
-    case '5min':  return 5 * 60 * 1000
-    case '15min': return 15 * 60 * 1000
-    case '1hr':   return 60 * 60 * 1000
-    case '24hr':  return 24 * 60 * 60 * 1000
-    default:      return 60 * 60 * 1000
+    case '5min':
+      return 5 * 60 * 1000
+    case '15min':
+      return 15 * 60 * 1000
+    case '1hr':
+      return 60 * 60 * 1000
+    case '24hr':
+      return 24 * 60 * 60 * 1000
+    default:
+      return 60 * 60 * 1000
   }
 }
 
@@ -243,11 +277,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       setAlerts((prev) => {
         const changed = prev.some((a) => a.snoozedUntil !== null && a.snoozedUntil <= now)
         if (!changed) return prev
-        return prev.map((a) =>
-          a.snoozedUntil !== null && a.snoozedUntil <= now
-            ? { ...a, snoozedUntil: null }
-            : a,
-        )
+        return prev.map((a) => (a.snoozedUntil !== null && a.snoozedUntil <= now ? { ...a, snoozedUntil: null } : a))
       })
     }, 30_000)
     return () => clearInterval(interval)
@@ -339,11 +369,17 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           firedEntries.push(
             buildTriggerHistoryEntry(updatedAlert, currentPrice, now, { kind: 'retest', cycle: retestEvent.cycle }),
           )
-        } else {
-          // Record the sequence (breach / exit / non-firing retest) in history so
-          // the panel can show exactly how the threshold was revisited.
+        } else if (updatedAlert.retestMode) {
+          // Retest-mode alerts record the sequence (breach / exit / non-firing
+          // retest) in history so the panel can show exactly how the threshold
+          // was revisited. For regular alerts the base trigger entry below is
+          // the only history record — recording the first `breach` here too
+          // would duplicate it.
           firedEntries.push(
-            buildTriggerHistoryEntry(updatedAlert, currentPrice, now, { kind: retestEvent.kind, cycle: retestEvent.cycle }),
+            buildTriggerHistoryEntry(updatedAlert, currentPrice, now, {
+              kind: retestEvent.kind,
+              cycle: retestEvent.cycle,
+            }),
           )
         }
       }
@@ -495,7 +531,21 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addAlert = useCallback(
-    (alert: Omit<Alert, 'id' | 'createdAt' | 'lastTriggeredAt' | 'fireCount' | 'snoozedUntil' | 'percentageBaselinePrice' | 'percentageBaselineTimestamp' | 'escalationState' | 'channels' | 'retestState'> & { channels?: Alert['channels'] }) => {
+    (
+      alert: Omit<
+        Alert,
+        | 'id'
+        | 'createdAt'
+        | 'lastTriggeredAt'
+        | 'fireCount'
+        | 'snoozedUntil'
+        | 'percentageBaselinePrice'
+        | 'percentageBaselineTimestamp'
+        | 'escalationState'
+        | 'channels'
+        | 'retestState'
+      > & { channels?: Alert['channels'] },
+    ) => {
       // Rate-limit alert creation: max 5 per minute.
       if (!alertRateLimit.consume()) {
         return null
@@ -546,18 +596,14 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const togglePanel = useCallback(() => setIsPanelOpen((p) => !p), [])
 
   const markAsRead = useCallback((id: string) => {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, lastTriggeredAt: a.lastTriggeredAt ?? Date.now() } : a)),
-    )
+    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, lastTriggeredAt: a.lastTriggeredAt ?? Date.now() } : a)))
   }, [])
 
   /** Snooze an alert for a given duration (#313) */
   const snoozeAlert = useCallback((id: string, duration: AlertSnoozeDuration) => {
     const until = snoozeDurationMs(duration)
     setAlerts((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, snoozedUntil: until, lastTriggeredAt: null, retestState: null } : a,
-      ),
+      prev.map((a) => (a.id === id ? { ...a, snoozedUntil: until, lastTriggeredAt: null, retestState: null } : a)),
     )
   }, [])
 
@@ -571,7 +617,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     setAlerts((prev) =>
       prev.map((a) =>
         a.id === id
-          ? { ...a, active: true, lastTriggeredAt: null, fireCount: 0, snoozedUntil: null, escalationState: null, retestState: null }
+          ? {
+              ...a,
+              active: true,
+              lastTriggeredAt: null,
+              fireCount: 0,
+              snoozedUntil: null,
+              escalationState: null,
+              retestState: null,
+            }
           : a,
       ),
     )

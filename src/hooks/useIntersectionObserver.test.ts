@@ -1,20 +1,29 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import type { RefObject } from 'react'
 import { useIntersectionObserver } from './useIntersectionObserver'
 
 describe('useIntersectionObserver', () => {
   let observeSpy: ReturnType<typeof vi.fn>
   let disconnectSpy: ReturnType<typeof vi.fn>
   let observerCallback: IntersectionObserverCallback | null
+  let observerInstances: number
+
+  function makeRef(el: Element | null): RefObject<Element | null> {
+    return { current: el }
+  }
 
   beforeEach(() => {
+    observerInstances = 0
     observeSpy = vi.fn()
     disconnectSpy = vi.fn()
     observerCallback = null
 
     vi.stubGlobal(
       'IntersectionObserver',
-      vi.fn((cb: IntersectionObserverCallback) => {
+      // A real `function`, not an arrow, so the hook can invoke it with `new`.
+      vi.fn(function (this: unknown, cb: IntersectionObserverCallback) {
+        observerInstances++
         observerCallback = cb
         return {
           observe: observeSpy,
@@ -33,120 +42,84 @@ describe('useIntersectionObserver', () => {
     vi.unstubAllGlobals()
   })
 
-  it('returns a ref and isIntersecting=false initially', () => {
-    const { result } = renderHook(() => useIntersectionObserver())
-    expect(result.current.isIntersecting).toBe(false)
-    expect(typeof result.current.ref).toBe('function')
-  })
-
-  it('observes when ref is called with an element', () => {
-    const { result } = renderHook(() => useIntersectionObserver())
+  it('observes the element attached to targetRef on mount', () => {
     const el = document.createElement('div')
-
-    act(() => {
-      result.current.ref(el)
-    })
+    renderHook(() => useIntersectionObserver(makeRef(el), vi.fn()))
 
     expect(observeSpy).toHaveBeenCalledWith(el)
   })
 
-  it('sets isIntersecting=true when callback fires with intersecting entry', () => {
-    const { result } = renderHook(() => useIntersectionObserver())
+  it('does nothing when targetRef.current is null', () => {
+    renderHook(() => useIntersectionObserver(makeRef(null), vi.fn()))
 
-    act(() => {
-      result.current.ref(document.createElement('div'))
-    })
-
-    act(() => {
-      observerCallback!(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      )
-    })
-
-    expect(result.current.isIntersecting).toBe(true)
+    expect(observeSpy).not.toHaveBeenCalled()
   })
 
-  it('sets isIntersecting=false when callback fires with non-intersecting entry', () => {
-    const { result } = renderHook(() => useIntersectionObserver())
-
-    act(() => {
-      result.current.ref(document.createElement('div'))
-    })
-
-    // First set to true
-    act(() => {
-      observerCallback!(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      )
-    })
-
-    // Then set to false
-    act(() => {
-      observerCallback!(
-        [{ isIntersecting: false } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      )
-    })
-
-    expect(result.current.isIntersecting).toBe(false)
-  })
-
-  it('invokes onIntersect callback with the entry', () => {
-    const onIntersect = vi.fn()
-    const { result } = renderHook(() => useIntersectionObserver({ onIntersect }))
-
-    act(() => {
-      result.current.ref(document.createElement('div'))
-    })
+  it('invokes the callback with each observed entry', () => {
+    const callback = vi.fn()
+    renderHook(() => useIntersectionObserver(makeRef(document.createElement('div')), callback))
 
     const entry = { isIntersecting: true } as IntersectionObserverEntry
-
     act(() => {
       observerCallback!([entry], {} as IntersectionObserver)
     })
 
-    expect(onIntersect).toHaveBeenCalledWith(entry)
+    expect(callback).toHaveBeenCalledWith(entry)
   })
 
-  it('disconnects observer on unmount', () => {
-    const { result, unmount } = renderHook(() => useIntersectionObserver())
+  it('uses the latest callback across renders (no stale closure)', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const { rerender } = renderHook(({ cb }) => useIntersectionObserver(makeRef(document.createElement('div')), cb), {
+      initialProps: { cb: first },
+    })
+
+    rerender({ cb: second })
 
     act(() => {
-      result.current.ref(document.createElement('div'))
+      observerCallback!([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
     })
+
+    expect(first).not.toHaveBeenCalled()
+    expect(second).toHaveBeenCalledTimes(1)
+  })
+
+  it('disconnects the observer on unmount', () => {
+    const { unmount } = renderHook(() => useIntersectionObserver(makeRef(document.createElement('div')), vi.fn()))
 
     unmount()
 
     expect(disconnectSpy).toHaveBeenCalled()
   })
 
-  it('disconnects previous observer when ref changes element', () => {
-    const { result } = renderHook(() => useIntersectionObserver())
-
-    act(() => {
-      result.current.ref(document.createElement('div'))
+  it('observes a new target when the targetRef identity changes', () => {
+    const el1 = document.createElement('div')
+    const el2 = document.createElement('span')
+    const { rerender } = renderHook(({ r }) => useIntersectionObserver(r, vi.fn()), {
+      initialProps: { r: makeRef(el1) },
     })
 
-    act(() => {
-      result.current.ref(document.createElement('span'))
-    })
+    expect(observerInstances).toBe(1)
+    expect(observeSpy).toHaveBeenCalledWith(el1)
 
+    rerender({ r: makeRef(el2) })
+
+    expect(observerInstances).toBe(2)
+    expect(observeSpy).toHaveBeenCalledWith(el2)
     expect(disconnectSpy).toHaveBeenCalled()
   })
 
-  it('disconnects when ref is called with null', () => {
-    const { result } = renderHook(() => useIntersectionObserver())
+  it('recreates the observer when options change', () => {
+    const { rerender } = renderHook(
+      ({ threshold }) => useIntersectionObserver(makeRef(document.createElement('div')), vi.fn(), { threshold }),
+      { initialProps: { threshold: 0 } },
+    )
 
-    act(() => {
-      result.current.ref(document.createElement('div'))
-    })
+    expect(observerInstances).toBe(1)
 
-    act(() => {
-      result.current.ref(null)
-    })
+    rerender({ threshold: 0.5 })
 
+    expect(observerInstances).toBe(2)
     expect(disconnectSpy).toHaveBeenCalled()
   })
 })

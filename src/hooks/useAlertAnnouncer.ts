@@ -52,10 +52,7 @@ function formatAlertCondition(alert: Alert): string {
  * Hook for announcing price alert firings to screen readers.
  * Monitors alerts for firing events and announces them with assertive priority.
  */
-export function useAlertAnnouncer(
-  alerts: Alert[] | undefined,
-  config: Partial<AlertAnnouncerConfig> = {},
-): void {
+export function useAlertAnnouncer(alerts: Alert[] | undefined, config: Partial<AlertAnnouncerConfig> = {}): void {
   const { announce } = useAnnounce({
     deduplicationMs: (config.deduplicationMs ?? DEFAULT_CONFIG.deduplicationMs) * 2,
   })
@@ -117,7 +114,7 @@ export function useIndividualAlertAnnouncer(
     if (!alert) return
 
     const now = Date.now()
-    const isSnoozed = alert.snoozedUntil && alert.snoozedUntil > now
+    const isSnoozed = alert.snoozedUntil !== null && alert.snoozedUntil > now
 
     // Announce if alert just fired
     if (alert.fireCount > prevFireCountRef.current && alert.active) {
@@ -150,23 +147,18 @@ export function useAlertSummaryAnnouncer(
     ...config,
   })
 
-  const prevCountRef = useRef<{ fired: number; active: number }>(
-    { fired: 0, active: 0 },
-  )
+  const prevCountRef = useRef<{ fired: number; active: number }>({ fired: 0, active: 0 })
 
   useEffect(() => {
     if (!alerts) return
 
     const now = Date.now()
-    const fired = alerts.filter(a => a.fireCount > 0).length
-    const active = alerts.filter(a => a.active && (!a.snoozedUntil || a.snoozedUntil <= now))
-      .length
+    const fired = alerts.filter((a) => a.fireCount > 0).length
+    const active = alerts.filter((a) => a.active && (!a.snoozedUntil || a.snoozedUntil <= now)).length
 
     if (fired !== prevCountRef.current.fired) {
       const announcement =
-        fired > 0
-          ? `${fired} price alert${fired !== 1 ? 's' : ''} has fired`
-          : `No alerts have fired`
+        fired > 0 ? `${fired} price alert${fired !== 1 ? 's' : ''} has fired` : `No alerts have fired`
       announce(announcement, 'assertive')
     }
 

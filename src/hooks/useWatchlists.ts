@@ -7,11 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import {
-  getAllWatchlists,
-  saveWatchlist,
-  deleteWatchlist as idbDeleteWatchlist,
-} from '../services/watchlistIndexedDB'
+import { getAllWatchlists, saveWatchlist, deleteWatchlist as idbDeleteWatchlist } from '../services/watchlistIndexedDB'
 import type { WatchlistEntry } from '../services/watchlistIndexedDB'
 import { createBroadcastChannel } from '../utils/broadcastChannel'
 import type { BroadcastMessageType } from '../utils/broadcastChannel'
@@ -107,10 +103,21 @@ export function useWatchlists(): UseWatchlistsReturn {
   // accidentally broadcast the empty initial state before loading.
   const loadedRef = useRef(false)
 
+  // Mirror of `watchlists` kept mutation-fresh. React state can't be read
+  // synchronously right after `setWatchlists`, so mutation callbacks read
+  // and update this ref — that way two mutations in the same tick (e.g.
+  // adding two pairs, or creating two lists) each see the latest list
+  // instead of colliding on the same snapshot.
+  const watchlistsRef = useRef<WatchlistEntry[]>(watchlists)
+  useEffect(() => {
+    watchlistsRef.current = watchlists
+  }, [watchlists])
+
   // Load watchlists from IndexedDB on mount
   useEffect(() => {
     getAllWatchlists().then((entries) => {
       setWatchlists(entries)
+      watchlistsRef.current = entries
       loadedRef.current = true
     })
   }, [])
@@ -126,53 +133,47 @@ export function useWatchlists(): UseWatchlistsReturn {
   }, [])
 
   // Helper: persist a batch of updated watchlists then broadcast to other tabs
-  const persistAndBroadcast = useCallback(
-    async (updated: WatchlistEntry[]) => {
-      // Persist each entry (upsert)
-      await Promise.all(updated.map((e) => saveWatchlist(e)))
-      watchlistsChannel.broadcast(WATCHLISTS_UPDATE_TYPE, updated)
-    },
-    [],
-  )
+  const persistAndBroadcast = useCallback(async (updated: WatchlistEntry[]) => {
+    // Persist each entry (upsert)
+    await Promise.all(updated.map((e) => saveWatchlist(e)))
+    watchlistsChannel.broadcast(WATCHLISTS_UPDATE_TYPE, updated)
+  }, [])
 
   // ---------- CRUD ----------
 
-  const createWatchlist = useCallback(
-    (name: string): WatchlistEntry => {
-      const now = Date.now()
-      const entry: WatchlistEntry = {
-        id: crypto.randomUUID(),
-        name,
-        pairs: [],
-        createdAt: now,
-        updatedAt: now,
-        order: watchlists.length,
-      }
-      const updated = [...watchlists, entry]
-      setWatchlists(updated)
-      saveWatchlist(entry)
-      watchlistsChannel.broadcast(WATCHLISTS_UPDATE_TYPE, updated)
-      return entry
-    },
-    [watchlists],
-  )
+  const createWatchlist = useCallback((name: string): WatchlistEntry => {
+    const now = Date.now()
+    const current = watchlistsRef.current
+    const entry: WatchlistEntry = {
+      id: crypto.randomUUID(),
+      name,
+      pairs: [],
+      createdAt: now,
+      updatedAt: now,
+      order: current.length,
+    }
+    const updated = [...current, entry]
+    watchlistsRef.current = updated
+    setWatchlists(updated)
+    saveWatchlist(entry)
+    watchlistsChannel.broadcast(WATCHLISTS_UPDATE_TYPE, updated)
+    return entry
+  }, [])
 
   const renameWatchlist = useCallback(
     (id: string, name: string) => {
-      const updated = watchlists.map((w) =>
-        w.id === id ? { ...w, name, updatedAt: Date.now() } : w,
-      )
+      const updated = watchlistsRef.current.map((w) => (w.id === id ? { ...w, name, updatedAt: Date.now() } : w))
+      watchlistsRef.current = updated
       setWatchlists(updated)
       persistAndBroadcast(updated)
     },
-    [watchlists, persistAndBroadcast],
+    [persistAndBroadcast],
   )
 
   const deleteWatchlist = useCallback(
     (id: string) => {
-      const updated = watchlists
-        .filter((w) => w.id !== id)
-        .map((w, i) => ({ ...w, order: i }))
+      const updated = watchlistsRef.current.filter((w) => w.id !== id).map((w, i) => ({ ...w, order: i }))
+      watchlistsRef.current = updated
       setWatchlists(updated)
       idbDeleteWatchlist(id)
       watchlistsChannel.broadcast(WATCHLISTS_UPDATE_TYPE, updated)
@@ -180,48 +181,49 @@ export function useWatchlists(): UseWatchlistsReturn {
         setActiveWatchlistId(null)
       }
     },
-    [watchlists, activeWatchlistId],
+    [activeWatchlistId],
   )
 
   const addPairToWatchlist = useCallback(
     (id: string, pair: string) => {
-      const updated = watchlists.map((w) => {
+      const updated = watchlistsRef.current.map((w) => {
         if (w.id !== id) return w
         if (w.pairs.includes(pair)) return w // no duplicates
         return { ...w, pairs: [...w.pairs, pair], updatedAt: Date.now() }
       })
+      watchlistsRef.current = updated
       setWatchlists(updated)
       persistAndBroadcast(updated)
     },
-    [watchlists, persistAndBroadcast],
+    [persistAndBroadcast],
   )
 
   const removePairFromWatchlist = useCallback(
     (id: string, pair: string) => {
-      const updated = watchlists.map((w) =>
-        w.id === id
-          ? { ...w, pairs: w.pairs.filter((p) => p !== pair), updatedAt: Date.now() }
-          : w,
+      const updated = watchlistsRef.current.map((w) =>
+        w.id === id ? { ...w, pairs: w.pairs.filter((p) => p !== pair), updatedAt: Date.now() } : w,
       )
+      watchlistsRef.current = updated
       setWatchlists(updated)
       persistAndBroadcast(updated)
     },
-    [watchlists, persistAndBroadcast],
+    [persistAndBroadcast],
   )
 
   const reorderWatchlists = useCallback(
     (ids: string[]) => {
-      const indexed = new Map(watchlists.map((w) => [w.id, w]))
+      const indexed = new Map(watchlistsRef.current.map((w) => [w.id, w]))
       const updated = ids
         .map((id, i) => {
           const entry = indexed.get(id)
           return entry ? { ...entry, order: i } : null
         })
         .filter((e): e is WatchlistEntry => e !== null)
+      watchlistsRef.current = updated
       setWatchlists(updated)
       persistAndBroadcast(updated)
     },
-    [watchlists, persistAndBroadcast],
+    [persistAndBroadcast],
   )
 
   const setActiveWatchlist = useCallback((id: string | null) => {
@@ -238,34 +240,31 @@ export function useWatchlists(): UseWatchlistsReturn {
     return toCsv(watchlists)
   }, [watchlists])
 
-  const importCsv = useCallback(
-    (csv: string) => {
-      const parsed = parseCsv(csv)
-      const now = Date.now()
-      const newEntries: WatchlistEntry[] = parsed.map((item, i) => ({
-        id: crypto.randomUUID(),
-        name: item.name,
-        pairs: item.pairs,
-        createdAt: now,
-        updatedAt: now,
-        order: watchlists.length + i,
-      }))
+  const importCsv = useCallback((csv: string) => {
+    const parsed = parseCsv(csv)
+    const now = Date.now()
+    const base = watchlistsRef.current.length
+    const newEntries: WatchlistEntry[] = parsed.map((item, i) => ({
+      id: crypto.randomUUID(),
+      name: item.name,
+      pairs: item.pairs,
+      createdAt: now,
+      updatedAt: now,
+      order: base + i,
+    }))
 
-      const updated = [...watchlists, ...newEntries]
-      setWatchlists(updated)
-      Promise.all(newEntries.map((e) => saveWatchlist(e))).then(() => {
-        watchlistsChannel.broadcast(WATCHLISTS_UPDATE_TYPE, updated)
-      })
-    },
-    [watchlists],
-  )
+    const updated = [...watchlistsRef.current, ...newEntries]
+    watchlistsRef.current = updated
+    setWatchlists(updated)
+    Promise.all(newEntries.map((e) => saveWatchlist(e))).then(() => {
+      watchlistsChannel.broadcast(WATCHLISTS_UPDATE_TYPE, updated)
+    })
+  }, [])
 
   // ---------- Derived state ----------
 
   const activeWatchlist =
-    activeWatchlistId != null
-      ? (watchlists.find((w) => w.id === activeWatchlistId) ?? null)
-      : null
+    activeWatchlistId != null ? (watchlists.find((w) => w.id === activeWatchlistId) ?? null) : null
 
   return {
     watchlists,

@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect, useMemo } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSwr } from '../hooks/useSwr'
@@ -12,6 +12,8 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { VisibleSuspense } from '../components/VisibleSuspense'
 import { MultiPairOverlayChart } from '../components/MultiPairOverlayChart'
 import { MoveAttributionPanel } from '../components/MoveAttributionPanel'
+import { AnomalyBanner } from '../components/AnomalyBanner'
+import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { SOURCE_COLORS, getConfidenceColor } from '../utils/sourceColors'
 import { LazyPriceChart, LazyPriceHistoryTable, LazyPriceProofPanel } from '../utils/chunks'
@@ -19,10 +21,8 @@ import { isValidAssetPair, VALID_PAIRS } from '../types'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import { getStellarAssetForPair, shortenAccount } from '../lib/stellarAssets'
-import { computeAggregationBreakdown } from '../mocks/data'
 import type { CsvRow } from '../components/CsvImportZone'
 import type { ExportRow } from '../components/MultiPairOverlayChart'
-import type { AggregationMode } from '../types/price'
 
 type DetailTab = 'overview' | 'proof'
 
@@ -77,11 +77,10 @@ export function PriceDetail() {
   const { pair } = useParams<{ pair: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { preferences } = usePreferences()
+  const { preferences, updatePreference } = usePreferences()
   const { attributionHistory } = usePriceContext()
   const [importedData, setImportedData] = useState<CsvRow[] | null>(null)
-  const [activeTab, _setActiveTab] = useState<DetailTab>('overview')
-  const [aggregationMode, setAggregationMode] = useState<AggregationMode>('weighted_mean')
+  const [activeTab, setActiveTab] = useState<DetailTab>('overview')
 
   // Benchmark state — persisted to localStorage
   const [benchmarkPair, setBenchmarkPair] = useState<string | null>(() => {
@@ -133,19 +132,12 @@ export function PriceDetail() {
   } = usePriceHistory(isInvalidPair || !decodedPair ? null : decodedPair, { pageSize: 100 })
 
   // Benchmark pair history — fetched only when a benchmark pair is selected
-  const {
-    history: benchmarkHistory,
-    loading: benchmarkHistoryLoading,
-  } = usePriceHistory(benchmarkPair, { pageSize: 100 })
+  const { history: benchmarkHistory, loading: benchmarkHistoryLoading } = usePriceHistory(benchmarkPair, {
+    pageSize: 100,
+  })
 
   const loading = priceLoading || (historyLoading && history.length === 0)
   const showEmptyState = !loading && !priceError && !price
-
-  // Compute the aggregation breakdown whenever the price snapshot or mode changes (#459)
-  const aggregationBreakdown = useMemo(
-    () => (price ? computeAggregationBreakdown(price, aggregationMode) : null),
-    [price, aggregationMode],
-  )
 
   return (
     <div>
@@ -181,262 +173,25 @@ export function PriceDetail() {
             </span>
           </div>
 
-          {/* Price block */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
-              {t('priceDetail.sections.currentPrice')}
-            </p>
-            <p className="text-5xl font-bold font-mono text-gray-100 mb-4">
-              ${formatPrice(price.price)}
-            </p>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-400">
-                {t('priceDetail.updated', { time: timeAgo(price.timestamp) })}
-              </span>
-              <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getConfidenceColor(price.confidence)}`}>
-                {t('priceDetail.confidence', { value: (price.confidence * 100).toFixed(1) })}
-              </span>
-            </div>
-            <p className="text-xs text-gray-600 mt-1">{formatTimestamp(price.timestamp)}</p>
+          {/* Tabs — Overview (off-chain aggregated feed) vs Proof (on-chain verification) */}
+          <div className="flex border-b border-gray-800 mb-6" role="tablist" aria-label="Price detail sections">
+            {(['overview', 'proof'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  activeTab === tab
+                    ? 'border-cyan-500 text-cyan-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                {t(`priceDetail.tabs.${tab}`)}
+              </button>
+            ))}
           </div>
-
-          {/* Sources */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
-              {t('priceDetail.sections.oracleSources')}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {price.sources.map((src) => (
-                <span
-                  key={src}
-                  className={`px-3 py-1 rounded text-sm font-medium border ${SOURCE_COLORS[src] ?? 'bg-gray-800 text-gray-400 border-gray-700'}`}
-                >
-                  {src}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Move attribution — rendered whenever WS attribution data is available */}
-          {(() => {
-            const pairHistory = attributionHistory.get(decodedPair) ?? []
-            const latest = pairHistory[pairHistory.length - 1]
-            return latest ? (
-              <MoveAttributionPanel latest={latest} history={pairHistory} />
-            ) : null
-          })()}
-
-          {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Stellar Asset</p>
-            <StellarAssetPanel pair={price.assetPair} />
-          </div>
-
-          {/* Benchmark comparison section */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Benchmark comparison</p>
-            <div className="flex flex-wrap items-center gap-4 mb-4">
-              {/* Benchmark pair picker */}
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="benchmark-pair-select"
-                  className="text-sm text-gray-400 whitespace-nowrap"
-                >
-                  Compare with
-                </label>
-                <select
-                  id="benchmark-pair-select"
-                  value={benchmarkPair ?? ''}
-                  onChange={(e) => setBenchmarkPair(e.target.value === '' ? null : e.target.value)}
-                  className="bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 cursor-pointer"
-                  aria-label="Select benchmark pair"
-                >
-                  <option value="">— None —</option>
-                  {VALID_PAIRS.filter((p) => p !== decodedPair).map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Normalized view toggle — only relevant when a benchmark is active */}
-              {benchmarkPair !== null && (
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={normalizedMode}
-                    onChange={(e) => setNormalizedMode(e.target.checked)}
-                    className="w-4 h-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-500/50 cursor-pointer"
-                    aria-label="Normalized view (% change)"
-                  />
-                  <span className="text-sm text-gray-400">Normalized view (% change)</span>
-                </label>
-              )}
-            </div>
-
-            {/* Multi-pair overlay chart shown when a benchmark is selected */}
-            {benchmarkPair !== null && (
-              benchmarkHistoryLoading && benchmarkHistory.length === 0 ? (
-                <div
-                  className="h-80 rounded-lg bg-gray-800/60 animate-pulse"
-                  role="status"
-                  aria-label="Loading benchmark chart"
-                />
-              ) : (
-                <MultiPairOverlayChart
-                  pairs={[decodedPair, benchmarkPair]}
-                  history={{
-                    [decodedPair]: history,
-                    [benchmarkPair]: benchmarkHistory,
-                  }}
-                  benchmarkPair={benchmarkPair}
-                  normalizedMode={normalizedMode}
-                  onExport={(rows: ExportRow[]) => {
-                    // Build CSV and trigger download
-                    if (rows.length === 0) return
-                    const pairsInExport = Object.keys(rows[0]).filter((k) => k !== 'timestamp')
-                    const header = ['timestamp', ...pairsInExport].join(',')
-                    const lines = rows.map((row) =>
-                      [row.timestamp, ...pairsInExport.map((p) => row[p] ?? '')].join(','),
-                    )
-                    const csv = [header, ...lines].join('\n')
-                    const blob = new Blob([csv], { type: 'text/csv' })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = `benchmark_${decodedPair.replace('/', '-')}_vs_${benchmarkPair.replace('/', '-')}.csv`
-                    a.click()
-                    URL.revokeObjectURL(url)
-                  }}
-                />
-              )
-            )}
-
-            {benchmarkPair === null && (
-              <p className="text-sm text-gray-500">
-                Select a pair above to compare it against {decodedPair} on the same chart.
-              </p>
-            )}
-          </div>
-
-          {/* Off-chain vs on-chain price comparison */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">On-Chain Comparison</p>
-            <OnChainComparisonPanel
-              pair={price.assetPair}
-              offChainPrice={price.price}
-              thresholdPercent={preferences.onChainDivergenceThresholdPercent}
-            />
-          </div>
-
-          {/* Paginated History chart */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
-              {t('priceDetail.sections.priceHistory')}
-            </p>
-            {historyError ? (
-              <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400" role="alert">
-                {t('priceDetail.historyError', { message: historyError.message })}
-              </div>
-            ) : (
-              <ErrorBoundary boundaryId="price-chart" featureLabel="Price Chart">
-                <VisibleSuspense
-                  fallback={
-                    <div
-                      className="h-80 rounded-lg bg-gray-800/60 animate-pulse"
-                      role="status"
-                      aria-label="Loading price chart"
-                    />
-                  }
-                >
-                  <LazyPriceChart
-                    data={history}
-                    pair={decodedPair}
-                    loading={historyLoading && history.length === 0}
-                    loadingMore={loadingMore}
-                    hasMore={hasMore}
-                    onLoadMore={loadMore}
-                    timezone={preferences.chartTimezone}
-                  />
-                </VisibleSuspense>
-              </ErrorBoundary>
-            )}
-          </div>
-
-          {/* #463 – Anomaly detection banner */}
-          {history.length > 0 && (
-            <AnomalyBanner history={history} pair={decodedPair} />
-          )}
-
-          {/* #462 – Confidence & deviation history charts */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
-              Confidence &amp; Deviation History
-            </p>
-            {history.length === 0 ? (
-              <div className="flex items-center justify-center h-40 rounded-lg border border-dashed border-gray-700 text-sm text-gray-500" role="status">
-                No history data available
-              </div>
-            ) : (
-              <ConfidenceDeviationChart history={history} pair={decodedPair} />
-            )}
-          </div>
-
-          {/* #461 – Excluded sources toggle */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Excluded Source Ticks</p>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={preferences.showExcludedSources}
-                  onChange={(e) => updatePreference('showExcludedSources', e.target.checked)}
-                  className="w-4 h-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-500/50 cursor-pointer"
-                  aria-label="Show excluded source ticks on price chart"
-                />
-                <span className="text-sm text-gray-400">Show excluded sources</span>
-              </label>
-            </div>
-            {preferences.showExcludedSources ? (
-              history.some((e) => e.excludedSources && e.excludedSources.length > 0) ? (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {history
-                    .filter((e) => e.excludedSources && e.excludedSources.length > 0)
-                    .slice(-20)
-                    .reverse()
-                    .map((e) =>
-                      e.excludedSources!.map((ex) => (
-                        <div
-                          key={`${e.timestamp}-${ex.source}`}
-                          className="flex items-center gap-3 text-xs px-3 py-2 rounded-lg bg-gray-800/60 border border-gray-700/50"
-                        >
-                          <span className="font-mono text-gray-500 shrink-0">
-                            {new Date(e.timestamp).toLocaleTimeString()}
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300 font-medium border border-gray-600 shrink-0">
-                            {ex.source}
-                          </span>
-                          <span className="font-mono text-amber-400 shrink-0">
-                            ${ex.reportedPrice.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
-                          </span>
-                          <span className="text-gray-500 truncate">{ex.reason}</span>
-                        </div>
-                      )),
-                    )}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  No excluded source data available — the API does not currently include exclusion metadata for this pair.
-                </p>
-              )
-            ) : (
-              <p className="text-sm text-gray-500">
-                Enable the toggle above to audit which oracle sources were excluded by the aggregator and why.
-              </p>
-            )}
-          </div>
-
           {activeTab === 'proof' ? (
             <ErrorBoundary boundaryId="price-proof" featureLabel="Price Proof">
               <Suspense
@@ -495,9 +250,7 @@ export function PriceDetail() {
               {(() => {
                 const pairHistory = attributionHistory.get(decodedPair) ?? []
                 const latest = pairHistory[pairHistory.length - 1]
-                return latest ? (
-                  <MoveAttributionPanel latest={latest} history={pairHistory} />
-                ) : null
+                return latest ? <MoveAttributionPanel latest={latest} history={pairHistory} /> : null
               })()}
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
@@ -510,15 +263,13 @@ export function PriceDetail() {
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Benchmark comparison</p>
                 <div className="flex flex-wrap items-center gap-4 mb-4">
+                  {/* Benchmark pair picker */}
                   <div className="flex items-center gap-2">
-                    <label
-                      htmlFor="benchmark-pair-select-tab"
-                      className="text-sm text-gray-400 whitespace-nowrap"
-                    >
+                    <label htmlFor="benchmark-pair-select" className="text-sm text-gray-400 whitespace-nowrap">
                       Compare with
                     </label>
                     <select
-                      id="benchmark-pair-select-tab"
+                      id="benchmark-pair-select"
                       value={benchmarkPair ?? ''}
                       onChange={(e) => setBenchmarkPair(e.target.value === '' ? null : e.target.value)}
                       className="bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 cursor-pointer"
@@ -532,6 +283,8 @@ export function PriceDetail() {
                       ))}
                     </select>
                   </div>
+
+                  {/* Normalized view toggle — only relevant when a benchmark is active */}
                   {benchmarkPair !== null && (
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
@@ -545,8 +298,10 @@ export function PriceDetail() {
                     </label>
                   )}
                 </div>
-                {benchmarkPair !== null && (
-                  benchmarkHistoryLoading && benchmarkHistory.length === 0 ? (
+
+                {/* Multi-pair overlay chart shown when a benchmark is selected */}
+                {benchmarkPair !== null &&
+                  (benchmarkHistoryLoading && benchmarkHistory.length === 0 ? (
                     <div
                       className="h-80 rounded-lg bg-gray-800/60 animate-pulse"
                       role="status"
@@ -562,6 +317,7 @@ export function PriceDetail() {
                       benchmarkPair={benchmarkPair}
                       normalizedMode={normalizedMode}
                       onExport={(rows: ExportRow[]) => {
+                        // Build CSV and trigger download
                         if (rows.length === 0) return
                         const pairsInExport = Object.keys(rows[0]).filter((k) => k !== 'timestamp')
                         const header = ['timestamp', ...pairsInExport].join(',')
@@ -578,13 +334,23 @@ export function PriceDetail() {
                         URL.revokeObjectURL(url)
                       }}
                     />
-                  )
-                )}
+                  ))}
+
                 {benchmarkPair === null && (
                   <p className="text-sm text-gray-500">
                     Select a pair above to compare it against {decodedPair} on the same chart.
                   </p>
                 )}
+              </div>
+
+              {/* Off-chain vs on-chain price comparison */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">On-Chain Comparison</p>
+                <OnChainComparisonPanel
+                  pair={price.assetPair}
+                  offChainPrice={price.price}
+                  thresholdPercent={preferences.onChainDivergenceThresholdPercent}
+                />
               </div>
 
               {/* Paginated History chart */}
@@ -633,6 +399,85 @@ export function PriceDetail() {
                       />
                     </VisibleSuspense>
                   </ErrorBoundary>
+                )}
+              </div>
+
+              {/* #463 – Anomaly detection banner */}
+              {history.length > 0 && <AnomalyBanner history={history} pair={decodedPair} />}
+
+              {/* #462 – Confidence & deviation history charts */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
+                  Confidence &amp; Deviation History
+                </p>
+                {history.length === 0 ? (
+                  <div
+                    className="flex items-center justify-center h-40 rounded-lg border border-dashed border-gray-700 text-sm text-gray-500"
+                    role="status"
+                  >
+                    No history data available
+                  </div>
+                ) : (
+                  <ConfidenceDeviationChart history={history} pair={decodedPair} />
+                )}
+              </div>
+
+              {/* #461 – Excluded sources toggle */}
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider">Excluded Source Ticks</p>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={preferences.showExcludedSources}
+                      onChange={(e) => updatePreference('showExcludedSources', e.target.checked)}
+                      className="w-4 h-4 rounded bg-gray-800 border-gray-600 text-cyan-500 focus:ring-cyan-500/50 cursor-pointer"
+                      aria-label="Show excluded source ticks on price chart"
+                    />
+                    <span className="text-sm text-gray-400">Show excluded sources</span>
+                  </label>
+                </div>
+                {preferences.showExcludedSources ? (
+                  history.some((e) => e.excludedSources && e.excludedSources.length > 0) ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {history
+                        .filter((e) => e.excludedSources && e.excludedSources.length > 0)
+                        .slice(-20)
+                        .reverse()
+                        .map((e) =>
+                          e.excludedSources!.map((ex) => (
+                            <div
+                              key={`${e.timestamp}-${ex.source}`}
+                              className="flex items-center gap-3 text-xs px-3 py-2 rounded-lg bg-gray-800/60 border border-gray-700/50"
+                            >
+                              <span className="font-mono text-gray-500 shrink-0">
+                                {new Date(e.timestamp).toLocaleTimeString()}
+                              </span>
+                              <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300 font-medium border border-gray-600 shrink-0">
+                                {ex.source}
+                              </span>
+                              <span className="font-mono text-amber-400 shrink-0">
+                                $
+                                {ex.reportedPrice.toLocaleString(undefined, {
+                                  minimumFractionDigits: 4,
+                                  maximumFractionDigits: 4,
+                                })}
+                              </span>
+                              <span className="text-gray-500 truncate">{ex.reason}</span>
+                            </div>
+                          )),
+                        )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      No excluded source data available — the API does not currently include exclusion metadata for this
+                      pair.
+                    </p>
+                  )
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Enable the toggle above to audit which oracle sources were excluded by the aggregator and why.
+                  </p>
                 )}
               </div>
 

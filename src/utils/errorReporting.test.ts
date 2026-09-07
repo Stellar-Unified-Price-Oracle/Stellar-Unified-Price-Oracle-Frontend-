@@ -199,12 +199,14 @@ describe('Error Reporting', () => {
 
     it('measures duration', async () => {
       const fn = vi.fn(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10))
+        await new Promise((resolve) => setTimeout(resolve, 20))
         return 'result'
       })
 
       const { duration } = await trackAsyncOperation('test-op', fn)
 
+      // Generous margin: under parallel CI load a 20ms sleep can still be
+      // reported marginally under 20ms, so only assert it took a real pause.
       expect(duration).toBeGreaterThanOrEqual(10)
     })
 

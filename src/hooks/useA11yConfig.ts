@@ -212,8 +212,6 @@ export function setA11yConfig(config: Partial<A11yConfig>): void {
 export function useA11yConfig() {
   const presetRef = useRef<'default' | 'low-frequency' | 'high-frequency' | 'custom'>('default')
 
-  const config = getA11yConfig()
-
   const setConfig = useCallback((newConfig: Partial<A11yConfig>, preset?: string) => {
     setA11yConfig(newConfig)
     if (preset) {
@@ -237,9 +235,16 @@ export function useA11yConfig() {
   }, [])
 
   return {
-    config,
+    // Live getters: the config lives in module state (shared with the announcer
+    // hooks via setA11yConfig), so reads always reflect the latest value —
+    // including reads immediately after setConfig/setPreset.
+    get config() {
+      return getA11yConfig()
+    },
     setConfig,
-    preset: presetRef.current,
+    get preset() {
+      return presetRef.current
+    },
     setPreset,
   }
 }

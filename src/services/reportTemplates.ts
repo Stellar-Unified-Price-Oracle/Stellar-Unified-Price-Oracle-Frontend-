@@ -1,6 +1,6 @@
+import { jsPDF } from 'jspdf'
 import type { PriceData, SourceHealth, AlertHistoryEntry } from '../types'
 import { toCsv, alertHistoryToCsvRows } from '../utils/export'
-import { jsPDF } from 'jspdf'
 
 // ---------------------------------------------------------------------------
 // Template registry
@@ -72,9 +72,7 @@ function alertDigestCsv(data: ReportData): string {
   const { rows } = alertHistoryToCsvRows(entries)
   // Restrict to the four columns required by the spec
   const specHeaders = ['assetPair', 'triggeredAt', 'price', 'condition']
-  const filteredRows = rows.map((r) =>
-    Object.fromEntries(specHeaders.map((h) => [h, r[h]])),
-  )
+  const filteredRows = rows.map((r) => Object.fromEntries(specHeaders.map((h) => [h, r[h]])))
   return toCsv(filteredRows, specHeaders)
 }
 
@@ -170,9 +168,7 @@ function buildPdfTableData(
       const entries = data.alertHistory ?? []
       const { rows } = alertHistoryToCsvRows(entries)
       const specHeaders = ['assetPair', 'triggeredAt', 'price', 'condition']
-      const filteredRows = rows.map((r) =>
-        Object.fromEntries(specHeaders.map((h) => [h, r[h]])),
-      )
+      const filteredRows = rows.map((r) => Object.fromEntries(specHeaders.map((h) => [h, r[h]])))
       return { headers: specHeaders, rows: filteredRows }
     }
   }

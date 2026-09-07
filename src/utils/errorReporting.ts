@@ -61,17 +61,8 @@ const MAX_STORED_ERRORS = 50
  * Report an error with optional context.
  * Returns the Sentry event ID for tracking.
  */
-export function reportError(
-  error: Error | string,
-  options: ErrorReportOptions = {},
-): string {
-  const {
-    context = {},
-    tags = {},
-    level = 'error',
-    shouldThrow = false,
-    notifyUser = false,
-  } = options
+export function reportError(error: Error | string, options: ErrorReportOptions = {}): string {
+  const { context = {}, tags = {}, level = 'error', shouldThrow = false, notifyUser = false } = options
 
   const errorMessage = error instanceof Error ? error.message : String(error)
   const stack = error instanceof Error ? error.stack : undefined
@@ -96,11 +87,7 @@ export function reportError(
   }
 
   // Add breadcrumb
-  addSentryBreadcrumb(
-    `Error: ${errorMessage}`,
-    { ...context, tags, level },
-    level === 'fatal' ? 'error' : level,
-  )
+  addSentryBreadcrumb(`Error: ${errorMessage}`, { ...context, tags, level }, level === 'fatal' ? 'error' : level)
 
   // Report to Sentry
   const eventId = captureError(error, {
@@ -167,10 +154,7 @@ export function withSyncErrorHandler<T, A extends unknown[]>(
  * Create a context for a specific feature or component.
  * All errors reported within this context will include the provided metadata.
  */
-export function createErrorContext(
-  componentName: string,
-  metadata: Record<string, unknown> = {},
-) {
+export function createErrorContext(componentName: string, metadata: Record<string, unknown> = {}) {
   return {
     component: componentName,
     ...metadata,
@@ -327,8 +311,10 @@ export function reportIndexedDBError(
 ): string {
   return reportError(error, {
     context: {
-      operation: 'indexeddb',
       ...details,
+      // The caller's `operation` is a low-level IDB action (read/write/delete);
+      // the domain marker must win so the report is grouped under `indexeddb`.
+      operation: 'indexeddb',
     },
     tags: {
       type: 'indexeddb-error',
@@ -340,11 +326,7 @@ export function reportIndexedDBError(
 /**
  * Report a performance issue.
  */
-export function reportPerformanceIssue(
-  name: string,
-  duration: number,
-  threshold: number,
-): void {
+export function reportPerformanceIssue(name: string, duration: number, threshold: number): void {
   if (duration > threshold) {
     captureMessage(`Performance issue: ${name} took ${duration.toFixed(2)}ms (threshold: ${threshold}ms)`, 'warning')
 

@@ -1,6 +1,6 @@
 import { config } from '../config'
 import { showApiErrorToast } from '../context/ToastContext'
-import type { PriceData, PriceHistoryResponse, RateLimitInfo } from '../types'
+import type { PriceData, PriceHistoryResponse, PriceProof, RateLimitInfo } from '../types'
 import type { OnChainPriceRecord, OracleNetwork } from '../types/onchain'
 import { fetchWithRetry } from './retry'
 import {
@@ -9,9 +9,10 @@ import {
   BatchHistoryResponseSchema,
   HealthSchema,
   OnChainPriceRecordSchema,
+  PriceProofSchema,
 } from './schemas'
 import { validate } from './validate'
-import { getApiVersionInfo, getAcceptVersionHeader } from './version'
+import { getAcceptVersionHeader } from './version'
 import { circuitBreaker, circuitKeyForPath, CircuitOpenError } from './circuitBreaker'
 
 /** Categorical classification of an {@link ApiError}, derived from the HTTP status. */
@@ -137,8 +138,7 @@ async function request<T>(
 
   // Include the Accept-Version header on every request so the server can
   // route to the appropriate handler version or return a version error.
-  const versionInfo = getApiVersionInfo()
-  const acceptVersion = getAcceptVersionHeader(versionInfo?.serverVersion)
+  const acceptVersion = getAcceptVersionHeader()
 
   try {
     const res = await fetchWithRetry(url, {

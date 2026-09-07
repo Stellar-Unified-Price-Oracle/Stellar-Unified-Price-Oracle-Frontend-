@@ -56,6 +56,10 @@ export const STORAGE_KEYS = {
   featureFlagBucket: 'feature-flag-bucket',
   /** Ids of alert health flags (#493) the user has dismissed. No PII. */
   alertHealthDismissed: 'alert-health-dismissed',
+  /** Alert sound preferences (#308): enabled flag + 0–1 volume. No PII. */
+  soundPreferences: 'sound-preferences',
+  /** Recently-used UI language codes, newest first (#373). No PII. */
+  recentLanguages: 'recent-languages',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
@@ -236,6 +240,7 @@ function formatBytes(bytes: number): string {
  * | stellar-oracle-theme   | 'dark' or 'light'. No PII.                                        |
  * | feature-flag-bucket    | Random per-browser bucket id for sticky flag rollout. No PII.     |
  * | alert-health-dismissed | Ids of dismissed alert health flags (#493). No PII.                |
+ * | sound-preferences      | Alert sound enabled flag + 0–1 volume (#308). No PII.             |
  *
  * ## IndexedDB stores (stellar-oracle DB)
  * | Store       | TTL      | Contents                                               |
@@ -259,8 +264,7 @@ export const STORAGE_INVENTORY = Object.freeze({
     },
     {
       key: STORAGE_KEYS.notificationChannels,
-      description:
-        'Channel routing config. Webhook URL stored; signing secret is NOT persisted.',
+      description: 'Channel routing config. Webhook URL stored; signing secret is NOT persisted.',
     },
     {
       key: STORAGE_KEYS.analyticsOptOut,
@@ -278,6 +282,10 @@ export const STORAGE_INVENTORY = Object.freeze({
       key: STORAGE_KEYS.alertHealthDismissed,
       description: 'Ids of alert health flags the user has dismissed. No PII.',
     },
+    {
+      key: STORAGE_KEYS.soundPreferences,
+      description: 'Alert sound enabled flag + 0–1 volume. No PII.',
+    },
   ],
   indexedDB: [
     {
@@ -293,7 +301,7 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       store: 'preferences' as const,
       ttlMs: Infinity,
-      description: "User preferences. No expiry; cleared by clearAllData().",
+      description: 'User preferences. No expiry; cleared by clearAllData().',
     },
   ],
 })

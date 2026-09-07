@@ -165,9 +165,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
         {/* ── Header ── */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-800">
           <div>
-            <h2 className="text-base font-semibold text-gray-100">
-              Reliability Leaderboard
-            </h2>
+            <h2 className="text-base font-semibold text-gray-100">Reliability Leaderboard</h2>
             <p className="text-xs text-gray-500 mt-0.5">
               Ranked by reliability score & uptime over the selected window
             </p>
@@ -188,9 +186,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                   aria-pressed={window === w}
                   className={[
                     'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-                    window === w
-                      ? 'bg-gray-700 text-gray-100'
-                      : 'text-gray-400 hover:text-gray-200',
+                    window === w ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200',
                   ].join(' ')}
                 >
                   {WINDOW_LABELS[w]}
@@ -206,13 +202,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                 disabled={metrics.length === 0}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -258,25 +248,17 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
             <table className="w-full text-sm" aria-label="Source reliability metrics">
               <thead>
                 <tr className="border-b border-gray-800">
-                  {[
-                    'Rank',
-                    'Source',
-                    'Score',
-                    'Status',
-                    'Uptime %',
-                    'Mean Latency (ms)',
-                    'Staleness',
-                    'Trend',
-                    '',
-                  ].map((col) => (
-                    <th
-                      key={col}
-                      scope="col"
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                    >
-                      {col}
-                    </th>
-                  ))}
+                  {['Rank', 'Source', 'Score', 'Status', 'Uptime %', 'Mean Latency (ms)', 'Staleness', 'Trend'].map(
+                    (col) => (
+                      <th
+                        key={col}
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                      >
+                        {col}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -292,9 +274,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                       className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
                     >
                       {/* Rank */}
-                      <td className="px-4 py-3 text-gray-500 font-mono tabular-nums">
-                        {idx + 1}
-                      </td>
+                      <td className="px-4 py-3 text-gray-500 font-mono tabular-nums">{idx + 1}</td>
 
                       {/* Source */}
                       <td className="px-4 py-3">
@@ -342,9 +322,11 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
 
                       {/* Mean Latency */}
                       <td className="px-4 py-3 text-gray-300 tabular-nums font-mono">
-                        {metric.meanLatencyMs !== null
-                          ? `${Math.round(metric.meanLatencyMs)} ms`
-                          : <span className="text-gray-600">—</span>}
+                        {metric.meanLatencyMs !== null ? (
+                          `${Math.round(metric.meanLatencyMs)} ms`
+                        ) : (
+                          <span className="text-gray-600">—</span>
+                        )}
                       </td>
 
                       {/* Staleness */}
@@ -378,11 +360,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
 
       {/* ── Drilldown Modal ── */}
       {drilldownSource !== null && (
-        <SourceHistoryDrilldown
-          source={drilldownSource}
-          history={drilldownHistory}
-          onClose={handleCloseDrilldown}
-        />
+        <SourceHistoryDrilldown source={drilldownSource} history={drilldownHistory} onClose={handleCloseDrilldown} />
       )}
     </>
   )
@@ -402,20 +380,12 @@ interface UptimeBarProps {
 
 const UptimeBar = memo(function UptimeBar({ percent }: UptimeBarProps): ReactElement {
   const clamped = Math.min(100, Math.max(0, percent))
-  const color =
-    clamped >= 99
-      ? 'bg-green-500'
-      : clamped >= 90
-        ? 'bg-yellow-500'
-        : 'bg-red-500'
+  const color = clamped >= 99 ? 'bg-green-500' : clamped >= 90 ? 'bg-yellow-500' : 'bg-red-500'
 
   return (
     <div className="flex items-center gap-2">
       <div className="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full ${color}`}
-          style={{ width: `${clamped}%` }}
-        />
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${clamped}%` }} />
       </div>
       <span className="text-gray-300 text-xs">{clamped.toFixed(1)}%</span>
     </div>

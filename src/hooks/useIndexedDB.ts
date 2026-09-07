@@ -90,10 +90,11 @@ function openDB(): Promise<IDBDatabase> {
       const db = req.result
       const transaction = req.transaction!
       try {
-        // Run migrations via the migration system
-        const runner = getMigrationRunner()
-        const currentVersion = await runner.getCurrentVersion(db)
-        await runner.run(db, currentVersion, DB_VERSION)
+        // Schema migrations run inside the versionchange transaction — creating
+        // object stores/indexes is only legal while it is active, and doing so
+        // here guarantees the migration records and schema changes commit (or
+        // abort) atomically.
+        await getMigrationRunner().run(db, transaction, DB_VERSION)
       } catch (error) {
         transaction.abort()
         reject(error)
@@ -398,7 +399,9 @@ export const idbCache = {
       const db = await openDB()
       const entry = await idbGet<T>(db, store, key)
       if (!entry) return null
-      if (Date.now() - entry.storedAt > ttl) {
+      // `>=` (not `>`) so a zero TTL expires even when the write and read land
+      // in the same millisecond.
+      if (Date.now() - entry.storedAt >= ttl) {
         await idbDelete(db, store, key)
         notifySubscribers(store, key, null)
         return null

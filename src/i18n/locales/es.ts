@@ -180,7 +180,8 @@ const es = {
       cooldown5min: '5 minutos',
       cooldown15min: '15 minutos',
       cooldown1hr: '1 hora',
-      cooldownDesc: 'Tiempo mínimo entre reactivaciones, para evitar spam de notificaciones cuando el precio oscila alrededor del umbral.',
+      cooldownDesc:
+        'Tiempo mínimo entre reactivaciones, para evitar spam de notificaciones cuando el precio oscila alrededor del umbral.',
     },
     actions: {
       delete: 'Eliminar alerta',
@@ -230,6 +231,27 @@ const es = {
       channel_discord: 'Discord',
       error_invalidDelay: 'Paso {{step}}: el retraso debe ser un número de minutos no negativo',
       error_outOfOrder: 'Paso {{step}}: el retraso no puede ser anterior al del paso previo',
+    },
+    // ── Price-level retest detection (#491) ──────────────────────────────
+    retest: {
+      title: 'Notificar en retest',
+      description: 'También se dispara si el precio vuelve a entrar en este nivel superado después de salir de él.',
+    },
+    // ── Alert simulation (#490) ──────────────────────────────────────────
+    simulate: {
+      title: 'Probar alerta',
+      run: 'Ejecutar simulación',
+      description:
+        'Reproduce una serie de precios sintética con la misma lógica de evaluación que en vivo, marcando exactamente dónde se dispararía esta alerta.',
+      idle: 'Ejecuta una simulación para ver cómo se comporta esta alerta sin tocar tu configuración en vivo.',
+    },
+    // ── Per-alert channel routing (#492) ──────────────────────────────────
+    channels: {
+      title: 'Notificar mediante',
+      description:
+        'Elige dónde se entrega esta alerta. Déjalo vacío para usar los canales configurados en tus ajustes de notificación.',
+      useGlobal: 'Usar valores globales por defecto',
+      noneConfigured: 'No hay canales configurados: configura los canales en Ajustes de notificación primero.',
     },
     presets: {
       title: 'Empezar desde una plantilla',
@@ -285,6 +307,16 @@ const es = {
       snoozed: 'Silenciada',
       fired: 'Disparada',
     },
+    // Alert health checks (#493)
+    health: {
+      badge: 'Puede que nunca se dispare',
+      review: 'Revisar',
+      dismiss: 'Descartar',
+      title: 'Comprobación de salud',
+      reasonNeverSatisfiable: 'Este umbral nunca se ha alcanzado en el historial observado.',
+      reasonInsufficientHistory: 'Todavía no hay suficiente historial de precios para juzgar esta condición.',
+      suggestion: 'Los datos observados sugieren {{value}} en su lugar.',
+    },
     fired: {
       at: 'Disparada el {{time}}',
       reEnable: 'Rehabilitar alerta',
@@ -320,6 +352,13 @@ const es = {
       progress: '{{fired}} de {{total}} pasos disparados',
       historyBadge: 'Escalado · {{channel}}',
     },
+    // ── Price-level retest detection (#491) ───────────────────────────────
+    retest: {
+      inBreach: 'En el nivel',
+      exited: 'Fuera del nivel',
+      idle: 'Monitorizando',
+      historyBadge: 'Retest',
+    },
   },
 
   alertPresets: {
@@ -330,7 +369,8 @@ const es = {
     },
     breakout: {
       name: 'Ruptura',
-      description: 'Impulso confirmado en dos ventanas: un fuerte movimiento de 1 hora que aún acelera en los últimos 15 minutos.',
+      description:
+        'Impulso confirmado en dos ventanas: un fuerte movimiento de 1 hora que aún acelera en los últimos 15 minutos.',
       useCase: 'Detecta un movimiento que es más que ruido: la tendencia está confirmada, no solo empezando.',
     },
     pegBreak: {
@@ -350,14 +390,10 @@ const es = {
     ariaLabel: 'WebSocket {{status}}',
     rateLimitedAriaLabel: 'API con límite de tasa',
     tooltips: {
-      connected:
-        'WebSocket conectado. Las actualizaciones de precios se transmiten en tiempo real.',
-      connecting:
-        'Estableciendo conexión WebSocket con el servidor de feeds de precios.',
-      reconnecting:
-        'Se perdió la conexión WebSocket. Intentando reconectar automáticamente.',
-      disconnected:
-        'WebSocket sin conexión. Los precios se actualizan sólo mediante sondeo REST.',
+      connected: 'WebSocket conectado. Las actualizaciones de precios se transmiten en tiempo real.',
+      connecting: 'Estableciendo conexión WebSocket con el servidor de feeds de precios.',
+      reconnecting: 'Se perdió la conexión WebSocket. Intentando reconectar automáticamente.',
+      disconnected: 'WebSocket sin conexión. Los precios se actualizan sólo mediante sondeo REST.',
       rateLimited:
         'La API está temporalmente limitada. Las solicitudes se reanudarán después del período de reintento.',
     },
@@ -408,6 +444,34 @@ const es = {
       title: 'No hay datos de precio disponibles',
       detail: 'No hay datos de precio disponibles para este par.',
     },
+    tabs: {
+      overview: 'Resumen',
+      proof: 'Prueba',
+    },
+    proof: {
+      loadingLabel: 'Cargando prueba en cadena',
+      historicalSelectorLabel: 'Verificar registro',
+      latestOption: 'Más reciente',
+      unsupported: {
+        title: 'Prueba en cadena no disponible',
+        detail:
+          'Este par de activos aún no tiene una representación canónica en cadena de Stellar, por lo que no hay ningún registro de oráculo Soroban que verificar. Consulta la hoja de ruta del oráculo en cadena para saber qué se necesita para llevar un feed a la cadena.',
+      },
+      error: 'Error al cargar la prueba en cadena: {{message}}',
+      retry: 'Reintentar',
+      aggregateSection: 'Compromiso agregado',
+      aggregateSignature: 'Firma agregada',
+      contractId: 'Contrato',
+      transaction: 'Transacción',
+      ledger: 'Ledger #{{sequence}}',
+      viewOnExplorer: 'Ver en el explorador',
+      contributionsSection: 'Contribuciones de fuentes',
+      contributionsCount: '{{count}} fuentes contribuyeron a este registro',
+      copy: 'Copiar',
+      copyProofPayload: 'Copiar carga útil de la prueba',
+      copied: 'Copiado al portapapeles',
+      copyFailed: 'Error al copiar al portapapeles',
+    },
   },
 
   csv: {
@@ -430,6 +494,20 @@ const es = {
     ariaLabel: 'Exportar datos',
     exportAs: 'Exportar como {{format}}',
     langSelector: 'Lenguaje del fragmento de código',
+    columns: {
+      button: 'Columnas',
+      title: 'Seleccionar columnas de exportación',
+      preset: {
+        minimal: 'Mínimo',
+        standard: 'Estándar',
+        full: 'Completo',
+      },
+      search: 'Filtrar columnas…',
+      available: 'Disponibles',
+      noMatches: 'No hay columnas que coincidan',
+      selectedOrder: 'Seleccionadas (arrastra para reordenar)',
+      preview: 'Vista previa',
+    },
   },
 
   settings: {
@@ -477,11 +555,11 @@ const es = {
 
   apiDocs: {
     title: 'Documentación de la API',
-    subtitle:
-      'Endpoints REST y WebSocket expuestos por el Agregador Oracle Unificado de Precios de Stellar.',
+    subtitle: 'Endpoints REST y WebSocket expuestos por el Agregador Oracle Unificado de Precios de Stellar.',
     openSpec: 'Abrir especificación OpenAPI',
     baseUrl: 'URL base:',
     ws: 'WS:',
+    cacheStatus: 'Caché:',
     tryItOut: 'Probar',
     sending: 'Enviando…',
     copy: 'Copiar',
@@ -540,6 +618,22 @@ const es = {
   },
 
   // ── Touch gestures / Pull-to-refresh (#293) ───────────────────────────────
+  wallet: {
+    connect: 'Conectar billetera',
+    connecting: 'Conectando…',
+    disconnect: 'Desconectar',
+    installFreighter: 'Instalar Freighter',
+    network: 'Red',
+    address: 'Dirección',
+    balance: 'Saldo',
+    balanceUnfunded: 'Sin fondos',
+    ariaConnected: 'Billetera conectada: {{address}}',
+    gate: {
+      title: 'Billetera requerida',
+      description:
+        'Conecta una billetera Stellar para usar funciones en cadena, como implementar y publicar en el contrato del oráculo.',
+    },
+  },
 } as const
 
 export default es

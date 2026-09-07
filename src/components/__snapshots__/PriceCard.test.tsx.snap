@@ -29,8 +29,25 @@ exports[`snapshots > default 1`] = `
   <div
     class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
   >
-    <span>
-      Updated 27h ago
+    <span
+      class="relative inline-flex items-center"
+    >
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        tabindex="0"
+      >
+        <span
+          aria-label="Data freshness: updated 27h ago"
+          class="inline-flex items-center gap-1.5"
+          role="status"
+        >
+          <span
+            aria-hidden="true"
+            class="w-1.5 h-1.5 rounded-full bg-red-500"
+          />
+          27h ago
+        </span>
+      </span>
     </span>
     <span
       class="relative inline-flex items-center"
@@ -58,8 +75,13 @@ exports[`snapshots > default 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 ring-1 ring-cyan-400"
         >
+          <span
+            aria-hidden="true"
+          >
+            ● 
+          </span>
           chainlink
         </span>
       </span>
@@ -72,7 +94,7 @@ exports[`snapshots > default 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 "
         >
           redstone
         </span>
@@ -136,8 +158,25 @@ exports[`snapshots > hasAlert 1`] = `
   <div
     class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
   >
-    <span>
-      Updated 27h ago
+    <span
+      class="relative inline-flex items-center"
+    >
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        tabindex="0"
+      >
+        <span
+          aria-label="Data freshness: updated 27h ago"
+          class="inline-flex items-center gap-1.5"
+          role="status"
+        >
+          <span
+            aria-hidden="true"
+            class="w-1.5 h-1.5 rounded-full bg-red-500"
+          />
+          27h ago
+        </span>
+      </span>
     </span>
     <span
       class="relative inline-flex items-center"
@@ -165,8 +204,13 @@ exports[`snapshots > hasAlert 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 ring-1 ring-cyan-400"
         >
+          <span
+            aria-hidden="true"
+          >
+            ● 
+          </span>
           chainlink
         </span>
       </span>
@@ -179,7 +223,7 @@ exports[`snapshots > hasAlert 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 "
         >
           redstone
         </span>
@@ -243,8 +287,25 @@ exports[`snapshots > isLive 1`] = `
   <div
     class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
   >
-    <span>
-      Updated 27h ago
+    <span
+      class="relative inline-flex items-center"
+    >
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        tabindex="0"
+      >
+        <span
+          aria-label="Data freshness: updated 27h ago"
+          class="inline-flex items-center gap-1.5"
+          role="status"
+        >
+          <span
+            aria-hidden="true"
+            class="w-1.5 h-1.5 rounded-full bg-red-500"
+          />
+          27h ago
+        </span>
+      </span>
     </span>
     <span
       class="relative inline-flex items-center"
@@ -272,8 +333,13 @@ exports[`snapshots > isLive 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 ring-1 ring-cyan-400"
         >
+          <span
+            aria-hidden="true"
+          >
+            ● 
+          </span>
           chainlink
         </span>
       </span>
@@ -286,7 +352,7 @@ exports[`snapshots > isLive 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 "
         >
           redstone
         </span>
@@ -350,8 +416,25 @@ exports[`snapshots > isStale 1`] = `
   <div
     class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3"
   >
-    <span>
-      Updated 27h ago
+    <span
+      class="relative inline-flex items-center"
+    >
+      <span
+        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+        tabindex="0"
+      >
+        <span
+          aria-label="Data freshness: updated 27h ago"
+          class="inline-flex items-center gap-1.5"
+          role="status"
+        >
+          <span
+            aria-hidden="true"
+            class="w-1.5 h-1.5 rounded-full bg-red-500"
+          />
+          27h ago
+        </span>
+      </span>
     </span>
     <span
       class="relative inline-flex items-center"
@@ -379,8 +462,13 @@ exports[`snapshots > isStale 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 ring-1 ring-cyan-400"
         >
+          <span
+            aria-hidden="true"
+          >
+            ● 
+          </span>
           chainlink
         </span>
       </span>
@@ -393,7 +481,7 @@ exports[`snapshots > isStale 1`] = `
         tabindex="0"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
+          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 "
         >
           redstone
         </span>

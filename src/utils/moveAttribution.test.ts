@@ -1,11 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import {
-  computeAttribution,
-  appendToRingBuffer,
-  type SourcePriceState,
-} from './moveAttribution'
 import { ATTRIBUTION_RING_BUFFER_SIZE } from '../types'
 import type { WsPriceUpdate, MoveAttribution } from '../types'
+import { computeAttribution, appendToRingBuffer, type SourcePriceState } from './moveAttribution'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -199,10 +195,7 @@ describe('appendToRingBuffer', () => {
   })
 
   it('evicts the oldest entry when the buffer is full', () => {
-    const full: MoveAttribution[] = Array.from(
-      { length: ATTRIBUTION_RING_BUFFER_SIZE },
-      (_, i) => makeRecord(i),
-    )
+    const full: MoveAttribution[] = Array.from({ length: ATTRIBUTION_RING_BUFFER_SIZE }, (_, i) => makeRecord(i))
     const newRecord = makeRecord(9999)
     const result = appendToRingBuffer(full, newRecord)
 

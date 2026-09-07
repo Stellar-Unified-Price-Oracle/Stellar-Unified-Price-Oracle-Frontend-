@@ -27,9 +27,7 @@ export function validate<S extends ZodTypeAny>(schema: S, data: unknown): z.infe
     return result.data
   }
 
-  const message = result.error.issues
-    .map((i: { path: (string | number)[]; message: string }) => `${i.path.join('.')}: ${i.message}`)
-    .join('; ')
+  const message = result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
   console.warn(`[API validation] Schema mismatch — ${message}`)
   // Return data anyway to avoid breaking the UI on unexpected server responses
   return data as z.infer<S>

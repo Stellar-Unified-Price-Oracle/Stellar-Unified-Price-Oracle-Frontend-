@@ -53,10 +53,16 @@ export const DATA_PREFERENCE_KEYS = [
   'staleThresholdMinutes',
   'sourcePriority',
   'onChainDivergenceThresholdPercent',
+  'backtestPresets',
 ] as const
 export const LAYOUT_PREFERENCE_KEYS = ['dashboardView', 'cardOrder'] as const
 export const ACCESSIBILITY_PREFERENCE_KEYS = ['reducedMotion', 'highContrast', 'largeText', 'rtlEnabled'] as const
-export const PRIVACY_PREFERENCE_KEYS = ['analyticsOptOut', 'chartTimezone', 'formatLocale', 'showExcludedSources'] as const
+export const PRIVACY_PREFERENCE_KEYS = [
+  'analyticsOptOut',
+  'chartTimezone',
+  'formatLocale',
+  'showExcludedSources',
+] as const
 
 /** Handles refresh cadence, chart window, and staleness threshold. */
 export const dataPreferencesReducer = createSliceReducer(DATA_PREFERENCE_KEYS)

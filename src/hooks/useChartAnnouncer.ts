@@ -73,7 +73,7 @@ export function useChartAnnouncer(
     deduplicationMs: (config.deduplicationMs ?? DEFAULT_CONFIG.deduplicationMs) * 2,
   })
 
-  const prevRangeRef = useRef<PriceRange | undefined>()
+  const prevRangeRef = useRef<PriceRange | undefined>(undefined)
   const lastAnnouncedRef = useRef<number>(0)
 
   const mergedConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [config])
@@ -146,12 +146,8 @@ function buildChartAnnouncement(range: PriceRange, config: ChartAnnouncerConfig)
   // Open and close (for candle charts)
   if (range.openPrice !== undefined && range.closePrice !== undefined) {
     const direction = range.closePrice >= range.openPrice ? 'up' : 'down'
-    const change = Math.abs(
-      ((range.closePrice - range.openPrice) / range.openPrice) * 100,
-    )
-    parts.push(
-      `Closed ${direction} ${change.toFixed(2)}% from open of ${formatPrice(range.openPrice)}`,
-    )
+    const change = Math.abs(((range.closePrice - range.openPrice) / range.openPrice) * 100)
+    parts.push(`Closed ${direction} ${change.toFixed(2)}% from open of ${formatPrice(range.openPrice)}`)
   }
 
   return parts.join('. ')
@@ -195,26 +191,17 @@ export function useChartDataTableAnnouncer(
 
     if (prevCount === 0 && count > 0) {
       // Initial data load
-      announce(
-        `Chart data table loaded with ${count} data point${count !== 1 ? 's' : ''}`,
-        'polite',
-      )
+      announce(`Chart data table loaded with ${count} data point${count !== 1 ? 's' : ''}`, 'polite')
       lastAnnouncedRef.current = now
     } else if (count > prevCount) {
       // Data added
       const added = count - prevCount
-      announce(
-        `${added} new data point${added !== 1 ? 's' : ''} added to chart`,
-        'polite',
-      )
+      announce(`${added} new data point${added !== 1 ? 's' : ''} added to chart`, 'polite')
       lastAnnouncedRef.current = now
     } else if (count < prevCount) {
       // Data removed (filtering, time range change)
       const removed = prevCount - count
-      announce(
-        `${removed} data point${removed !== 1 ? 's' : ''} removed from chart`,
-        'polite',
-      )
+      announce(`${removed} data point${removed !== 1 ? 's' : ''} removed from chart`, 'polite')
       lastAnnouncedRef.current = now
     }
 
@@ -254,7 +241,7 @@ export function useChartStatisticsAnnouncer(
     ...config,
   })
 
-  const prevStatsRef = useRef<ChartStatistics | undefined>()
+  const prevStatsRef = useRef<ChartStatistics | undefined>(undefined)
 
   useEffect(() => {
     if (!stats) return

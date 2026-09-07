@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   MigrationError,
   MigrationRunner,
@@ -21,6 +21,32 @@ function deleteTestDB(name: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.deleteDatabase(name)
     req.onsuccess = () => resolve()
+    req.onerror = () => reject(req.error)
+  })
+}
+
+/**
+ * Open a database at `version`, running the migration runner from inside the
+ * versionchange transaction — the only place schema changes are legal. This
+ * mirrors how src/hooks/useIndexedDB.ts opens the production database.
+ */
+function openWithMigrations(
+  name: string,
+  version: number,
+  runner: MigrationRunner,
+): Promise<{ db: IDBDatabase; applied: number }> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(name, version)
+    let applied = 0
+    req.onupgradeneeded = async () => {
+      try {
+        applied = await runner.run(req.result, req.transaction!, version)
+      } catch (error) {
+        req.transaction!.abort()
+        reject(error as Error)
+      }
+    }
+    req.onsuccess = () => resolve({ db: req.result, applied })
     req.onerror = () => reject(req.error)
   })
 }
@@ -110,28 +136,28 @@ describe('MigrationRegistry', () => {
 })
 
 describe('MigrationRunner', () => {
-  let runner: MigrationRunner
-  let db: IDBDatabase
+  let db: IDBDatabase | null = null
 
   beforeEach(async () => {
     await deleteTestDB('migration-test')
-    runner = createMigrationRunner(createMigrationRegistry())
   })
 
   afterEach(async () => {
     if (db) db.close()
+    db = null
     await deleteTestDB('migration-test')
   })
 
   it('reports 0 version for new database', async () => {
+    const testRunner = createMigrationRunner(createMigrationRegistry())
     db = await createTestDB('migration-test', 1)
-    const version = await runner.getCurrentVersion(db)
+    const version = await testRunner.getCurrentVersion(db)
     expect(version).toBe(0)
   })
 
   it('executes a single migration', async () => {
     const registry = createMigrationRegistry()
-    const m1: MigrationStep = {
+    registry.register(1, {
       version: 1,
       name: 'create-store',
       up: (db) => {
@@ -139,21 +165,18 @@ describe('MigrationRunner', () => {
           db.createObjectStore('test-store', { keyPath: 'id' })
         }
       },
-    }
-    registry.register(1, m1)
+    })
 
     const testRunner = createMigrationRunner(registry)
-    db = await createTestDB('migration-test', 1)
+    const { db: opened } = await openWithMigrations('migration-test', 1, testRunner)
+    db = opened
 
-    const applied = await testRunner.run(db, 0, 1)
-
-    expect(applied).toBe(1)
-    expect(db.objectStoreNames.contains('test-store')).toBe(true)
+    expect(opened.objectStoreNames.contains('test-store')).toBe(true)
+    expect(await testRunner.getCurrentVersion(opened)).toBe(1)
   })
 
   it('executes multiple migrations in sequence', async () => {
     const registry = createMigrationRegistry()
-
     registry.register(1, {
       version: 1,
       name: 'create-store1',
@@ -161,7 +184,6 @@ describe('MigrationRunner', () => {
         db.createObjectStore('store1', { keyPath: 'id' })
       },
     })
-
     registry.register(2, {
       version: 2,
       name: 'create-store2',
@@ -171,41 +193,66 @@ describe('MigrationRunner', () => {
     })
 
     const testRunner = createMigrationRunner(registry)
-    db = await createTestDB('migration-test', 2)
-
-    const applied = await testRunner.run(db, 0, 2)
+    const { db: opened, applied } = await openWithMigrations('migration-test', 2, testRunner)
+    db = opened
 
     expect(applied).toBe(2)
-    expect(db.objectStoreNames.contains('store1')).toBe(true)
-    expect(db.objectStoreNames.contains('store2')).toBe(true)
+    expect(opened.objectStoreNames.contains('store1')).toBe(true)
+    expect(opened.objectStoreNames.contains('store2')).toBe(true)
   })
 
-  it('skips if already at target version', async () => {
+  it('skips migrations already at target version', async () => {
+    const registry = createMigrationRegistry()
+    const up = vi.fn((db: IDBDatabase) => {
+      db.createObjectStore('store', { keyPath: 'id' })
+    })
+    registry.register(1, { version: 1, name: 'test', up })
+
+    const testRunner = createMigrationRunner(registry)
+    // First open migrates 0 → 1.
+    const first = await openWithMigrations('migration-test', 1, testRunner)
+    first.db.close()
+
+    // Re-opening at the same version fires no versionchange event, so nothing
+    // re-runs and no duplicate history is recorded.
+    const second = await openWithMigrations('migration-test', 1, testRunner)
+    db = second.db
+
+    expect(up).toHaveBeenCalledTimes(1)
+    expect(second.applied).toBe(0)
+    expect(await testRunner.getMigrationHistory(second.db)).toHaveLength(1)
+  })
+
+  it('progressive upgrades only apply pending migrations', async () => {
     const registry = createMigrationRegistry()
     registry.register(1, {
       version: 1,
-      name: 'test',
+      name: 'create-store1',
       up: (db) => {
-        db.createObjectStore('store', { keyPath: 'id' })
+        db.createObjectStore('store1', { keyPath: 'id' })
+      },
+    })
+    registry.register(2, {
+      version: 2,
+      name: 'create-store2',
+      up: (db) => {
+        db.createObjectStore('store2', { keyPath: 'id' })
       },
     })
 
     const testRunner = createMigrationRunner(registry)
-    db = await createTestDB('migration-test', 1)
 
-    const applied = await testRunner.run(db, 1, 1)
+    const step1 = await openWithMigrations('migration-test', 1, testRunner)
+    expect(step1.applied).toBe(1)
+    step1.db.close()
 
-    expect(applied).toBe(0)
-  })
+    const step2 = await openWithMigrations('migration-test', 2, testRunner)
+    db = step2.db
 
-  it('throws on backward migration', async () => {
-    const registry = createMigrationRegistry()
-    registry.register(1, { version: 1, name: 'test', up: () => {} })
-
-    const testRunner = createMigrationRunner(registry)
-    db = await createTestDB('migration-test', 1)
-
-    await expect(testRunner.run(db, 3, 1)).rejects.toThrow(MigrationError)
+    expect(step2.applied).toBe(1)
+    expect(step2.db.objectStoreNames.contains('store1')).toBe(true)
+    expect(step2.db.objectStoreNames.contains('store2')).toBe(true)
+    expect(await testRunner.getCurrentVersion(step2.db)).toBe(2)
   })
 
   it('throws when no migrations found', async () => {
@@ -213,9 +260,9 @@ describe('MigrationRunner', () => {
     registry.register(3, { version: 3, name: 'test', up: () => {} })
 
     const testRunner = createMigrationRunner(registry)
-    db = await createTestDB('migration-test', 1)
-
-    await expect(testRunner.run(db, 1, 2)).rejects.toThrow(MigrationError)
+    // Register nothing for v1..v2: opening at v2 has no migration to apply, so
+    // the upgrade aborts and the open fails with a MigrationError.
+    await expect(openWithMigrations('migration-test', 2, testRunner)).rejects.toThrow(MigrationError)
   })
 
   it('records migrations in metadata store', async () => {
@@ -230,11 +277,10 @@ describe('MigrationRunner', () => {
     })
 
     const testRunner = createMigrationRunner(registry)
-    db = await createTestDB('migration-test', 1)
+    const { db: opened } = await openWithMigrations('migration-test', 1, testRunner)
+    db = opened
 
-    await testRunner.run(db, 0, 1)
-
-    const history = await testRunner.getMigrationHistory(db)
+    const history = await testRunner.getMigrationHistory(opened)
     expect(history).toHaveLength(1)
     expect(history[0]).toMatchObject({
       version: 1,
@@ -245,14 +291,14 @@ describe('MigrationRunner', () => {
   })
 
   it('gets empty history for new database', async () => {
+    const testRunner = createMigrationRunner(createMigrationRegistry())
     db = await createTestDB('migration-test', 1)
-    const history = await runner.getMigrationHistory(db)
+    const history = await testRunner.getMigrationHistory(db)
     expect(history).toEqual([])
   })
 
   it('maintains version order in history', async () => {
     const registry = createMigrationRegistry()
-
     for (let i = 1; i <= 3; i++) {
       registry.register(i, {
         version: i,
@@ -264,11 +310,10 @@ describe('MigrationRunner', () => {
     }
 
     const testRunner = createMigrationRunner(registry)
-    db = await createTestDB('migration-test', 3)
+    const { db: opened } = await openWithMigrations('migration-test', 3, testRunner)
+    db = opened
 
-    await testRunner.run(db, 0, 3)
-
-    const history = await testRunner.getMigrationHistory(db)
+    const history = await testRunner.getMigrationHistory(opened)
     expect(history.map((m) => m.version)).toEqual([1, 2, 3])
   })
 })
@@ -327,9 +372,9 @@ describe('DataTransformer', () => {
     // Verify
     const tx3 = db.transaction('test', 'readonly')
     const store3 = tx3.objectStore('test')
-    const result = await new Promise<any>((resolve, reject) => {
+    const result = await new Promise<Record<string, unknown>>((resolve, reject) => {
       const req = store3.get(1)
-      req.onsuccess = () => resolve(req.result)
+      req.onsuccess = () => resolve((req.result as Record<string, unknown>) ?? {})
       req.onerror = () => reject(req.error)
     })
 
@@ -351,7 +396,7 @@ describe('DataTransformer', () => {
     // Transform entries
     const tx2 = db.transaction('test', 'readwrite')
     const store2 = tx2.objectStore('test')
-    const count = await DataTransformer.transformAll(store2, (entry: any) => ({
+    const count = await DataTransformer.transformAll<Record<string, number>>(store2, (entry) => ({
       ...entry,
       value: entry.value * 2,
     }))
@@ -361,9 +406,9 @@ describe('DataTransformer', () => {
     // Verify
     const tx3 = db.transaction('test', 'readonly')
     const store3 = tx3.objectStore('test')
-    const results = await new Promise<any[]>((resolve, reject) => {
+    const results = await new Promise<Array<Record<string, number>>>((resolve, reject) => {
       const req = store3.getAll()
-      req.onsuccess = () => resolve(req.result)
+      req.onsuccess = () => resolve((req.result as Array<Record<string, number>>) ?? [])
       req.onerror = () => reject(req.error)
     })
 
@@ -372,13 +417,28 @@ describe('DataTransformer', () => {
   })
 
   it('creates indexes safely', async () => {
-    const tx = db.transaction('test', 'readwrite')
-    const store = tx.objectStore('test')
-
-    DataTransformer.createIndex(store, 'idx1', 'field1')
-    DataTransformer.createIndex(store, 'idx1', 'field1') // Should not throw
-
-    expect(store.indexNames.contains('idx1')).toBe(true)
+    // Indexes can only be created during a versionchange, so open the db one
+    // version higher and create the index inside onupgradeneeded. A separate
+    // db name avoids the open request blocking on the open v1 connection.
+    const upgraded = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open('transformer-index-test', 2)
+      req.onupgradeneeded = () => {
+        const tx = req.transaction!
+        tx.db.createObjectStore('test', { keyPath: 'id' })
+        const store = tx.objectStore('test')
+        DataTransformer.createIndex(store, 'idx1', 'field1')
+        DataTransformer.createIndex(store, 'idx1', 'field1') // Should not throw
+      }
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+    try {
+      const store = upgraded.transaction('test', 'readonly').objectStore('test')
+      expect(store.indexNames.contains('idx1')).toBe(true)
+    } finally {
+      upgraded.close()
+      await deleteTestDB('transformer-index-test')
+    }
   })
 
   it('deletes entries matching predicate', async () => {
@@ -396,16 +456,16 @@ describe('DataTransformer', () => {
     // Delete where keep === false
     const tx2 = db.transaction('test', 'readwrite')
     const store2 = tx2.objectStore('test')
-    const count = await DataTransformer.deleteWhere(store2, (entry: any) => !entry.keep)
+    const count = await DataTransformer.deleteWhere(store2, (entry) => !(entry as { keep?: boolean }).keep)
 
     expect(count).toBe(1)
 
     // Verify
     const tx3 = db.transaction('test', 'readonly')
     const store3 = tx3.objectStore('test')
-    const results = await new Promise<any[]>((resolve, reject) => {
+    const results = await new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
       const req = store3.getAll()
-      req.onsuccess = () => resolve(req.result)
+      req.onsuccess = () => resolve((req.result as Array<Record<string, unknown>>) ?? [])
       req.onerror = () => reject(req.error)
     })
 
@@ -428,9 +488,9 @@ describe('DataTransformer', () => {
     // Verify
     const tx2 = db.transaction('test', 'readonly')
     const store2 = tx2.objectStore('test')
-    const results = await new Promise<any[]>((resolve, reject) => {
+    const results = await new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
       const req = store2.getAll()
-      req.onsuccess = () => resolve(req.result)
+      req.onsuccess = () => resolve((req.result as Array<Record<string, unknown>>) ?? [])
       req.onerror = () => reject(req.error)
     })
 

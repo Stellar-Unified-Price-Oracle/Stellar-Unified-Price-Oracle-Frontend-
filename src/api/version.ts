@@ -270,13 +270,34 @@ declare const __NODE_VERSION__: string | undefined
 export const WS_PROTOCOL_VERSION = 1
 
 /**
- * API version information interface
+ * Compatibility verdict between this client build and the deployed API.
+ * - `compatible`      — same major.minor as this client.
+ * - `minor-mismatch`  — same major, different minor (advisory warning).
+ * - `incompatible`    — different major (or server reports a breaking change).
+ * - `unknown`         — server version could not be determined.
+ */
+export type VersionCompatibility = 'compatible' | 'minor-mismatch' | 'incompatible' | 'unknown'
+
+/**
+ * API version information interface.
+ *
+ * Fields prefixed with `server`/`client` are derived locally after detection;
+ * the rest are reported by the `/api/version` endpoint when present.
  */
 export interface ApiVersionInfo {
+  /** Server-reported API version (e.g. "1.4.0"), or "" before detection. */
   version: string
-  /** Minimum compatible client version */
+  /** Detected server version (alias of `version`, present after detection). */
+  serverVersion: string
+  /** Version of this client build (from {@link getAppVersion}). */
+  clientVersion: string
+  /** Compatibility verdict computed from the server/client versions. */
+  compatibility: VersionCompatibility
+  /** Human-readable explanation surfaced by {@link ApiVersionBanner}. */
+  message?: string
+  /** Minimum compatible client version (reported by the server). */
   minClientVersion?: string
-  /** Maximum compatible client version */
+  /** Maximum compatible client version (reported by the server). */
   maxClientVersion?: string
   breaking?: boolean
   deprecated?: boolean
@@ -311,23 +332,95 @@ export async function getApiVersionInfo(): Promise<ApiVersionInfo | null> {
 
   try {
     const response = await fetch('/api/version')
-    if (response.ok) {
-      cachedApiVersionInfo = await response.json()
-      return cachedApiVersionInfo
+    if (!response.ok) return null
+
+    const raw = (await response.json()) as Record<string, unknown>
+    const serverVersion =
+      typeof raw.serverVersion === 'string' ? raw.serverVersion : typeof raw.version === 'string' ? raw.version : ''
+
+    const base: ApiVersionInfo = {
+      version: serverVersion,
+      serverVersion,
+      clientVersion: getAppVersion(),
+      compatibility: 'unknown',
+      minClientVersion: typeof raw.minClientVersion === 'string' ? raw.minClientVersion : undefined,
+      maxClientVersion: typeof raw.maxClientVersion === 'string' ? raw.maxClientVersion : undefined,
+      breaking: typeof raw.breaking === 'boolean' ? raw.breaking : undefined,
+      deprecated: typeof raw.deprecated === 'boolean' ? raw.deprecated : undefined,
+      supportedFeatures: Array.isArray(raw.supportedFeatures)
+        ? raw.supportedFeatures.filter((f): f is string => typeof f === 'string')
+        : undefined,
     }
+
+    cachedApiVersionInfo = {
+      ...base,
+      ...classifyApiVersion(base),
+    }
+    return cachedApiVersionInfo
   } catch {
     // API version endpoint not available or failed
+    return null
   }
-
-  return null
 }
 
 /**
- * Get Accept header value for API versioning
- * Used in REST requests to specify client API version
+ * Derive the banner-facing fields (`compatibility`, `message`) from a base
+ * {@link ApiVersionInfo}. Mirrors the logic of `scripts/check-api-version.js`:
+ * same major.minor → compatible; same major, different minor → minor-mismatch;
+ * different major (or a server-reported `breaking` flag) → incompatible.
  */
-export function getAcceptVersionHeader(): string {
-  const version = getAppVersion()
+function classifyApiVersion(
+  base: Pick<ApiVersionInfo, 'version' | 'clientVersion' | 'breaking' | 'deprecated'>,
+): Pick<ApiVersionInfo, 'compatibility' | 'message'> {
+  if (base.breaking) {
+    return {
+      compatibility: 'incompatible',
+      message: 'The API has announced a breaking change. This version of the dashboard may stop working.',
+    }
+  }
+
+  const server = parseMajorMinor(base.version)
+  const client = parseMajorMinor(base.clientVersion)
+  if (!server || !client) {
+    return { compatibility: 'unknown', message: undefined }
+  }
+
+  if (server.major !== client.major) {
+    return {
+      compatibility: 'incompatible',
+      message: `This dashboard (v${client.major}.${client.minor}) is incompatible with the deployed API (v${server.major}.${server.minor}). Please update the frontend.`,
+    }
+  }
+
+  if (server.minor !== client.minor) {
+    return {
+      compatibility: 'minor-mismatch',
+      message: base.deprecated
+        ? 'The API version in use is deprecated and may be removed in a future release.'
+        : `The deployed API (v${server.major}.${server.minor}) differs from this client's expected version (v${client.major}.${client.minor}).`,
+    }
+  }
+
+  return { compatibility: 'compatible', message: undefined }
+}
+
+function parseMajorMinor(version: string): { major: number; minor: number } | null {
+  const parts = version.trim().split('.')
+  const major = Number.parseInt(parts[0] ?? '', 10)
+  const minor = parts[1] !== undefined ? Number.parseInt(parts[1], 10) : 0
+  return Number.isNaN(major) || Number.isNaN(minor) ? null : { major, minor }
+}
+
+/**
+ * Get Accept header value for API versioning.
+ * Used in REST requests to request a specific API version.
+ *
+ * When the server's version is already known (from `/api/version`) it is
+ * echoed back so the request is served by the handler version the client has
+ * already negotiated; otherwise the client advertises its own build version.
+ */
+export function getAcceptVersionHeader(serverVersion?: string | null): string {
+  const version = serverVersion || getAppVersion()
   return `application/vnd.stellar+json;version=${version}`
 }
 

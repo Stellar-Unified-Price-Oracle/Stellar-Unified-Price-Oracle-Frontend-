@@ -12,11 +12,12 @@ import {
   LineChart,
   ReferenceLine,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
+import type { TooltipPayload } from 'recharts'
 import type { PriceHistoryEntry } from '../types'
 import { formatChartTimeWithTz, formatPriceShort, formatTimestamp, getTimezoneAbbr } from '../utils/format'
 import { rasterizeChartToDataUrl } from '../utils/chartExport'
 import { exportPriceHistoryPdf } from '../utils/pdfExport'
+import { loadChartExport } from '../utils/deferredExports'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
 // ---------------------------------------------------------------------------
@@ -48,7 +49,10 @@ interface ChartPoint {
   [key: string]: unknown
 }
 
-interface CustomTooltipProps extends TooltipProps<number, string> {
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: TooltipPayload
+  label?: string | number
   tzAbbr: string
   allData: ChartPoint[]
   normalised?: boolean
@@ -110,13 +114,23 @@ function CustomTooltip({ active, payload, label, tzAbbr, allData, normalised }: 
           </div>
         </div>
       )}
-      {payload.slice(1).map((p) => (
-        <div key={p.dataKey} className="mt-1.5 pt-1.5 border-t border-gray-800">
-          <p style={{ color: p.color ?? '#fff' }} className="font-mono">
-            {p.name}: {normalised ? `${typeof p.value === 'number' ? p.value.toFixed(2) : '—'}%` : `$${formatPriceShort(p.value as number)}`}
-          </p>
-        </div>
-      ))}
+      {payload.slice(1).map((p, i) => {
+        const color = typeof p.color === 'string' ? p.color : '#fff'
+        const label = p.name != null ? String(p.name) : `Series ${i + 1}`
+        const value = typeof p.value === 'number' ? p.value : undefined
+        return (
+          <div key={i} className="mt-1.5 pt-1.5 border-t border-gray-800">
+            <p style={{ color }} className="font-mono">
+              {label}:{' '}
+              {normalised
+                ? `${value !== undefined ? value.toFixed(2) : '—'}%`
+                : value !== undefined
+                  ? `$${formatPriceShort(value)}`
+                  : '—'}
+            </p>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -318,10 +332,7 @@ function ChartContent({
   }
 
   const totalPoints = mergedChartData.length
-  const activeDomain = useMemo<[number, number]>(
-    () => zoomDomain ?? [0, totalPoints - 1],
-    [zoomDomain, totalPoints],
-  )
+  const activeDomain = useMemo<[number, number]>(() => zoomDomain ?? [0, totalPoints - 1], [zoomDomain, totalPoints])
 
   // Reset zoom when data or range changes
   useEffect(() => {
@@ -373,7 +384,11 @@ function ChartContent({
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (e.touches.length === 1) {
-        touchStateRef.current = { mode: 'pan', startX: e.touches[0].clientX, domain: [...activeDomain] as [number, number] }
+        touchStateRef.current = {
+          mode: 'pan',
+          startX: e.touches[0].clientX,
+          domain: [...activeDomain] as [number, number],
+        }
       } else if (e.touches.length === 2) {
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
@@ -458,7 +473,7 @@ function ChartContent({
   // Check if user scrolled near the start to trigger load more
   useEffect(() => {
     if (!hasMore || !onLoadMore || loadingMore) return
-    
+
     const [lo] = activeDomain
     // If user zoomed/panned to show first 25% of data, load more
     if (lo < Math.max(5, totalPoints * 0.25)) {
@@ -564,7 +579,12 @@ function ChartContent({
                 </svg>
               ) : (
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
                 </svg>
               )}
               Export
@@ -614,7 +634,12 @@ function ChartContent({
               </svg>
             ) : (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                />
               </svg>
             )}
           </button>
@@ -682,23 +707,25 @@ function ChartContent({
                 axisLine={{ stroke: colors.axisLine }}
                 tickLine={false}
                 interval="preserveStartEnd"
-                label={{ value: tzAbbr, position: 'insideBottomRight', offset: -5, fill: colors.tickFill, fontSize: 10 }}
+                label={{
+                  value: tzAbbr,
+                  position: 'insideBottomRight',
+                  offset: -5,
+                  fill: colors.tickFill,
+                  fontSize: 10,
+                }}
               />
               <YAxis
                 tick={{ fill: colors.tickFill, fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={normalised ? (v: number) => `${v.toFixed(1)}%` : formatPriceShort}
+                tickFormatter={(v: number) => (normalised ? `${v.toFixed(1)}%` : formatPriceShort(v))}
                 width={80}
               />
               {/* #300 – Custom tooltip with sources, confidence, oracle count, % change */}
               <Tooltip
                 content={
-                  <CustomTooltip
-                    tzAbbr={tzAbbr}
-                    allData={visibleData as ChartPoint[]}
-                    normalised={normalised}
-                  />
+                  <CustomTooltip tzAbbr={tzAbbr} allData={visibleData as ChartPoint[]} normalised={normalised} />
                 }
               />
               {/* #305 – Annotations as vertical reference lines */}
@@ -763,25 +790,25 @@ function ChartContent({
                 axisLine={{ stroke: colors.axisLine }}
                 tickLine={false}
                 interval="preserveStartEnd"
-                label={{ value: tzAbbr, position: 'insideBottomRight', offset: -5, fill: colors.tickFill, fontSize: 10 }}
+                label={{
+                  value: tzAbbr,
+                  position: 'insideBottomRight',
+                  offset: -5,
+                  fill: colors.tickFill,
+                  fontSize: 10,
+                }}
               />
               <YAxis
                 domain={[minP - pad, maxP + pad]}
                 tick={{ fill: colors.tickFill, fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={formatPriceShort}
+                tickFormatter={(v: number) => formatPriceShort(v)}
                 width={80}
               />
               {/* #300 – Custom tooltip with sources, confidence, oracle count, % change */}
               <Tooltip
-                content={
-                  <CustomTooltip
-                    tzAbbr={tzAbbr}
-                    allData={visibleData as ChartPoint[]}
-                    normalised={false}
-                  />
-                }
+                content={<CustomTooltip tzAbbr={tzAbbr} allData={visibleData as ChartPoint[]} normalised={false} />}
               />
               {/* #305 – Annotations as vertical reference lines */}
               {localAnnotations.map((ann) => {
@@ -833,7 +860,9 @@ function ChartContent({
           + Annotate
         </button>
         {localAnnotations.length > 0 && (
-          <span className="text-xs text-gray-500">{localAnnotations.length} annotation{localAnnotations.length !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-gray-500">
+            {localAnnotations.length} annotation{localAnnotations.length !== 1 ? 's' : ''}
+          </span>
         )}
       </div>
       {annotationFormOpen && (
@@ -858,7 +887,9 @@ function ChartContent({
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-400" htmlFor="ann-timestamp">Time (ms)</label>
+            <label className="text-xs text-gray-400" htmlFor="ann-timestamp">
+              Time (ms)
+            </label>
             <input
               id="ann-timestamp"
               type="number"
@@ -942,10 +973,7 @@ function ChartContent({
       {/* #304 Accessible data table fallback */}
       {tableVisible && (
         <div className="mt-4 overflow-x-auto max-h-60 overflow-y-auto rounded-lg border border-gray-700">
-          <table
-            className="w-full text-xs text-gray-300"
-            aria-label={`${pair} price history data table (${tzAbbr})`}
-          >
+          <table className="w-full text-xs text-gray-300" aria-label={`${pair} price history data table (${tzAbbr})`}>
             <thead className="bg-gray-800 sticky top-0">
               <tr>
                 <th scope="col" className="px-3 py-2 text-left font-medium text-gray-400">
@@ -974,7 +1002,9 @@ function ChartContent({
       {/* sr-only table always present for screen readers */}
       <div className="sr-only" aria-live="polite">
         <table aria-label={`${pair} price history accessible data`}>
-          <caption>{pair} price data — {chartData.length} points ({tzAbbr})</caption>
+          <caption>
+            {pair} price data — {chartData.length} points ({tzAbbr})
+          </caption>
           <thead>
             <tr>
               <th scope="col">Time</th>

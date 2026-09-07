@@ -5,9 +5,9 @@
 
 import { useCallback } from 'react'
 import { usePreferences } from '../preferences/PreferencesContext'
-import { useAlerts } from './useAlerts'
 import type { Preferences } from '../preferences/types'
 import type { Alert, AlertSnoozeDuration } from '../types'
+import { useAlerts } from './useAlerts'
 
 /**
  * Hook for optimistic preference updates.
@@ -67,14 +67,7 @@ export function useOptimisticPreferences() {
  * ```
  */
 export function useOptimisticAlerts() {
-  const {
-    alerts,
-    addAlert,
-    updateAlert,
-    removeAlert,
-    snoozeAlert,
-    unsnoozeAlert,
-  } = useAlerts()
+  const { alerts, addAlert, updateAlert, removeAlert, snoozeAlert, unsnoozeAlert } = useAlerts()
 
   /**
    * Optimistically add an alert
@@ -166,8 +159,7 @@ export function useOptimisticAlerts() {
       return {
         success: true,
         data: { id, snoozedUntil: duration },
-        rollback: () =>
-          updateAlert(id, { snoozedUntil: previousSnooze || null }),
+        rollback: () => updateAlert(id, { snoozedUntil: previousSnooze || null }),
       }
     },
     [alerts, snoozeAlert, updateAlert],
@@ -189,8 +181,7 @@ export function useOptimisticAlerts() {
       return {
         success: true,
         data: { id },
-        rollback: () =>
-          updateAlert(id, { snoozedUntil: previousSnooze || null }),
+        rollback: () => updateAlert(id, { snoozedUntil: previousSnooze || null }),
       }
     },
     [alerts, unsnoozeAlert, updateAlert],

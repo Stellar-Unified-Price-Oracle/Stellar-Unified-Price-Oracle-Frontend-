@@ -35,8 +35,12 @@ describe('i18n infrastructure', () => {
 
   it('falls back to English for missing keys in other languages', async () => {
     await i18n.changeLanguage('ja')
-    // Japanese locale does not define alertPanel — falls back to English
+    // Simulate an incomplete locale by temporarily removing a key from the ja bundle
+    const bundle = i18n.getResourceBundle('ja', 'translation') as unknown as Record<string, unknown>
+    const savedAlertPanel = bundle.alertPanel
+    delete bundle.alertPanel
     expect(i18n.t('alertPanel.empty')).toBe(en.alertPanel.empty)
+    bundle.alertPanel = savedAlertPanel
   })
 
   it('switches to Spanish and resolves Spanish translations', async () => {

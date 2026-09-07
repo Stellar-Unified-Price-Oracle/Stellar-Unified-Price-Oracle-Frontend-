@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import type { PriceData, SourceHealth, AlertHistoryEntry } from '../types'
 import { generateReportCsv, REPORT_TEMPLATES } from './reportTemplates'
 import type { ReportData } from './reportTemplates'
-import type { PriceData, SourceHealth, AlertHistoryEntry } from '../types'
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 

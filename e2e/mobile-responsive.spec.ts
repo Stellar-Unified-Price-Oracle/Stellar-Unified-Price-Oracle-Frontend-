@@ -111,7 +111,10 @@ test.describe('@mobile Dashboard — Layout Integrity', () => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
       await page.goto('/')
       await page.waitForLoadState('networkidle')
-      await page.getByRole('heading', { name: 'Price Oracle Dashboard' }).waitFor({ timeout: 5_000 }).catch(() => {})
+      await page
+        .getByRole('heading', { name: 'Price Oracle Dashboard' })
+        .waitFor({ timeout: 5_000 })
+        .catch(() => {})
 
       const overflow = await hasHorizontalOverflow(page)
       expect(overflow, `${viewport.label} should not have horizontal overflow`).toBe(false)
@@ -124,13 +127,17 @@ test.describe('@mobile Dashboard — Layout Integrity', () => {
 
       // Heading should be visible
       const heading = page.getByRole('heading', { name: 'Price Oracle Dashboard' })
-      await expect(heading).toBeVisible({ timeout: 5_000 }).catch(() => {
-        // Heading might not be visible due to layout, but shouldn't cause error
-      })
+      await expect(heading)
+        .toBeVisible({ timeout: 5_000 })
+        .catch(() => {
+          // Heading might not be visible due to layout, but shouldn't cause error
+        })
 
       // Main content area should exist
       const mainContent = page.locator('[role="main"]').or(page.locator('main'))
-      await expect(mainContent.or(page.getByText(/price|oracle/i)).first()).toBeVisible({ timeout: 5_000 }).catch(() => {})
+      await expect(mainContent.or(page.getByText(/price|oracle/i)).first())
+        .toBeVisible({ timeout: 5_000 })
+        .catch(() => {})
     })
   }
 })
@@ -142,7 +149,10 @@ test.describe('@mobile Touch Target Accessibility', () => {
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
     await page.goto('/')
     await page.waitForLoadState('networkidle')
-    await page.getByRole('heading', { name: 'Price Oracle Dashboard' }).waitFor({ timeout: 5_000 }).catch(() => {})
+    await page
+      .getByRole('heading', { name: 'Price Oracle Dashboard' })
+      .waitFor({ timeout: 5_000 })
+      .catch(() => {})
 
     const { violations } = await checkTouchTargets(page)
 
@@ -188,10 +198,12 @@ test.describe('@mobile Navigation on Mobile Devices', () => {
     await page.waitForLoadState('networkidle')
 
     const hamburger = page.getByRole('button', { name: /menu|toggle|hamburger/i }).first()
-    await expect(hamburger).toBeVisible({ timeout: 5_000 }).catch(() => {
-      // Hamburger may not be visible if nav is always visible
-      console.log('Hamburger menu not found; nav may be permanently visible')
-    })
+    await expect(hamburger)
+      .toBeVisible({ timeout: 5_000 })
+      .catch(() => {
+        // Hamburger may not be visible if nav is always visible
+        console.log('Hamburger menu not found; nav may be permanently visible')
+      })
   })
 
   test('navigation links are accessible on mobile', async ({ page }) => {
@@ -201,9 +213,11 @@ test.describe('@mobile Navigation on Mobile Devices', () => {
 
     // Should be able to navigate to dashboard
     const dashboardLink = page.getByRole('link', { name: /dashboard/i }).first()
-    await expect(dashboardLink).toBeVisible({ timeout: 5_000 }).catch(() => {
-      // May be hidden in menu
-    })
+    await expect(dashboardLink)
+      .toBeVisible({ timeout: 5_000 })
+      .catch(() => {
+        // May be hidden in menu
+      })
   })
 
   test('back button is present on price detail page on mobile', async ({ page }) => {
@@ -212,9 +226,11 @@ test.describe('@mobile Navigation on Mobile Devices', () => {
     await page.waitForLoadState('networkidle')
 
     const backButton = page.getByRole('button', { name: /back|go back/i }).first()
-    await expect(backButton).toBeVisible({ timeout: 5_000 }).catch(() => {
-      // May not be visible if page hasn't loaded
-    })
+    await expect(backButton)
+      .toBeVisible({ timeout: 5_000 })
+      .catch(() => {
+        // May not be visible if page hasn't loaded
+      })
   })
 })
 
@@ -280,7 +296,9 @@ test.describe('@mobile Modals and Dialogs on Mobile', () => {
         if (modalBox && viewport) {
           // Modal should not exceed viewport width
           expect(modalBox.width, 'Modal should fit within viewport').toBeLessThanOrEqual(viewport.width)
-          expect(modalBox.height, 'Modal should be scrollable if taller than viewport').toBeLessThanOrEqual(viewport.height + 200)
+          expect(modalBox.height, 'Modal should be scrollable if taller than viewport').toBeLessThanOrEqual(
+            viewport.height + 200,
+          )
         }
       }
     }
@@ -296,9 +314,11 @@ test.describe('@mobile Search and Filtering on Mobile', () => {
     await page.waitForLoadState('networkidle')
 
     const searchInput = page.getByRole('textbox', { name: /search/i })
-    await expect(searchInput).toBeVisible({ timeout: 5_000 }).catch(() => {
-      // Search may be hidden in a menu
-    })
+    await expect(searchInput)
+      .toBeVisible({ timeout: 5_000 })
+      .catch(() => {
+        // Search may be hidden in a menu
+      })
 
     // Search input should be large enough to type into
     if (await searchInput.isVisible().catch(() => false)) {
@@ -426,17 +446,17 @@ test.describe('@mobile Responsive Design Breakpoints', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
-    let desktopOverflow = await hasHorizontalOverflow(page)
+    const desktopOverflow = await hasHorizontalOverflow(page)
     expect(desktopOverflow).toBe(false)
 
     // Transition to tablet
     await page.setViewportSize(MOBILE_VIEWPORTS.tabletPortrait)
-    let tabletOverflow = await hasHorizontalOverflow(page)
+    const tabletOverflow = await hasHorizontalOverflow(page)
     expect(tabletOverflow).toBe(false)
 
     // Transition to mobile
     await page.setViewportSize(MOBILE_VIEWPORTS.phoneStandard)
-    let mobileOverflow = await hasHorizontalOverflow(page)
+    const mobileOverflow = await hasHorizontalOverflow(page)
     expect(mobileOverflow).toBe(false)
   })
 })

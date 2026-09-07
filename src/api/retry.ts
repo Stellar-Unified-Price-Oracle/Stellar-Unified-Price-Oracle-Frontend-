@@ -165,7 +165,7 @@ export async function fetchWithRetry(
 
     try {
       // Wait for outbound capacity before every attempt (issue #330).
-      await outboundRateLimiter.wait(input, init?.signal)
+      await outboundRateLimiter.wait(input, init?.signal ?? undefined)
 
       const response = await fetch(input, init)
       if (response.ok || !isRetryableStatus(response.status)) {

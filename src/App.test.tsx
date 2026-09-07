@@ -7,6 +7,8 @@ import type { ReactNode } from 'react'
 import { AppContent } from './App'
 import { ErrorReporterProvider } from './context/ErrorReporterContext'
 import type { PriceContextValue } from './context/PriceContext'
+import { ToastProvider } from './context/ToastContext'
+import { PreferencesProvider } from './preferences/PreferencesContext'
 import { WalletProvider } from './wallet/WalletContext'
 
 // Routing is orthogonal to the accessibility side-effects, and useAccessibility pulls in
@@ -50,6 +52,7 @@ const priceContextValue = {
   pricesError: null,
   pricesValidating: false,
   livePrices: new Map(),
+  attributionHistory: new Map(),
   wsStatus: 'connected',
   rateLimitStatus: 'ok',
   rateLimitRetryAfterMs: 0,
@@ -75,9 +78,13 @@ function renderRoute(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <QueryClientProvider client={makeQueryClient()}>
         <ErrorReporterProvider>
-          <WalletProvider>
-            <AppContent />
-          </WalletProvider>
+          <PreferencesProvider>
+            <ToastProvider>
+              <WalletProvider>
+                <AppContent />
+              </WalletProvider>
+            </ToastProvider>
+          </PreferencesProvider>
         </ErrorReporterProvider>
       </QueryClientProvider>
     </MemoryRouter>,
@@ -93,8 +100,13 @@ beforeEach(async () => {
 afterEach(cleanup)
 
 describe('App routing', () => {
-  it('renders the Dashboard at the index route', async () => {
+  it('renders the Landing at the index route', async () => {
     renderRoute('/')
+    expect(await screen.findByRole('heading', { name: 'Stellar Unified Price Oracle' }, FIND)).toBeInTheDocument()
+  })
+
+  it('renders the Dashboard at /dashboard', async () => {
+    renderRoute('/dashboard')
     expect(await screen.findByRole('heading', { name: 'Price Oracle Dashboard' }, FIND)).toBeInTheDocument()
   })
 
@@ -117,7 +129,7 @@ describe('App routing', () => {
 
   it('navigates between routes via the nav bar (route transitions)', async () => {
     const user = userEvent.setup()
-    renderRoute('/')
+    renderRoute('/dashboard')
     await screen.findByRole('heading', { name: 'Price Oracle Dashboard' }, FIND)
 
     await user.click(screen.getAllByRole('link', { name: 'API Docs' })[0])
@@ -138,7 +150,7 @@ describe('App routing', () => {
 
   it('navigates to Price Detail when a Dashboard price card is clicked', async () => {
     const user = userEvent.setup()
-    renderRoute('/')
+    renderRoute('/dashboard')
     const card = await screen.findByRole('button', { name: 'View details for BTC/USD' }, FIND)
 
     await user.click(card)

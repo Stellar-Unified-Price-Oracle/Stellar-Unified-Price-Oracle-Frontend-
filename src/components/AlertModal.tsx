@@ -107,7 +107,13 @@ type ValidationErrors = Partial<Record<keyof AlertFormData, string>>
  * that isn't configured can't be routed to). An empty selection means "use the
  * global defaults", which is the default and the natural deselection exit.
  */
-function ChannelRoutingSelect({ value, onChange }: { value: NotificationChannelId[]; onChange: (ch: NotificationChannelId[]) => void }): ReactElement {
+function ChannelRoutingSelect({
+  value,
+  onChange,
+}: {
+  value: NotificationChannelId[]
+  onChange: (ch: NotificationChannelId[]) => void
+}): ReactElement {
   const { t } = useTranslation()
   const available = getEnabledChannels(loadNotifConfig()).filter((c) => c !== 'inApp')
 
@@ -195,7 +201,18 @@ function AlertSimulationSection({
   )
 }
 
-export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, alert, currentPrice, defaultAssetPair, rateLimited = false, cooldownSec = 0 }: AlertModalProps): ReactElement | null {
+export function AlertModal({
+  isOpen,
+  onClose,
+  onSave,
+  onDelete,
+  onReEnable,
+  alert,
+  currentPrice,
+  defaultAssetPair,
+  rateLimited = false,
+  cooldownSec = 0,
+}: AlertModalProps): ReactElement | null {
   const { t } = useTranslation()
 
   function validate(form: AlertFormData): ValidationErrors {
@@ -299,7 +316,10 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
           retestMode: alert.retestMode,
         })
       } else {
-        setForm(emptyForm())
+        // New alert: prefill the asset pair from the card the user clicked
+        // (e.g. "Set alert for BTC/USD"), leaving all other fields empty.
+        const base = emptyForm()
+        setForm(defaultAssetPair ? { ...base, assetPair: defaultAssetPair } : base)
       }
       setErrors({})
       setSimResult(null)
@@ -378,7 +398,12 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
             extraConditions: [],
             conditionsLogic: group.logic,
           }
-        : { upperThreshold: String(gte.value), lowerThreshold: String(lte.value), extraConditions: [], conditionsLogic: group.logic }
+        : {
+            upperThreshold: String(gte.value),
+            lowerThreshold: String(lte.value),
+            extraConditions: [],
+            conditionsLogic: group.logic,
+          }
     }
 
     const primary = conditions[0]
@@ -461,9 +486,7 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
     const base =
       currentPrice !== undefined && currentPrice > 0
         ? currentPrice
-        : Number.parseFloat(form.upperThreshold) ||
-          Number.parseFloat(form.lowerThreshold) ||
-          100
+        : Number.parseFloat(form.upperThreshold) || Number.parseFloat(form.lowerThreshold) || 100
     setSimResult(simulateAlert(form, base))
   }, [form, currentPrice])
 
@@ -513,8 +536,19 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
         {/* Fired alert status (#312) */}
         {isFiredOnce && (
           <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-sm text-amber-300 flex items-start gap-2">
-            <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-4 h-4 mt-0.5 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <div>
               {t('alertModal.firedOnceNotice', {
@@ -529,7 +563,12 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
         {alert && !alert.triggerOnce && alert.fireCount > 0 && (
           <div className="mb-4 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-sm text-cyan-300 flex items-center gap-2">
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              />
             </svg>
             {t('alertModal.fireCount', { count: alert.fireCount })}
           </div>
@@ -644,7 +683,9 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
 
               {/* Direction */}
               <div>
-                <span className="block text-sm font-medium text-gray-400 mb-2">{t('alertModal.fields.percentageDirection')}</span>
+                <span className="block text-sm font-medium text-gray-400 mb-2">
+                  {t('alertModal.fields.percentageDirection')}
+                </span>
                 <div className="flex gap-2">
                   {(['up', 'down', 'either'] as AlertPercentageDirection[]).map((dir) => (
                     <button
@@ -657,7 +698,7 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
                           : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'
                       }`}
                     >
-                      {t(`alertModal.fields.direction${dir.charAt(0).toUpperCase() + dir.slice(1)}`)}
+                      {t(`alertModal.fields.direction${dir.charAt(0).toUpperCase() + dir.slice(1)}`, dir)}
                     </button>
                   ))}
                 </div>
@@ -772,7 +813,9 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
             conditions={form.extraConditions}
             logic={form.conditionsLogic}
             percentageMode={form.percentageMode}
-            onChange={(extraConditions, conditionsLogic) => setForm((prev) => ({ ...prev, extraConditions, conditionsLogic }))}
+            onChange={(extraConditions, conditionsLogic) =>
+              setForm((prev) => ({ ...prev, extraConditions, conditionsLogic }))
+            }
           />
 
           {/* Alert Type: One-time vs Persistent (#312) */}
@@ -835,7 +878,9 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, onReEnable, aler
           <EscalationPolicyBuilder
             enabled={form.escalationEnabled}
             steps={form.escalationSteps}
-            onChange={(escalationEnabled, escalationSteps) => setForm((prev) => ({ ...prev, escalationEnabled, escalationSteps }))}
+            onChange={(escalationEnabled, escalationSteps) =>
+              setForm((prev) => ({ ...prev, escalationEnabled, escalationSteps }))
+            }
           />
 
           {/* Price-level retest detection (#491) */}

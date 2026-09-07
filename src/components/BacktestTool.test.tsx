@@ -1,9 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect } from 'vitest'
-import { BacktestTool } from './BacktestTool'
 import type { PriceHistoryEntry } from '../types'
 import { PreferencesProvider } from '../preferences/PreferencesContext'
+import { BacktestTool } from './BacktestTool'
 
 const sampleHistory: PriceHistoryEntry[] = [
   { timestamp: 1700000000000, price: 100, confidence: 0.95, sources: ['chainlink', 'redstone'] },

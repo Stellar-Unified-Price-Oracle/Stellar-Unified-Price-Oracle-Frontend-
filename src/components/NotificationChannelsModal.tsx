@@ -10,6 +10,9 @@ import {
   type VerifySampleLang,
 } from '../utils/webhookSigning'
 import { DeveloperAuthGate } from '../auth/DeveloperAuthGate'
+import { useAlerts } from '../hooks/useAlerts'
+import { useAlertDigest } from '../hooks/useAlertDigest'
+import type { DigestFrequency } from '../utils/alertDigest'
 
 interface NotificationConfig {
   email: { address: string; enabled: boolean }
@@ -285,7 +288,15 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
         setTestStatus(result.ok ? 'Discord test message sent' : (result.error ?? 'Discord test failed'))
       }
     },
-    [config.email.address, config.webhook.url, config.webhook.secret, config.telegram.chatId, config.discord.channelId, botSecrets, pushPermission],
+    [
+      config.email.address,
+      config.webhook.url,
+      config.webhook.secret,
+      config.telegram.chatId,
+      config.discord.channelId,
+      botSecrets,
+      pushPermission,
+    ],
   )
 
   const handleKeyDown = useCallback(
@@ -380,9 +391,7 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
                 id="notif-email-address"
                 type="email"
                 value={config.email.address}
-                onChange={(e) =>
-                  setConfig((c) => ({ ...c, email: { ...c.email, address: e.target.value } }))
-                }
+                onChange={(e) => setConfig((c) => ({ ...c, email: { ...c.email, address: e.target.value } }))}
                 placeholder="you@example.com"
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
               />
@@ -391,9 +400,7 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
               <input
                 type="checkbox"
                 checked={config.email.enabled}
-                onChange={(e) =>
-                  setConfig((c) => ({ ...c, email: { ...c.email, enabled: e.target.checked } }))
-                }
+                onChange={(e) => setConfig((c) => ({ ...c, email: { ...c.email, enabled: e.target.checked } }))}
                 className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500"
               />
               <span className="text-sm text-gray-300">Enable email notifications</span>
@@ -445,9 +452,7 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
                 <input
                   type="checkbox"
                   checked={config.webPush.enabled}
-                  onChange={(e) =>
-                    setConfig((c) => ({ ...c, webPush: { ...c.webPush, enabled: e.target.checked } }))
-                  }
+                  onChange={(e) => setConfig((c) => ({ ...c, webPush: { ...c.webPush, enabled: e.target.checked } }))}
                   className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500"
                 />
                 <span className="text-sm text-gray-300">Enable web push notifications</span>
@@ -480,9 +485,7 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
                   id="notif-webhook-url"
                   type="url"
                   value={config.webhook.url}
-                  onChange={(e) =>
-                    setConfig((c) => ({ ...c, webhook: { ...c.webhook, url: e.target.value } }))
-                  }
+                  onChange={(e) => setConfig((c) => ({ ...c, webhook: { ...c.webhook, url: e.target.value } }))}
                   placeholder="https://your-server.com/webhook"
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 />
@@ -506,16 +509,14 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
                   id="notif-webhook-secret"
                   type="password"
                   value={config.webhook.secret}
-                  onChange={(e) =>
-                    setConfig((c) => ({ ...c, webhook: { ...c.webhook, secret: e.target.value } }))
-                  }
+                  onChange={(e) => setConfig((c) => ({ ...c, webhook: { ...c.webhook, secret: e.target.value } }))}
                   placeholder="Signing secret"
                   aria-describedby="notif-webhook-secret-help"
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                 />
                 <p id="notif-webhook-secret-help" className="mt-1.5 text-xs text-gray-500">
-                  Not saved to this browser — re-enter it after a reload. Used to sign each delivery
-                  with HMAC-SHA256 (see "Verify signature" below).
+                  Not saved to this browser — re-enter it after a reload. Used to sign each delivery with HMAC-SHA256
+                  (see "Verify signature" below).
                 </p>
 
                 {justRotatedSecret && (
@@ -543,9 +544,7 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
                 <input
                   type="checkbox"
                   checked={config.webhook.enabled}
-                  onChange={(e) =>
-                    setConfig((c) => ({ ...c, webhook: { ...c.webhook, enabled: e.target.checked } }))
-                  }
+                  onChange={(e) => setConfig((c) => ({ ...c, webhook: { ...c.webhook, enabled: e.target.checked } }))}
                   className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-cyan-500"
                 />
                 <span className="text-sm text-gray-300">Enable webhook notifications</span>
@@ -561,9 +560,12 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
               {/* #502 — signing scheme docs + copyable verification sample */}
               <div className="pt-3 border-t border-gray-800">
                 <p className="text-sm text-gray-400 mb-2">
-                  Verify signature <span className="text-gray-600">— HMAC-SHA256 of{' '}
-                  <code className="text-xs bg-gray-800 px-1 py-0.5 rounded">{'{timestamp}.{body}'}</code>,
-                  sent as <code className="text-xs bg-gray-800 px-1 py-0.5 rounded">X-Webhook-Signature</code></span>
+                  Verify signature{' '}
+                  <span className="text-gray-600">
+                    — HMAC-SHA256 of{' '}
+                    <code className="text-xs bg-gray-800 px-1 py-0.5 rounded">{'{timestamp}.{body}'}</code>, sent as{' '}
+                    <code className="text-xs bg-gray-800 px-1 py-0.5 rounded">X-Webhook-Signature</code>
+                  </span>
                 </p>
                 <div className="flex gap-1 mb-2" role="tablist" aria-label="Verification sample language">
                   {(['node', 'python', 'go', 'curl'] as VerifySampleLang[]).map((lang) => (
@@ -604,9 +606,13 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
         {activeTab === 'telegram' && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <StatusDot active={!!config.telegram.chatId && !!botSecrets.telegramBotToken && config.telegram.enabled} />
+              <StatusDot
+                active={!!config.telegram.chatId && !!botSecrets.telegramBotToken && config.telegram.enabled}
+              />
               <span className="text-sm text-gray-400">
-                {config.telegram.chatId && botSecrets.telegramBotToken && config.telegram.enabled ? 'Configured' : 'Not configured'}
+                {config.telegram.chatId && botSecrets.telegramBotToken && config.telegram.enabled
+                  ? 'Configured'
+                  : 'Not configured'}
               </span>
             </div>
             <div>

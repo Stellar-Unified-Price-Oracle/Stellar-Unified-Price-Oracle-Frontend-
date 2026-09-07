@@ -40,9 +40,7 @@ function AccessibilityToggle({
           aria-label={label}
         />
         <div
-          className={`w-10 h-5 rounded-full transition-colors duration-200 ${
-            checked ? 'bg-cyan-500' : 'bg-gray-700'
-          }`}
+          className={`w-10 h-5 rounded-full transition-colors duration-200 ${checked ? 'bg-cyan-500' : 'bg-gray-700'}`}
         />
         <div
           className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
@@ -59,8 +57,7 @@ function AccessibilityToggle({
 }
 
 export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
-  const { preferences, updatePreference, undo, redo, canUndo, canRedo, clearHistory } =
-    usePreferences()
+  const { preferences, updatePreference, undo, redo, canUndo, canRedo, clearHistory } = usePreferences()
   const { clearPriceCache } = usePriceContext()
   const { t, i18n } = useTranslation()
   const [clearStatus, setClearStatus] = useState<'idle' | 'confirming' | 'clearing' | 'done'>('idle')
@@ -86,6 +83,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
   }, [])
 
   const handleClearPriceCache = useCallback(async () => {
+    if (!clearPriceCache) return
     setPriceCacheStatus('clearing')
     await clearPriceCache()
     setPriceCacheStatus('done')
@@ -134,14 +132,15 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
         <div className="px-6 py-4 space-y-6">
           {/* Language */}
           <section aria-labelledby="language-settings-heading">
-            <h3 id="language-settings-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+            <h3
+              id="language-settings-heading"
+              className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3"
+            >
               {t('settings.sections.language')}
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {t('settings.language.label')}
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t('settings.language.label')}</label>
                 <select
                   value={i18n.language.split('-')[0]}
                   onChange={(e) => i18n.changeLanguage(e.target.value)}
@@ -165,7 +164,10 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
 
           {/* Data preferences */}
           <section aria-labelledby="data-settings-heading">
-            <h3 id="data-settings-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+            <h3
+              id="data-settings-heading"
+              className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3"
+            >
               {t('settings.sections.data')}
             </h3>
 
@@ -176,7 +178,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
                 </label>
                 <select
                   value={preferences.refreshInterval}
-                  onChange={(e) => updatePreference('refreshInterval', Number(e.target.value) as typeof preferences.refreshInterval)}
+                  onChange={(e) =>
+                    updatePreference('refreshInterval', Number(e.target.value) as typeof preferences.refreshInterval)
+                  }
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 >
                   {REFRESH_INTERVAL_OPTIONS.map((opt) => (
@@ -193,7 +197,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
                 </label>
                 <select
                   value={preferences.chartTimeRange}
-                  onChange={(e) => updatePreference('chartTimeRange', e.target.value as typeof preferences.chartTimeRange)}
+                  onChange={(e) =>
+                    updatePreference('chartTimeRange', e.target.value as typeof preferences.chartTimeRange)
+                  }
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 >
                   {CHART_RANGE_OPTIONS.map((opt) => (
@@ -222,16 +228,11 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Chart Timezone
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Chart Timezone</label>
                 <select
                   value={preferences.chartTimezone}
                   onChange={(e) =>
-                    updatePreference(
-                      'chartTimezone',
-                      e.target.value as typeof preferences.chartTimezone,
-                    )
+                    updatePreference('chartTimezone', e.target.value as typeof preferences.chartTimezone)
                   }
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   aria-label="Chart timezone"
@@ -242,23 +243,14 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-gray-500">
-                  Timezone used for X-axis labels on price charts.
-                </p>
+                <p className="mt-1 text-xs text-gray-500">Timezone used for X-axis labels on price charts.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Number & Date Format
-                </label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Number & Date Format</label>
                 <select
                   value={preferences.formatLocale}
-                  onChange={(e) =>
-                    updatePreference(
-                      'formatLocale',
-                      e.target.value as typeof preferences.formatLocale,
-                    )
-                  }
+                  onChange={(e) => updatePreference('formatLocale', e.target.value as typeof preferences.formatLocale)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   aria-label="Format locale for numbers and dates"
                 >
@@ -277,7 +269,10 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
 
           {/* Accessibility presets */}
           <section aria-labelledby="a11y-settings-heading">
-            <h3 id="a11y-settings-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+            <h3
+              id="a11y-settings-heading"
+              className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3"
+            >
               {t('settings.sections.accessibility')}
             </h3>
             <div className="space-y-4">
@@ -304,7 +299,10 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
 
           {/* Privacy / Analytics */}
           <section aria-labelledby="privacy-settings-heading">
-            <h3 id="privacy-settings-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+            <h3
+              id="privacy-settings-heading"
+              className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3"
+            >
               {t('settings.sections.privacy')}
             </h3>
             <div className="space-y-4">
@@ -322,7 +320,10 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
 
           {/* Alert sound (#308) */}
           <section aria-labelledby="sound-settings-heading">
-            <h3 id="sound-settings-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+            <h3
+              id="sound-settings-heading"
+              className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3"
+            >
               Alert Sound
             </h3>
             <div className="space-y-4">
@@ -376,8 +377,8 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
                 <span className="font-mono text-gray-300">{storageSize.formatted}</span>
               </div>
               <p className="text-xs text-gray-500">
-                Includes alert thresholds, notification config, theme preference, and cached
-                price data. No passwords, API keys, or personal information are stored.
+                Includes alert thresholds, notification config, theme preference, and cached price data. No passwords,
+                API keys, or personal information are stored.
               </p>
 
               {/* Offline price snapshot (#470) — scoped clear, distinct from "clear everything" below. */}
@@ -409,8 +410,8 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
               {clearStatus === 'confirming' && (
                 <div className="space-y-2">
                   <p className="text-xs text-amber-400">
-                    This will delete all alerts, notification settings, preferences, and cached
-                    prices. The page will reload. This cannot be undone.
+                    This will delete all alerts, notification settings, preferences, and cached prices. The page will
+                    reload. This cannot be undone.
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -432,13 +433,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
                 </div>
               )}
 
-              {clearStatus === 'clearing' && (
-                <p className="text-xs text-gray-400 animate-pulse">Clearing data…</p>
-              )}
+              {clearStatus === 'clearing' && <p className="text-xs text-gray-400 animate-pulse">Clearing data…</p>}
 
-              {clearStatus === 'done' && (
-                <p className="text-xs text-green-400">Data cleared. Reloading…</p>
-              )}
+              {clearStatus === 'done' && <p className="text-xs text-green-400">Data cleared. Reloading…</p>}
             </div>
           </section>
         </div>
@@ -452,7 +449,12 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
               aria-label={t('settings.actions.undoAriaLabel')}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4"
+                />
               </svg>
               {t('settings.actions.undo')}
               <span className="text-xs text-gray-500 ml-1">{t('settings.actions.undoShortcut')}</span>
@@ -464,7 +466,12 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
               aria-label={t('settings.actions.redoAriaLabel')}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4"
+                />
               </svg>
               {t('settings.actions.redo')}
               <span className="text-xs text-gray-500 ml-1">{t('settings.actions.redoShortcut')}</span>

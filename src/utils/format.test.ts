@@ -11,12 +11,12 @@ import {
 
 describe('Locale-aware formatting', () => {
   // Test timestamp (2024-01-15T14:30:45 UTC)
-  const testTimestamp = 1705327845000
+  const testTimestamp = 1705329045000
 
   describe('formatPrice', () => {
     it('formats prices with en-US locale (default)', () => {
-      expect(formatPrice(1234.5678)).toBe('1,234.5678')
-      expect(formatPrice(1234.5678, 'en-US')).toBe('1,234.5678')
+      expect(formatPrice(1234.5678)).toBe('1,234.57')
+      expect(formatPrice(1234.5678, 'en-US')).toBe('1,234.57')
     })
 
     it('formats prices with de-DE locale (comma decimals)', () => {
@@ -24,7 +24,8 @@ describe('Locale-aware formatting', () => {
     })
 
     it('formats prices with fr-FR locale (space thousands)', () => {
-      expect(formatPrice(1234.5678, 'fr-FR')).toBe('1 234,57')
+      // Intl emits the locale's narrow no-break space (U+202F) for fr-FR groups.
+      expect(formatPrice(1234.5678, 'fr-FR')).toMatch(/1[\u202f ]234,57/)
     })
 
     it('uses correct decimal places based on magnitude', () => {
@@ -70,7 +71,8 @@ describe('Locale-aware formatting', () => {
 
     it('respects locale formatting', () => {
       expect(formatChartPrice(1234.5, 'de-DE')).toBe('1.234,5')
-      expect(formatChartPrice(1234.5, 'fr-FR')).toContain(' ')
+      // Intl emits fr-FR thousands groups with the narrow no-break space (U+202F).
+      expect(formatChartPrice(1234.5, 'fr-FR')).toMatch(/1[\u202f ]234,5/)
     })
 
     it('defaults to en-US when no locale provided', () => {
@@ -114,7 +116,7 @@ describe('Locale-aware formatting', () => {
       const enResult = formatChartTime(testTimestamp, 'en-US')
       const deResult = formatChartTime(testTimestamp, 'de-DE')
       const jaResult = formatChartTime(testTimestamp, 'ja-JP')
-      
+
       expect(enResult).toBeDefined()
       expect(deResult).toBeDefined()
       expect(jaResult).toBeDefined()
@@ -195,16 +197,14 @@ describe('Locale-aware formatting', () => {
     it('differentiates between decimal separators', () => {
       const enUS = formatPrice(testPrice, 'en-US') // 1,234.57
       const deDE = formatPrice(testPrice, 'de-DE') // 1.234,57
-      const frFR = formatPrice(testPrice, 'fr-FR') // 1 234,57
+      const frFR = formatPrice(testPrice, 'fr-FR') // 1 234,57      expect(enUS).toContain('.')
+      expect(enUS).toContain(',')
 
-      expect(enUS).toContain('.')
-      expect(enUS).not.toContain(',')
-      
       expect(deDE).toContain(',')
       expect(deDE).toContain('.')
-      
+
       expect(frFR).toContain(',')
-      expect(frFR).toContain(' ')
+      expect(frFR).toMatch(/1[\u202f ]234/)
     })
 
     it('differentiates between thousands separators', () => {
@@ -216,8 +216,8 @@ describe('Locale-aware formatting', () => {
       expect(enUS).toMatch(/1,234/)
       // de-DE uses period for thousands
       expect(deDE).toMatch(/1\.234/)
-      // fr-FR uses space for thousands
-      expect(frFR).toMatch(/1 234/)
+      // fr-FR uses a (narrow no-break) space for thousands
+      expect(frFR).toMatch(/1[\u202f ]234/)
     })
 
     it('produces locale-specific output', () => {

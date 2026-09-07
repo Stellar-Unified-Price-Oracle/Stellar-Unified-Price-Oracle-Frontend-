@@ -40,11 +40,7 @@ interface AnalyticsEvent {
  * trackAnalytics('feature', 'export', { format: 'csv', rows: 1000 })
  * trackAnalytics('feature', 'alert_triggered', { source: 'chainlink', threshold: 'upper' })
  */
-export function trackAnalytics(
-  category: AnalyticsEventCategory,
-  name: string,
-  props?: EventProperties,
-): void {
+export function trackAnalytics(category: AnalyticsEventCategory, name: string, props?: EventProperties): void {
   if (!shouldCollect()) return
 
   // Format event name with category prefix for provider
@@ -137,4 +133,4 @@ export function trackApiDocView(section?: string): void {
   trackAnalytics('engagement', 'api_docs_view', { section })
 }
 
-export type { AnalyticsEvent, EventProperties, AnalyticsEventCategory }
+export type { AnalyticsEvent, EventProperties }

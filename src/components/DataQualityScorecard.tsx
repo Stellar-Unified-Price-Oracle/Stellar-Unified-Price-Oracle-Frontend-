@@ -1,17 +1,7 @@
 import { useMemo } from 'react'
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  Tooltip,
-  YAxis,
-} from 'recharts'
+import { ResponsiveContainer, LineChart, Line, Tooltip, YAxis } from 'recharts'
 import type { PriceHistoryEntry } from '../types'
-import {
-  computeQualityScore,
-  computeQualityTrend,
-  FACTOR_WEIGHTS,
-} from '../utils/dataQualityScore'
+import { computeQualityScore, computeQualityTrend, FACTOR_WEIGHTS } from '../utils/dataQualityScore'
 import type { QualityFactors, QualityTrendPoint } from '../utils/dataQualityScore'
 
 // ---------------------------------------------------------------------------
@@ -28,39 +18,23 @@ interface FactorBarProps {
 /** A single quality-factor row: label, progress bar, score badge, and tooltip. */
 function FactorBar({ label, score, weight, description }: FactorBarProps) {
   const barColor =
-    score >= 80
-      ? 'bg-emerald-500'
-      : score >= 60
-        ? 'bg-cyan-500'
-        : score >= 40
-          ? 'bg-yellow-500'
-          : 'bg-red-500'
+    score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-cyan-500' : score >= 40 ? 'bg-yellow-500' : 'bg-red-500'
 
   const textColor =
-    score >= 80
-      ? 'text-emerald-400'
-      : score >= 60
-        ? 'text-cyan-400'
-        : score >= 40
-          ? 'text-yellow-400'
-          : 'text-red-400'
+    score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-cyan-400' : score >= 40 ? 'text-yellow-400' : 'text-red-400'
 
   return (
     <div className="group relative" title={description}>
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs text-gray-400 flex items-center gap-1.5">
           {label}
-          <span className="text-[10px] text-gray-600 font-mono">
-            ×{(weight * 100).toFixed(0)}%
-          </span>
+          <span className="text-[10px] text-gray-600 font-mono">×{(weight * 100).toFixed(0)}%</span>
           {/* Tooltip trigger */}
           <span className="hidden group-hover:block absolute left-0 top-6 z-10 w-52 bg-gray-800 border border-gray-700 rounded-lg p-2 text-[11px] text-gray-300 shadow-lg pointer-events-none">
             {description}
           </span>
         </span>
-        <span className={`text-xs font-semibold font-mono tabular-nums ${textColor}`}>
-          {score}
-        </span>
+        <span className={`text-xs font-semibold font-mono tabular-nums ${textColor}`}>{score}</span>
       </div>
       {/* Progress bar */}
       <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden" role="presentation">
@@ -120,31 +94,18 @@ function ScoreRing({ score, label, colorClass }: ScoreRingProps) {
   // Map Tailwind text-* token to an actual hex value for SVG stroke
   const strokeColorMap: Record<string, string> = {
     'text-emerald-400': '#34d399',
-    'text-cyan-400':    '#22d3ee',
-    'text-yellow-400':  '#facc15',
-    'text-red-400':     '#f87171',
+    'text-cyan-400': '#22d3ee',
+    'text-yellow-400': '#facc15',
+    'text-red-400': '#f87171',
   }
 
   const stroke = strokeColorMap[strokeColorClass] ?? '#6b7280'
 
   return (
     <div className="relative flex items-center justify-center w-20 h-20 shrink-0">
-      <svg
-        width="80"
-        height="80"
-        viewBox="0 0 80 80"
-        className="-rotate-90"
-        aria-hidden="true"
-      >
+      <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90" aria-hidden="true">
         {/* Background track */}
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke="#1f2937"
-          strokeWidth="6"
-        />
+        <circle cx="40" cy="40" r={radius} fill="none" stroke="#1f2937" strokeWidth="6" />
         {/* Score arc */}
         <circle
           cx="40"
@@ -164,9 +125,7 @@ function ScoreRing({ score, label, colorClass }: ScoreRingProps) {
         <span className={`text-xl font-bold font-mono tabular-nums leading-none ${colorClass.split(' ')[0]}`}>
           {score}
         </span>
-        <span className="text-[9px] text-gray-500 uppercase tracking-wider mt-0.5">
-          {label}
-        </span>
+        <span className="text-[9px] text-gray-500 uppercase tracking-wider mt-0.5">{label}</span>
       </div>
     </div>
   )
@@ -197,23 +156,18 @@ export interface DataQualityScorecardProps {
  * - A trend sparkline showing quality score over the selected history range
  * - Plain-language explanations for each factor
  */
-export function DataQualityScorecard({
-  pair,
-  latestTimestamp,
-  history,
-  nowMs,
-}: DataQualityScorecardProps) {
+export function DataQualityScorecard({ pair, latestTimestamp, history, nowMs }: DataQualityScorecardProps) {
   const now = nowMs ?? Date.now()
 
   const { score, factors, label, colorClass } = useMemo(
     () => computeQualityScore(history, latestTimestamp, now),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [history, latestTimestamp, now],
   )
 
   const trendData = useMemo(
     () => computeQualityTrend(history, 20, now),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [history, now],
   )
 
@@ -227,8 +181,7 @@ export function DataQualityScorecard({
       key: 'freshness',
       label: 'Freshness',
       weight: FACTOR_WEIGHTS.freshness,
-      description:
-        'How recently the latest price was published. Decays linearly from 100 at 0 s to 0 at 5 min.',
+      description: 'How recently the latest price was published. Decays linearly from 100 at 0 s to 0 at 5 min.',
     },
     {
       key: 'confidence',
@@ -241,8 +194,7 @@ export function DataQualityScorecard({
       key: 'deviation',
       label: 'Deviation',
       weight: FACTOR_WEIGHTS.deviation,
-      description:
-        'Price stability — measured via coefficient of variation (CV). CV near 0 % → 100; CV ≥ 5 % → 0.',
+      description: 'Price stability — measured via coefficient of variation (CV). CV near 0 % → 100; CV ≥ 5 % → 0.',
     },
     {
       key: 'sourceCoverage',
@@ -256,9 +208,9 @@ export function DataQualityScorecard({
   // Sparkline stroke colour mirrors the current quality band
   const sparkColorMap: Record<string, string> = {
     'text-emerald-400': '#34d399',
-    'text-cyan-400':    '#22d3ee',
-    'text-yellow-400':  '#facc15',
-    'text-red-400':     '#f87171',
+    'text-cyan-400': '#22d3ee',
+    'text-yellow-400': '#facc15',
+    'text-red-400': '#f87171',
   }
   const sparkColor = sparkColorMap[colorClass.split(' ')[0]] ?? '#6b7280'
 
@@ -268,9 +220,7 @@ export function DataQualityScorecard({
       className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6"
     >
       {/* Section header */}
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
-        Data Quality Scorecard
-      </p>
+      <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Data Quality Scorecard</p>
 
       {/* Top row: ring + summary + factor breakdown */}
       <div className="flex flex-col sm:flex-row gap-6">
@@ -285,13 +235,7 @@ export function DataQualityScorecard({
         {/* Factor bars */}
         <div className="flex-1 flex flex-col gap-3 justify-center min-w-0">
           {factorRows.map(({ key, label: factorLabel, weight, description }) => (
-            <FactorBar
-              key={key}
-              label={factorLabel}
-              score={factors[key]}
-              weight={weight}
-              description={description}
-            />
+            <FactorBar key={key} label={factorLabel} score={factors[key]} weight={weight} description={description} />
           ))}
         </div>
       </div>
@@ -300,26 +244,26 @@ export function DataQualityScorecard({
       <p className="mt-4 text-xs text-gray-400 leading-relaxed">
         {score >= 80 && (
           <>
-            This feed is in <span className="text-emerald-400 font-medium">excellent condition</span>.
-            Prices are fresh, highly confident, stable, and backed by broad source coverage.
+            This feed is in <span className="text-emerald-400 font-medium">excellent condition</span>. Prices are fresh,
+            highly confident, stable, and backed by broad source coverage.
           </>
         )}
         {score >= 60 && score < 80 && (
           <>
-            This feed is in <span className="text-cyan-400 font-medium">good condition</span>.
-            Minor degradation in one or more factors — monitor the breakdown for details.
+            This feed is in <span className="text-cyan-400 font-medium">good condition</span>. Minor degradation in one
+            or more factors — monitor the breakdown for details.
           </>
         )}
         {score >= 40 && score < 60 && (
           <>
-            This feed is in <span className="text-yellow-400 font-medium">fair condition</span>.
-            Some factors are below optimal. Check freshness, confidence, or source coverage.
+            This feed is in <span className="text-yellow-400 font-medium">fair condition</span>. Some factors are below
+            optimal. Check freshness, confidence, or source coverage.
           </>
         )}
         {score < 40 && (
           <>
-            This feed is in <span className="text-red-400 font-medium">poor condition</span>.
-            Significant degradation detected. Exercise caution when relying on this feed.
+            This feed is in <span className="text-red-400 font-medium">poor condition</span>. Significant degradation
+            detected. Exercise caution when relying on this feed.
           </>
         )}
       </p>
@@ -327,14 +271,8 @@ export function DataQualityScorecard({
       {/* Trend sparkline */}
       {trendData.length >= 2 && (
         <div className="mt-5">
-          <p className="text-[11px] text-gray-500 uppercase tracking-wider mb-2">
-            Quality score trend
-          </p>
-          <div
-            className="h-16"
-            role="img"
-            aria-label={`Quality score trend for ${pair} over the selected range`}
-          >
+          <p className="text-[11px] text-gray-500 uppercase tracking-wider mb-2">Quality score trend</p>
+          <div className="h-16" role="img" aria-label={`Quality score trend for ${pair} over the selected range`}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}>
                 <YAxis domain={[0, 100]} hide />

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { ALERT_PRESETS, getAlertPreset } from './alertPresets'
 import { evaluateCompoundCondition } from '../utils/alertEvaluator'
 import { validateEscalationPolicy } from '../types/alerts'
+import { ALERT_PRESETS, getAlertPreset } from './alertPresets'
 
 describe('ALERT_PRESETS', () => {
   it('ships exactly the three documented presets', () => {
@@ -42,13 +42,13 @@ describe('preset instantiation — compound logic behaves as documented', () => 
   it('"Breakout" requires both windows to confirm momentum (AND)', () => {
     const { conditionGroup } = getAlertPreset('breakout')!.template
     // Both thresholds cleared
-    expect(
-      evaluateCompoundCondition(conditionGroup, { price: 0, percentageChange: { '1hr': 6, '15min': 3 } }),
-    ).toBe(true)
+    expect(evaluateCompoundCondition(conditionGroup, { price: 0, percentageChange: { '1hr': 6, '15min': 3 } })).toBe(
+      true,
+    )
     // 1hr cleared but 15min hasn't caught up yet
-    expect(
-      evaluateCompoundCondition(conditionGroup, { price: 0, percentageChange: { '1hr': 6, '15min': 0.5 } }),
-    ).toBe(false)
+    expect(evaluateCompoundCondition(conditionGroup, { price: 0, percentageChange: { '1hr': 6, '15min': 0.5 } })).toBe(
+      false,
+    )
   })
 
   it('"Stablecoin Peg Break" fires on deviation past either boundary (OR)', () => {

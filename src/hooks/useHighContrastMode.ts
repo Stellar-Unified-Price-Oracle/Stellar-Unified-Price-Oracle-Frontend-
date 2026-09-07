@@ -2,11 +2,11 @@ import { useEffect, useCallback, useSyncExternalStore } from 'react'
 
 /**
  * High Contrast Mode support for accessibility.
- * 
+ *
  * Detects:
  * - Windows High Contrast Mode (forced-colors: active)
  * - prefers-contrast media query (enhanced contrast preference)
- * 
+ *
  * When enabled, the app should:
  * - Use system colors (Canvas, ButtonText, etc.)
  * - Add visible borders to all interactive elements
@@ -52,13 +52,13 @@ function notifyListeners(): void {
 
 /**
  * Hook to detect and respond to High Contrast Mode changes.
- * 
+ *
  * Returns current high contrast mode status and automatically updates
  * when system preferences change.
- * 
+ *
  * @example
  * const { isActive, isForcedColors } = useHighContrastMode()
- * 
+ *
  * if (isActive) {
  *   // Apply high contrast styles
  * }
@@ -113,10 +113,5 @@ export function getHighContrastMode(): HighContrastMode {
  */
 export function isHighContrastModeActive(): boolean {
   if (typeof window === 'undefined') return false
-  return (
-    window.matchMedia('(forced-colors: active)').matches ||
-    window.matchMedia('(prefers-contrast: more)').matches
-  )
+  return window.matchMedia('(forced-colors: active)').matches || window.matchMedia('(prefers-contrast: more)').matches
 }
-
-export type { HighContrastMode }

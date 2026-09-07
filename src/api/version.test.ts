@@ -12,11 +12,7 @@ import {
   createVersionEndpoint,
   type VersionInfo,
 } from './version'
-import {
-  versionEndpoints,
-  compareVersions,
-  createMockVersionEndpoint,
-} from './versionEndpoints'
+import { versionEndpoints, compareVersions, createMockVersionEndpoint } from './versionEndpoints'
 
 describe('Version Management', () => {
   describe('getAppVersion', () => {
@@ -99,9 +95,8 @@ describe('Version Management', () => {
     })
 
     it('uses current version as default', () => {
-      const current = getAppVersion()
       // This should not throw
-      shouldUpdate('99.0.0')
+      expect(() => shouldUpdate('99.0.0')).not.toThrow()
     })
   })
 
@@ -311,7 +306,7 @@ describe('Version Endpoints', () => {
 
     it('mock endpoint handles updates', () => {
       const endpoint = createMockVersionEndpoint('1.0.0')
-      const response = endpoint.checkUpdate("1.1.0")
+      const response = endpoint.checkUpdate('1.1.0')
 
       expect(response.remote).toBe('1.1.0')
       expect(response.needsUpdate).toBe(true)

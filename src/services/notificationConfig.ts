@@ -71,7 +71,11 @@ export function resolveAlertChannels(
   alertChannels: NotificationChannelId[] | null | undefined,
 ): Set<NotificationChannelId> {
   const enabled = new Set(getEnabledChannels(cfg))
-  if (!alertChannels || alertChannels.length === 0) return enabled
+  // inApp is always part of the routing set — the base alert-fire path always
+  // produces the in-app sound/notification regardless of per-channel routing.
+  if (!alertChannels || alertChannels.length === 0) {
+    return new Set<NotificationChannelId>(['inApp', ...enabled])
+  }
 
   const chosen = new Set(alertChannels)
   chosen.delete('inApp') // always handled by the base fire path

@@ -1,18 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { ToastProvider } from '../context/ToastContext'
 import { useSavedViews } from './useSavedViews'
 import { idbCache } from './useIndexedDB'
-import { ToastProvider } from '../context/ToastContext'
-import type { ReactNode } from 'react'
 
 function Wrapper({ children }: { children: ReactNode }) {
   return <ToastProvider>{children}</ToastProvider>
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   idbCache._reset()
   idbCache._disableSyncQueue()
   vi.clearAllMocks()
+  // `_reset()` only drops the open-DB promise; the data itself persists across
+  // tests in the same file. Clear the preferences store so each test starts
+  // from an empty slate.
+  await idbCache.clear('preferences')
 })
 
 afterEach(() => {
@@ -97,9 +101,9 @@ describe('useSavedViews', () => {
 
     await waitFor(() => expect(result.current.views).toHaveLength(1))
 
-    // Advance time so updatedAt changes
-    vi.useFakeTimers()
-    vi.setSystemTime(Date.now() + 10_000)
+    // Let the clock tick past the save timestamp so updatedAt strictly grows
+    // (fake timers would stall waitFor's polling, so advance real time).
+    await new Promise((resolve) => setTimeout(resolve, 5))
 
     act(() => {
       result.current.updateView(id, { name: 'Updated Name' })
@@ -110,8 +114,6 @@ describe('useSavedViews', () => {
       expect(updated?.name).toBe('Updated Name')
       expect(updated?.updatedAt).toBeGreaterThan(originalUpdatedAt)
     })
-
-    vi.useRealTimers()
   })
 
   it('deleteView on unknown id does not throw', async () => {
@@ -153,25 +155,22 @@ describe('useSavedViews', () => {
   })
 
   it('views are sorted newest-first', async () => {
-    vi.useFakeTimers()
     const { result } = renderHook(() => useSavedViews(), { wrapper: Wrapper })
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     act(() => {
-      vi.setSystemTime(1_000)
       result.current.saveView({ ...baseViewInput, name: 'Older' })
     })
     await waitFor(() => expect(result.current.views).toHaveLength(1))
 
+    // Sequential real-time saves get monotonically increasing createdAt values,
+    // so the second save is strictly newer.
     act(() => {
-      vi.setSystemTime(2_000)
       result.current.saveView({ ...baseViewInput, name: 'Newer' })
     })
     await waitFor(() => expect(result.current.views).toHaveLength(2))
 
     expect(result.current.views[0].name).toBe('Newer')
     expect(result.current.views[1].name).toBe('Older')
-
-    vi.useRealTimers()
   })
 })

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -14,7 +14,10 @@ interface Props {
   hasImport: boolean
 }
 
-function parseCsv(text: string, errorMessages: { empty: string; noValidRows: string }): { rows: CsvRow[]; error: string | null } {
+function parseCsv(
+  text: string,
+  errorMessages: { empty: string; noValidRows: string },
+): { rows: CsvRow[]; error: string | null } {
   const lines = text.trim().split(/\r?\n/)
   if (lines.length === 0) return { rows: [], error: errorMessages.empty }
 
@@ -85,8 +88,19 @@ export function CsvImportZone({ onImport, onClear, hasImport }: Props): ReactEle
   if (hasImport) {
     return (
       <div className="flex items-center gap-3 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-sm">
-        <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          className="w-4 h-4 text-cyan-400 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
         <span className="text-cyan-300 flex-1">{t('csv.imported')}</span>
         <button
@@ -119,17 +133,19 @@ export function CsvImportZone({ onImport, onClear, hasImport }: Props): ReactEle
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={`w-full flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
-          isDragging
-            ? 'border-cyan-500 bg-cyan-500/10'
-            : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
+          isDragging ? 'border-cyan-500 bg-cyan-500/10' : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
         }`}
       >
         <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
         </svg>
         <p className="text-sm text-gray-400">
-          {t('csv.dropOrBrowse')}{' '}
-          <span className="text-cyan-400">{t('csv.browse')}</span>
+          {t('csv.dropOrBrowse')} <span className="text-cyan-400">{t('csv.browse')}</span>
         </p>
         <p className="text-xs text-gray-600">{t('csv.hint')}</p>
       </button>

@@ -26,10 +26,7 @@ interface PriceChangeInfo {
  * Hook for announcing significant price changes to screen readers.
  * Only announces prices that meet the configured thresholds.
  */
-export function usePriceAnnouncer(
-  prices: PriceData[] | undefined,
-  config: Partial<PriceAnnouncerConfig> = {},
-): void {
+export function usePriceAnnouncer(prices: PriceData[] | undefined, config: Partial<PriceAnnouncerConfig> = {}): void {
   const { announce } = useAnnounce({
     deduplicationMs: (config.deduplicationMs ?? DEFAULT_CONFIG.deduplicationMs) * 2,
   })
@@ -76,7 +73,7 @@ export function usePriceAnnouncer(
       const sorted = changes.sort((a, b) => b.percentChange - a.percentChange)
       const toAnnounce = sorted.slice(0, mergedConfig.maxAnnouncementsPerBatch)
 
-      toAnnounce.forEach(change => {
+      toAnnounce.forEach((change) => {
         const direction = change.newPrice > change.oldPrice ? 'up' : 'down'
         const msg = `${change.pair} moved ${direction} to ${formatPrice(change.newPrice)}, ${change.percentChange.toFixed(1)}% change`
         announce(msg, 'polite')
@@ -125,7 +122,7 @@ export function usePriceAlertAnnouncer(
   config: Partial<PriceAnnouncerConfig> = {},
 ): void {
   const { announce } = useAnnounce(config)
-  const prevPriceRef = useRef<number | undefined>()
+  const prevPriceRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     if (!pair || !price) return

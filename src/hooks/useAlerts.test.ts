@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useAlerts, AlertsProvider } from './useAlerts'
 import { usePriceContext } from '../context/PriceContext'
 import type { Alert, LivePriceEntry } from '../types'
+import { getLimiter } from '../utils/rateLimit'
+import { useAlerts, AlertsProvider } from './useAlerts'
 
 const STORAGE_KEY = 'price-alerts'
 
@@ -14,8 +15,31 @@ vi.mock('../context/PriceContext', () => ({
 
 function livePricesMap(pair: string, price: number): Map<string, LivePriceEntry> {
   const map = new Map<string, LivePriceEntry>()
-  map.set(pair, { data: { assetPair: pair, price, timestamp: Date.now(), confidence: 1, sources: ['test'] } } as LivePriceEntry)
+  map.set(pair, {
+    data: { assetPair: pair, price, timestamp: Date.now(), confidence: 1, sources: ['test'] },
+  } as LivePriceEntry)
   return map
+}
+
+/** Builds a complete addAlert input with safe defaults for the fields tests don't exercise. */
+function makeAlertInput(overrides: Record<string, unknown> = {}) {
+  return {
+    assetPair: 'BTC/USD',
+    upperThreshold: null,
+    lowerThreshold: null,
+    triggerOnce: false,
+    active: true,
+    percentageMode: false,
+    percentageThreshold: null,
+    percentageWindow: null,
+    percentageDirection: null,
+    percentageRelativeTo: null,
+    cooldownMinutes: 5,
+    conditionGroup: null,
+    escalationPolicy: null,
+    retestMode: false,
+    ...overrides,
+  }
 }
 
 /** Seeds `localStorage` with a fully-formed legacy-era Alert (no conditionGroup/escalation fields). */
@@ -46,6 +70,9 @@ function seedLegacyAlert(overrides: Partial<Alert> = {}): void {
 
 beforeEach(() => {
   localStorage.clear()
+  // The alert-create rate limiter is a module-level singleton (5/min); reset it
+  // so earlier tests in this file don't exhaust the budget for later ones.
+  getLimiter('alertCreate').reset()
   vi.mocked(usePriceContext).mockReturnValue({ livePrices: new Map() } as ReturnType<typeof usePriceContext>)
 })
 
@@ -82,13 +109,9 @@ describe('useAlerts', () => {
   it('adds an alert', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
-      result.current.addAlert({
-        assetPair: 'ETH/USD',
-        upperThreshold: 4000,
-        lowerThreshold: 2000,
-        triggerOnce: true,
-        active: true,
-      })
+      result.current.addAlert(
+        makeAlertInput({ assetPair: 'ETH/USD', upperThreshold: 4000, lowerThreshold: 2000, triggerOnce: true }),
+      )
     })
     expect(result.current.alerts).toHaveLength(1)
     expect(result.current.alerts[0].assetPair).toBe('ETH/USD')
@@ -103,13 +126,7 @@ describe('useAlerts', () => {
   it('persists to localStorage after add', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
-      result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+      result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
     })
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
     expect(stored).toHaveLength(1)
@@ -120,14 +137,8 @@ describe('useAlerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     let id: string
     act(() => {
-      const alert = result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
-      id = alert.id
+      const alert = result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
+      id = alert!.id
     })
     act(() => {
       result.current.updateAlert(id, { upperThreshold: 65000, triggerOnce: true })
@@ -141,14 +152,8 @@ describe('useAlerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     let id: string
     act(() => {
-      const alert = result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
-      id = alert.id
+      const alert = result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
+      id = alert!.id
     })
     expect(result.current.alerts).toHaveLength(1)
     act(() => {
@@ -160,20 +165,8 @@ describe('useAlerts', () => {
   it('filters alerts by pair', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
-      result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
-      result.current.addAlert({
-        assetPair: 'ETH/USD',
-        upperThreshold: 4000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+      result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
+      result.current.addAlert(makeAlertInput({ assetPair: 'ETH/USD', upperThreshold: 4000 }))
     })
     const btcAlerts = result.current.getAlertsForPair('BTC/USD')
     expect(btcAlerts).toHaveLength(1)
@@ -184,13 +177,7 @@ describe('useAlerts', () => {
   it('checks if pair has alerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
-      result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+      result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
     })
     expect(result.current.hasAlertsForPair('BTC/USD')).toBe(true)
     expect(result.current.hasAlertsForPair('ETH/USD')).toBe(false)
@@ -199,20 +186,8 @@ describe('useAlerts', () => {
   it('excludes inactive alerts from count', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     act(() => {
-      result.current.addAlert({
-        assetPair: 'BTC/USD',
-        upperThreshold: 60000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: false,
-      })
-      result.current.addAlert({
-        assetPair: 'ETH/USD',
-        upperThreshold: 4000,
-        lowerThreshold: null,
-        triggerOnce: false,
-        active: true,
-      })
+      result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000, active: false }))
+      result.current.addAlert(makeAlertInput({ assetPair: 'ETH/USD', upperThreshold: 4000 }))
     })
     expect(result.current.activeCount).toBe(1)
   })
@@ -234,7 +209,9 @@ describe('useAlerts', () => {
 
     it('the migrated condition group evaluates equivalently to the old threshold logic', () => {
       seedLegacyAlert({ upperThreshold: 100, lowerThreshold: 50 })
-      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<typeof usePriceContext>)
+      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
+        typeof usePriceContext
+      >)
       const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
       expect(result.current.alerts[0].fireCount).toBe(1)
       expect(result.current.alerts[0].lastTriggeredAt).not.toBeNull()
@@ -262,7 +239,9 @@ describe('useAlerts', () => {
           ],
         },
       })
-      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<typeof usePriceContext>)
+      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
+        typeof usePriceContext
+      >)
       const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
 
       expect(result.current.alerts[0].escalationState?.firedStepIds).toContain('step-immediate')
@@ -286,7 +265,9 @@ describe('useAlerts', () => {
           ],
         },
       })
-      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<typeof usePriceContext>)
+      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
+        typeof usePriceContext
+      >)
       const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
       expect(result.current.alerts[0].escalationState?.firedStepIds).toEqual(['step-immediate'])
 
@@ -294,7 +275,9 @@ describe('useAlerts', () => {
       // fresh (but same-priced) livePrices Map, mirroring a real price tick.
       vi.setSystemTime(t0 + 16 * 60 * 1000)
       act(() => {
-        vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<typeof usePriceContext>)
+        vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
+          typeof usePriceContext
+        >)
         rerender()
       })
 
@@ -308,12 +291,16 @@ describe('useAlerts', () => {
         upperThreshold: 100,
         escalationPolicy: { enabled: true, steps: [{ id: 'step-immediate', channel: 'inApp', delayMinutes: 0 }] },
       })
-      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<typeof usePriceContext>)
+      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
+        typeof usePriceContext
+      >)
       const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
       expect(result.current.alerts[0].escalationState).not.toBeNull()
 
       act(() => {
-        vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 10) } as ReturnType<typeof usePriceContext>)
+        vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 10) } as ReturnType<
+          typeof usePriceContext
+        >)
         rerender()
       })
 
@@ -321,8 +308,13 @@ describe('useAlerts', () => {
     })
 
     it('does not start an escalation sequence when the policy is disabled', () => {
-      seedLegacyAlert({ upperThreshold: 100, escalationPolicy: { enabled: false, steps: [{ id: 's1', channel: 'inApp', delayMinutes: 0 }] } })
-      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<typeof usePriceContext>)
+      seedLegacyAlert({
+        upperThreshold: 100,
+        escalationPolicy: { enabled: false, steps: [{ id: 's1', channel: 'inApp', delayMinutes: 0 }] },
+      })
+      vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
+        typeof usePriceContext
+      >)
       const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
       expect(result.current.alerts[0].escalationState).toBeNull()
     })

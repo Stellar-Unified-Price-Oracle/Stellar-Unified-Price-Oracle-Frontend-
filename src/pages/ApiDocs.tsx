@@ -156,6 +156,10 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cacheStatus, setCacheStatus] = useState<string | null>(null)
+  const [path, setPath] = useState<string>(() => endpoint.tryPath ?? '')
+  const [body, setBody] = useState<string>('{}')
+  const [latency, setLatency] = useState<number | null>(null)
+  const [headers, setHeaders] = useState<Record<string, string>>({})
   const { t } = useTranslation()
 
   if (!endpoint.tryPath || endpoint.method === 'WS') return null
@@ -165,19 +169,36 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
     setResult(null)
     setError(null)
     setCacheStatus(null)
+    setLatency(null)
+    setHeaders({})
+    const startedAt = performance.now()
     try {
-      const res = await fetch(`${config.apiUrl.replace(/\/api$/, '')}${endpoint.tryPath}`)
+      const base = config.apiUrl.replace(/\/api$/, '')
+      const res = await fetch(`${base}${path}`, {
+        method: endpoint.method,
+        headers: endpoint.method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+        body: endpoint.method === 'POST' ? body : undefined,
+      })
+      setLatency(Math.round(performance.now() - startedAt))
+
+      const responseHeaders: Record<string, string> = {}
+      res.headers.forEach((value, key) => {
+        responseHeaders[key] = value
+      })
+      setHeaders(responseHeaders)
       setCacheStatus(readCacheStatus(res.headers))
       const text = await res.text()
       try {
         const parsed: unknown = JSON.parse(text)
         setResult(JSON.stringify(parsed, null, 2))
-        if (!res.ok && typeof parsed === 'object' && parsed !== null && 'message' in parsed) setError(String(parsed.message))
+        if (!res.ok && typeof parsed === 'object' && parsed !== null && 'message' in parsed)
+          setError(String(parsed.message))
       } catch {
         if (res.ok) setResult(text)
         else setError(`${res.status} ${res.statusText}: ${text}`)
       }
     } catch (err) {
+      setLatency(Math.round(performance.now() - startedAt))
       setError(err instanceof Error ? err.message : 'Request failed')
     } finally {
       setLoading(false)
@@ -210,10 +231,34 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
         </pre>
       )}
       <div className="mt-3 grid gap-2">
-        <label className="text-xs text-gray-500">Path<input value={path} onChange={(event) => setPath(event.target.value)} className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-gray-200" /></label>
-        {endpoint.method === 'POST' && <label className="text-xs text-gray-500">JSON body<textarea value={body} onChange={(event) => setBody(event.target.value)} rows={3} className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-gray-200 font-mono" /></label>}
+        <label className="text-xs text-gray-500">
+          Path
+          <input
+            value={path}
+            onChange={(event) => setPath(event.target.value)}
+            className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-gray-200"
+          />
+        </label>
+        {endpoint.method === 'POST' && (
+          <label className="text-xs text-gray-500">
+            JSON body
+            <textarea
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              rows={3}
+              className="mt-1 w-full rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-gray-200 font-mono"
+            />
+          </label>
+        )}
       </div>
-      {(latency != null || Object.keys(headers).length > 0) && <p className="mt-2 text-xs text-gray-500">{latency != null ? `${latency}ms` : ''}{Object.entries(headers).map(([key, value]) => ` · ${key}: ${value}`).join('')}</p>}
+      {(latency != null || Object.keys(headers).length > 0) && (
+        <p className="mt-2 text-xs text-gray-500">
+          {latency != null ? `${latency}ms` : ''}
+          {Object.entries(headers)
+            .map(([key, value]) => ` · ${key}: ${value}`)
+            .join('')}
+        </p>
+      )}
     </div>
   )
 }
@@ -254,9 +299,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
               aria-selected={lang === l}
               onClick={() => setLang(l)}
               className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
-                lang === l
-                  ? 'bg-gray-700 text-white'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                lang === l ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
               }`}
             >
               {LANG_LABELS[l]}
@@ -295,7 +338,12 @@ export function ApiDocs() {
             className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 text-sm rounded-lg border border-cyan-800 bg-cyan-900/20 text-cyan-400 hover:bg-cyan-900/40 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
             </svg>
             {t('apiDocs.openSpec')}
           </a>
@@ -307,7 +355,12 @@ export function ApiDocs() {
           className="inline-flex items-center gap-1.5 mt-3 ml-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-800 bg-cyan-900/20 text-cyan-400 hover:bg-cyan-900/40 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
           Read the oracle on-chain
         </a>
@@ -322,8 +375,12 @@ export function ApiDocs() {
       </div>
 
       <div className="mb-4 flex flex-wrap gap-3 text-xs text-gray-500">
-        <span>{t('apiDocs.baseUrl')} <code className="font-mono text-gray-300">{config.apiUrl.replace(/\/api$/, '')}</code></span>
-        <span>{t('apiDocs.ws')} <code className="font-mono text-gray-300">{config.wsUrl}</code></span>
+        <span>
+          {t('apiDocs.baseUrl')} <code className="font-mono text-gray-300">{config.apiUrl.replace(/\/api$/, '')}</code>
+        </span>
+        <span>
+          {t('apiDocs.ws')} <code className="font-mono text-gray-300">{config.wsUrl}</code>
+        </span>
       </div>
 
       <div className="space-y-4">

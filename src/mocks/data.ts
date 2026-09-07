@@ -17,6 +17,7 @@ const BASE_PRICES: Record<string, number> = {
   'USDC/USD': 1.0,
 }
 
+/** Mock pair for the default XLM/USD case to satisfy tree-shaking imports. */
 export function mockPriceData(pair = 'XLM/USD'): PriceData {
   return {
     assetPair: pair,
@@ -62,6 +63,43 @@ export function mockOnChainPrice(network: OracleNetwork, asset: string): OnChain
     price: randomPrice(base),
     publishedAt: Date.now() - publishDelayMs,
     ledger: mockLedger,
+  }
+}
+
+/**
+ * Simulates the on-chain price-proof payload returned by
+ * `GET /api/prices/:pair/proof` (see {@link PriceProof}). Returns `null` for
+ * unknown pairs so MSW handlers can respond 404 like the real backend does.
+ */
+export function mockPriceProof(pair: string, timestamp: number | undefined = Date.now()): PriceProof | null {
+  const base = BASE_PRICES[pair]
+  if (!base) return null
+  const ts = timestamp ?? Date.now()
+  const price = randomPrice(base)
+  const record = mockOnChainPrice('testnet', pair.split('/')[0] ?? pair)
+  return {
+    record: {
+      assetPair: pair,
+      price,
+      priceScaled: String(Math.round(price * 1e7)),
+      priceDecimals: 7,
+      timestamp: ts,
+      confidence: 0.94,
+      sources: [...SOURCES.slice(0, 3)],
+      version: record.ledger,
+    },
+    contributions: SOURCES.slice(0, 3).map((source, i) => ({
+      source,
+      price: price * (1 + (i - 1) * 0.001),
+      timestamp: ts,
+      signature: `deadbeef${i}`.padEnd(64, '0'),
+      publicKey: 'G'.padEnd(56, 'A'),
+    })),
+    aggregateSignature: '0'.repeat(128),
+    contractId: record.contractId,
+    ledgerSequence: record.ledger,
+    transactionHash: '0'.repeat(64),
+    network: 'testnet',
   }
 }
 
@@ -119,9 +157,7 @@ export function computeAggregationBreakdown(
     const zScoreThreshold = 1.5
     params['zScoreThreshold'] = zScoreThreshold
     const mean = sourcePrices.reduce((s, p) => s + p, 0) / n
-    const stdDev = Math.sqrt(
-      sourcePrices.reduce((s, p) => s + (p - mean) ** 2, 0) / n,
-    )
+    const stdDev = Math.sqrt(sourcePrices.reduce((s, p) => s + (p - mean) ** 2, 0) / n)
     if (stdDev > 0) {
       const zScores = sourcePrices.map((p) => Math.abs((p - mean) / stdDev))
       const maxZ = Math.max(...zScores)

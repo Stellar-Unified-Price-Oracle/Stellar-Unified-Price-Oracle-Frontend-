@@ -1,12 +1,12 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ViewManager } from './ViewManager'
+import type { ReactNode } from 'react'
 import { idbCache } from '../hooks/useIndexedDB'
+import { ToastProvider } from '../context/ToastContext'
+import { ViewManager } from './ViewManager'
 
 // Wrap in ToastContext
-import { ToastProvider } from '../context/ToastContext'
-import type { ReactNode } from 'react'
 
 afterEach(() => {
   cleanup()
@@ -75,9 +75,9 @@ describe('ViewManager', () => {
       </Wrapper>,
     )
     await user.click(screen.getByRole('button', { name: /saved views/i }))
-    const nameInput = screen.getByPlaceholderText(/name|view name/i)
+    const nameInput = screen.getByPlaceholderText(/my view/i)
     await user.type(nameInput, 'My BTC View')
-    await user.click(screen.getByRole('button', { name: /save/i }))
+    await user.click(screen.getByRole('button', { name: /^save view$/i }))
     await waitFor(() => expect(screen.queryByText('My BTC View')).toBeInTheDocument())
   })
 

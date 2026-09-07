@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { presetStorage, type CustomAlertPresetInput } from './presetStorage'
 import type { ConditionGroup } from '../types'
+import { presetStorage, type CustomAlertPresetInput } from './presetStorage'
 
 const sampleGroup: ConditionGroup = {
   id: 'g1',

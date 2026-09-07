@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   v1Migration,
   v2Migration,
-  v3Migration,
   createAppMigrationRegistry,
   createAppMigrationRunner,
   CURRENT_DB_VERSION,
 } from './idbMigrationDefinitions'
+import type { MigrationRunner } from './idbMigrations'
 
 function deleteTestDB(name: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -16,20 +16,42 @@ function deleteTestDB(name: string): Promise<void> {
   })
 }
 
-function createTestDB(version: number): Promise<IDBDatabase> {
+/**
+ * Open `name` at `version`, running the app migration runner inside the
+ * versionchange transaction (the only place schema changes are legal). Mirrors
+ * the production open path in src/hooks/useIndexedDB.ts.
+ */
+function openWithMigrations(
+  name: string,
+  version: number,
+  runner: MigrationRunner,
+): Promise<{ db: IDBDatabase; applied: number }> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('migration-def-test', version)
-    req.onsuccess = () => resolve(req.result)
+    const req = indexedDB.open(name, version)
+    let applied = 0
+    req.onupgradeneeded = async () => {
+      try {
+        applied = await runner.run(req.result, req.transaction!, version)
+      } catch (error) {
+        req.transaction!.abort()
+        reject(error as Error)
+      }
+    }
+    req.onsuccess = () => resolve({ db: req.result, applied })
     req.onerror = () => reject(req.error)
   })
 }
 
 describe('Migration Definitions', () => {
+  let db: IDBDatabase | null = null
+
   beforeEach(async () => {
     await deleteTestDB('migration-def-test')
   })
 
   afterEach(async () => {
+    if (db) db.close()
+    db = null
     await deleteTestDB('migration-def-test')
   })
 
@@ -58,96 +80,75 @@ describe('Migration Definitions', () => {
 
   describe('v1Migration', () => {
     it('creates stores', async () => {
-      const db = await createTestDB(1)
+      const runner = createAppMigrationRunner()
+      const { db: opened } = await openWithMigrations('migration-def-test', 1, runner)
+      db = opened
 
-      // Execute migration manually
-      const tx = db.transaction([], 'readwrite')
-      v1Migration.up(db, tx)
-
-      // Verify stores exist
-      const stores = Array.from(db.objectStoreNames)
+      const stores = Array.from(opened.objectStoreNames)
       expect(stores).toContain('prices')
       expect(stores).toContain('history')
       expect(stores).toContain('preferences')
-
-      db.close()
     })
 
     it('creates stores with correct keyPath', async () => {
-      const db = await createTestDB(1)
+      const runner = createAppMigrationRunner()
+      const { db: opened } = await openWithMigrations('migration-def-test', 1, runner)
+      db = opened
 
-      const tx = db.transaction([], 'readwrite')
-      v1Migration.up(db, tx)
-
-      const priceStore = db.transaction('prices', 'readonly').objectStore('prices')
+      const priceStore = opened.transaction('prices', 'readonly').objectStore('prices')
       expect(priceStore.keyPath).toBe('key')
-
-      db.close()
     })
   })
 
   describe('v2Migration', () => {
     it('creates pendingMutations store', async () => {
-      const db = await createTestDB(1)
+      const runner = createAppMigrationRunner()
+      const { db: opened } = await openWithMigrations('migration-def-test', 2, runner)
+      db = opened
 
-      // Execute v1 first
-      const tx1 = db.transaction([], 'readwrite')
-      v1Migration.up(db, tx1)
+      expect(opened.objectStoreNames.contains('pendingMutations')).toBe(true)
 
-      // Then v2
-      const tx2 = db.transaction([], 'readwrite')
-      v2Migration.up(db, tx2)
-
-      expect(db.objectStoreNames.contains('pendingMutations')).toBe(true)
-
-      const mutationStore = db.transaction('pendingMutations', 'readonly').objectStore('pendingMutations')
+      const mutationStore = opened.transaction('pendingMutations', 'readonly').objectStore('pendingMutations')
       expect(mutationStore.keyPath).toBe('id')
       expect(mutationStore.autoIncrement).toBe(true)
-
-      db.close()
     })
 
     it('can be rolled back', async () => {
-      const db = await createTestDB(2)
+      // v2's down is exercised inside the same versionchange transaction that
+      // created the store — the only context in which deleteObjectStore is legal.
+      const { db: opened } = await openWithMigrations('migration-def-test', 2, createAppMigrationRunner())
+      opened.close()
 
-      if (v2Migration.down) {
-        const tx = db.transaction([], 'readwrite')
-        v2Migration.down(db, tx)
+      const reopened = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open('migration-def-test', 3)
+        req.onupgradeneeded = () => {
+          const tx = req.transaction!
+          // Ensure the schema from v1/v2 is present, then roll v2 back.
+          v1Migration.up(req.result, tx)
+          v2Migration.up(req.result, tx)
+          v2Migration.down?.(req.result, tx)
+        }
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      db = reopened
 
-        expect(db.objectStoreNames.contains('pendingMutations')).toBe(false)
-      }
-
-      db.close()
+      expect(reopened.objectStoreNames.contains('pendingMutations')).toBe(false)
     })
   })
 
   describe('v3Migration', () => {
     it('adds indexes', async () => {
-      const db = await createTestDB(2)
+      const runner = createAppMigrationRunner()
+      const { db: opened } = await openWithMigrations('migration-def-test', 3, runner)
+      db = opened
 
-      // Execute v1 and v2 to create stores
-      const tx1 = db.transaction([], 'readwrite')
-      v1Migration.up(db, tx1)
-      v2Migration.up(db, tx1)
-
-      // Wait for transaction to complete
-      await new Promise((resolve) => {
-        tx1.oncomplete = resolve
-      })
-
-      // Then v3
-      const tx2 = db.transaction(['history', 'pendingMutations'], 'readwrite')
-      v3Migration.up(db, tx2)
-
-      // Verify indexes
-      const historyStore = db.transaction('history', 'readonly').objectStore('history')
+      const historyStore = opened.transaction('history', 'readonly').objectStore('history')
       expect(historyStore.indexNames.contains('by-pair')).toBe(true)
       expect(historyStore.indexNames.contains('by-timestamp')).toBe(true)
 
-      const mutationStore = db.transaction('pendingMutations', 'readonly').objectStore('pendingMutations')
+      const mutationStore = opened.transaction('pendingMutations', 'readonly').objectStore('pendingMutations')
       expect(mutationStore.indexNames.contains('by-timestamp')).toBe(true)
-
-      db.close()
     })
   })
 
@@ -159,39 +160,33 @@ describe('Migration Definitions', () => {
 
     it('can execute all migrations', async () => {
       const runner = createAppMigrationRunner()
-      const db = await createTestDB(CURRENT_DB_VERSION)
-
-      const applied = await runner.run(db, 0, CURRENT_DB_VERSION)
+      const { db: opened, applied } = await openWithMigrations('migration-def-test', CURRENT_DB_VERSION, runner)
+      db = opened
 
       expect(applied).toBe(3)
 
       // Verify all stores exist
-      expect(db.objectStoreNames.contains('prices')).toBe(true)
-      expect(db.objectStoreNames.contains('history')).toBe(true)
-      expect(db.objectStoreNames.contains('preferences')).toBe(true)
-      expect(db.objectStoreNames.contains('pendingMutations')).toBe(true)
+      expect(opened.objectStoreNames.contains('prices')).toBe(true)
+      expect(opened.objectStoreNames.contains('history')).toBe(true)
+      expect(opened.objectStoreNames.contains('preferences')).toBe(true)
+      expect(opened.objectStoreNames.contains('pendingMutations')).toBe(true)
 
       // Verify indexes
-      const historyStore = db.transaction('history', 'readonly').objectStore('history')
+      const historyStore = opened.transaction('history', 'readonly').objectStore('history')
       expect(historyStore.indexNames.contains('by-pair')).toBe(true)
-
-      db.close()
     })
 
     it('records migration history', async () => {
       const runner = createAppMigrationRunner()
-      const db = await createTestDB(CURRENT_DB_VERSION)
+      const { db: opened } = await openWithMigrations('migration-def-test', CURRENT_DB_VERSION, runner)
+      db = opened
 
-      await runner.run(db, 0, CURRENT_DB_VERSION)
-
-      const history = await runner.getMigrationHistory(db)
+      const history = await runner.getMigrationHistory(opened)
 
       expect(history).toHaveLength(3)
       expect(history[0].name).toBe('initial-schema')
       expect(history[1].name).toBe('add-pending-mutations')
       expect(history[2].name).toBe('add-query-indexes')
-
-      db.close()
     })
   })
 
@@ -200,54 +195,41 @@ describe('Migration Definitions', () => {
       const runner = createAppMigrationRunner()
 
       // Start with v1
-      const db = await createTestDB(1)
-      await runner.run(db, 0, 1)
-
-      let version = await runner.getCurrentVersion(db)
-      expect(version).toBe(1)
+      const step1 = await openWithMigrations('migration-def-test', 1, runner)
+      expect(step1.applied).toBe(1)
+      expect(await runner.getCurrentVersion(step1.db)).toBe(1)
+      step1.db.close()
 
       // Progress to v2
-      await runner.run(db, 1, 2)
-      version = await runner.getCurrentVersion(db)
-      expect(version).toBe(2)
-      expect(db.objectStoreNames.contains('pendingMutations')).toBe(true)
+      const step2 = await openWithMigrations('migration-def-test', 2, runner)
+      expect(step2.applied).toBe(1)
+      expect(await runner.getCurrentVersion(step2.db)).toBe(2)
+      expect(step2.db.objectStoreNames.contains('pendingMutations')).toBe(true)
+      step2.db.close()
 
       // Progress to v3
-      await runner.run(db, 2, 3)
-      version = await runner.getCurrentVersion(db)
-      expect(version).toBe(3)
+      const step3 = await openWithMigrations('migration-def-test', 3, runner)
+      db = step3.db
+      expect(step3.applied).toBe(1)
+      expect(await runner.getCurrentVersion(step3.db)).toBe(3)
 
-      const historyStore = db.transaction('history', 'readonly').objectStore('history')
+      const historyStore = step3.db.transaction('history', 'readonly').objectStore('history')
       expect(historyStore.indexNames.contains('by-pair')).toBe(true)
-
-      db.close()
     })
 
     it('idempotently applies migrations', async () => {
       const runner = createAppMigrationRunner()
-      const db = await createTestDB(CURRENT_DB_VERSION)
+      const first = await openWithMigrations('migration-def-test', CURRENT_DB_VERSION, runner)
+      first.db.close()
 
-      // Apply migrations twice
-      await runner.run(db, 0, CURRENT_DB_VERSION)
-      const first = await runner.getMigrationHistory(db)
+      // Re-opening at the current version fires no versionchange event, so no
+      // migration re-runs and the recorded history is not duplicated.
+      const second = await openWithMigrations('migration-def-test', CURRENT_DB_VERSION, runner)
+      db = second.db
 
-      // Clear migration history to simulate re-running
-      const tx = db.transaction('__migrations__', 'readwrite')
-      const store = tx.objectStore('__migrations__')
-      await new Promise<void>((resolve) => {
-        store.clear()
-        tx.oncomplete = () => resolve()
-      })
-
-      // Run again - should not error
-      await runner.run(db, 0, CURRENT_DB_VERSION)
-      const second = await runner.getMigrationHistory(db)
-
-      // Both should have same number of migrations
-      expect(first).toHaveLength(3)
-      expect(second).toHaveLength(3)
-
-      db.close()
+      expect(second.applied).toBe(0)
+      const history = await runner.getMigrationHistory(second.db)
+      expect(history).toHaveLength(3)
     })
   })
 })

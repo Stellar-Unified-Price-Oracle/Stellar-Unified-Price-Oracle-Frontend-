@@ -5,7 +5,7 @@
  * Call setupErrorTracking() early in app initialization to enable monitoring.
  */
 
-import { reportNetworkError, _reportWebSocketError, reportIndexedDBError, trackAsyncOperation, reportPerformanceIssue } from './errorReporting'
+import { reportNetworkError, reportIndexedDBError, trackAsyncOperation, reportPerformanceIssue } from './errorReporting'
 import { addSentryBreadcrumb } from './sentry'
 
 /**
@@ -16,12 +16,12 @@ export function setupNetworkErrorTracking(): void {
   // Hook into fetch to track network errors
   const originalFetch = window.fetch
 
-  window.fetch = function (...args: Parameters<typeof fetch>) {
+  const trackedFetch: typeof fetch = (...args: Parameters<typeof fetch>) => {
     const startTime = performance.now()
 
-    return originalFetch.apply(this, args)
+    return originalFetch(...args)
       .then(async (response) => {
-        const _duration = performance.now() - startTime
+        const duration = performance.now() - startTime
 
         // Track slow requests
         if (duration > 5000) {
@@ -50,7 +50,7 @@ export function setupNetworkErrorTracking(): void {
         return response
       })
       .catch((error) => {
-        const _duration = performance.now() - startTime
+        const duration = performance.now() - startTime
 
         reportNetworkError(error instanceof Error ? error : new Error(String(error)), {
           url: String(args[0]),
@@ -59,7 +59,9 @@ export function setupNetworkErrorTracking(): void {
 
         throw error
       })
-  } as typeof fetch
+  }
+
+  window.fetch = trackedFetch
 }
 
 /**
@@ -74,7 +76,7 @@ export function setupStorageErrorTracking(): void {
     const startTime = performance.now()
 
     request.addEventListener('success', () => {
-      const _duration = performance.now() - startTime
+      const duration = performance.now() - startTime
       if (duration > 1000) {
         reportPerformanceIssue(`indexedDB.open: ${name}`, duration, 1000)
       }
@@ -87,11 +89,15 @@ export function setupStorageErrorTracking(): void {
     })
 
     request.addEventListener('error', () => {
-      const _duration = performance.now() - startTime
+      const duration = performance.now() - startTime
       reportIndexedDBError(`Failed to open database: ${name}`, {
         operation: 'open',
         dbName: name,
       })
+      // Surface slow open failures as a performance issue as well.
+      if (duration > 1000) {
+        reportPerformanceIssue(`indexedDB.open: ${name}`, duration, 1000)
+      }
     })
 
     return request
@@ -167,7 +173,7 @@ export function setupPerformanceMonitoring(): void {
         }
       })
 
-      eventObserver.observe({ entryTypes: ['event'], durable: true })
+      eventObserver.observe({ entryTypes: ['event'] })
     }
   } catch (e) {
     // PerformanceObserver may not be available in all browsers
@@ -196,10 +202,7 @@ export function setupErrorTracking(): void {
 /**
  * Create a type-safe error tracking wrapper for async operations.
  */
-export function createTrackedAsyncOperation<T, A extends unknown[]>(
-  name: string,
-  fn: (...args: A) => Promise<T>,
-) {
+export function createTrackedAsyncOperation<T, A extends unknown[]>(name: string, fn: (...args: A) => Promise<T>) {
   return async (...args: A): Promise<T> => {
     const { result, error } = await trackAsyncOperation(name, () => fn(...args))
 

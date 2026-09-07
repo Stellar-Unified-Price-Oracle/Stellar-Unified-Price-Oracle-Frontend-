@@ -17,7 +17,7 @@ exports[`snapshots > default 1`] = `
   <a
     class="px-6 py-2.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-500/20 transition-colors"
     data-discover="true"
-    href="/"
+    href="/dashboard"
   >
     Back to Dashboard
   </a>

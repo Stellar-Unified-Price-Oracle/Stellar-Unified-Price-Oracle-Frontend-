@@ -8,12 +8,11 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
+import { ChartAggregationWorker } from './chartAggregation.worker'
 
 // comlink's expose() is a side-effect at module level; mock it so the worker
 // module can be imported in a non-worker environment.
 vi.mock('comlink', () => ({ expose: vi.fn() }))
-
-import { ChartAggregationWorker } from './chartAggregation.worker'
 
 // ── Reference implementations (for cross-checking) ───────────────────────────
 

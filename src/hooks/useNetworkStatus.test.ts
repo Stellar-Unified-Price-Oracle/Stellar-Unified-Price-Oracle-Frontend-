@@ -19,8 +19,20 @@ describe('useNetworkStatus', () => {
       }
     })
 
-    vi.spyOn(window, 'addEventListener').mockImplementation(addEventListenerSpy)
-    vi.spyOn(window, 'removeEventListener').mockImplementation(removeEventListenerSpy)
+    vi.spyOn(window, 'addEventListener').mockImplementation(
+      addEventListenerSpy as (
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | AddEventListenerOptions,
+      ) => void,
+    )
+    vi.spyOn(window, 'removeEventListener').mockImplementation(
+      removeEventListenerSpy as (
+        type: string,
+        listener: EventListenerOrEventListenerObject,
+        options?: boolean | EventListenerOptions,
+      ) => void,
+    )
 
     // Default: online
     Object.defineProperty(navigator, 'onLine', {

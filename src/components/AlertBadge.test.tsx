@@ -3,21 +3,12 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Alert } from '../types'
 import { checkAccessibility } from '../test/accessibility'
+import { makeAlert } from '../test/fixtures'
 import { AlertBadge } from './AlertBadge'
 
 afterEach(cleanup)
 
-const baseAlert = (overrides: Partial<Alert> = {}): Alert => ({
-  id: '1',
-  assetPair: 'BTC/USD',
-  upperThreshold: 60000,
-  lowerThreshold: null,
-  triggerOnce: false,
-  active: true,
-  createdAt: Date.now(),
-  lastTriggeredAt: null,
-  ...overrides,
-})
+const baseAlert = (overrides: Partial<Alert> = {}): Alert => ({ ...makeAlert({ id: '1' }), ...overrides })
 
 describe('AlertBadge', () => {
   it('renders nothing when count is 0', () => {
@@ -53,32 +44,17 @@ describe('AlertBadge', () => {
   })
 
   it('shows up arrow for upper-only alert', () => {
-    render(
-      <AlertBadge
-        count={1}
-        alerts={[baseAlert({ lowerThreshold: null, upperThreshold: 60000 })]}
-      />,
-    )
+    render(<AlertBadge count={1} alerts={[baseAlert({ lowerThreshold: null, upperThreshold: 60000 })]} />)
     expect(screen.getByText('↑')).toBeInTheDocument()
   })
 
   it('shows down arrow for lower-only alert', () => {
-    render(
-      <AlertBadge
-        count={1}
-        alerts={[baseAlert({ upperThreshold: null, lowerThreshold: 30000 })]}
-      />,
-    )
+    render(<AlertBadge count={1} alerts={[baseAlert({ upperThreshold: null, lowerThreshold: 30000 })]} />)
     expect(screen.getByText('↓')).toBeInTheDocument()
   })
 
   it('shows up-down arrow for both thresholds', () => {
-    render(
-      <AlertBadge
-        count={1}
-        alerts={[baseAlert({ upperThreshold: 60000, lowerThreshold: 30000 })]}
-      />,
-    )
+    render(<AlertBadge count={1} alerts={[baseAlert({ upperThreshold: 60000, lowerThreshold: 30000 })]} />)
     expect(screen.getByText('↕')).toBeInTheDocument()
   })
 })

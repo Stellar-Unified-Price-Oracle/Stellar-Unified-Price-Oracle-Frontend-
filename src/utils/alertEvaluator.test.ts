@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { evaluateCondition, evaluateCompoundCondition, combineConditions, buildConditionGroupFromFormData } from './alertEvaluator'
 import { migrateLegacyAlertConditions } from '../types/alerts'
 import type { AlertCondition, ConditionGroup, PriceEvaluationState, AlertFormData } from '../types'
+import {
+  evaluateCondition,
+  evaluateCompoundCondition,
+  combineConditions,
+  buildConditionGroupFromFormData,
+} from './alertEvaluator'
 
 function cond(overrides: Partial<AlertCondition> = {}): AlertCondition {
   return { id: 'c1', field: 'price', operator: 'gt', value: 100, ...overrides }
@@ -21,7 +26,9 @@ describe('evaluateCondition', () => {
 
   it('reads percentageChange for the condition window, defaulting to 1hr', () => {
     const state: PriceEvaluationState = { price: 0, percentageChange: { '15min': 3, '1hr': 7 } }
-    expect(evaluateCondition(cond({ field: 'percentageChange', operator: 'gte', value: 5, window: '15min' }), state)).toBe(false)
+    expect(
+      evaluateCondition(cond({ field: 'percentageChange', operator: 'gte', value: 5, window: '15min' }), state),
+    ).toBe(false)
     expect(evaluateCondition(cond({ field: 'percentageChange', operator: 'gte', value: 5 }), state)).toBe(true)
   })
 
@@ -206,6 +213,8 @@ describe('buildConditionGroupFromFormData', () => {
     conditionsLogic: 'AND',
     escalationEnabled: false,
     escalationSteps: [],
+    channels: [],
+    retestMode: false,
   }
 
   it('builds an OR group from both thresholds when no extra conditions are added', () => {

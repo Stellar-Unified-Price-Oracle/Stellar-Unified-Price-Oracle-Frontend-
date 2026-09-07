@@ -37,8 +37,12 @@ describe('useTheme', () => {
     classListAddSpy = vi.fn()
     classListRemoveSpy = vi.fn()
 
-    vi.spyOn(document.documentElement.classList, 'add').mockImplementation(classListAddSpy)
-    vi.spyOn(document.documentElement.classList, 'remove').mockImplementation(classListRemoveSpy)
+    vi.spyOn(document.documentElement.classList, 'add').mockImplementation(
+      classListAddSpy as (...tokens: string[]) => void,
+    )
+    vi.spyOn(document.documentElement.classList, 'remove').mockImplementation(
+      classListRemoveSpy as (...tokens: string[]) => void,
+    )
 
     // Stub matchMedia BEFORE importing the module so the theme resolves correctly
     // Default: system prefers light

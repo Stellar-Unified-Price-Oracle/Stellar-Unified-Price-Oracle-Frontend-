@@ -24,10 +24,18 @@ class FakeBroadcastChannel {
 
   postMessage(data: unknown): void {
     if (this.closed) return
+    // Real BroadcastChannel delivers messages asynchronously — a tab that
+    // posts and immediately closes its channel must not observe the message
+    // round-trip. Model that with a (faked) timer; tests flush with
+    // `vi.advanceTimersByTime(0)`.
     const peers = FakeBroadcastChannel.channels.get(this.name)
     peers?.forEach((ch) => {
       if (ch !== this && !ch.closed) {
-        ch.onmessage?.({ data })
+        setTimeout(() => {
+          if (!ch.closed) {
+            ch.onmessage?.({ data })
+          }
+        }, 0)
       }
     })
   }
@@ -70,6 +78,31 @@ function makeCbs(overrides: Partial<WsLeaderElectionCallbacks> = {}): WsLeaderEl
     onFollowerMessage: vi.fn(),
     onLeaderFallback: vi.fn(),
     ...overrides,
+  }
+}
+
+/**
+ * Constructs a WsLeaderElection simulating a *new browser tab*. In a real
+ * browser each tab has its own sessionStorage, so each instance gets a fresh
+ * tabId. jsdom shares one sessionStorage, so without clearing the stored id
+ * every instance reuses the same tabId and the module filters its own messages
+ * as "self" — breaking the two-tab protocol tests.
+ */
+function newTab(cbs: WsLeaderElectionCallbacks): WsLeaderElection {
+  sessionStorage.removeItem('__supo_tab_id__')
+  return new WsLeaderElection(cbs)
+}
+
+/**
+ * Flush queued BroadcastChannel deliveries. Messages trigger handler chains
+ * (e.g. CLAIM → ACK) where the reply is scheduled *inside* the first delivery
+ * callback, and `advanceTimersByTime(0)` does not re-fire timers scheduled at
+ * the same timestamp during a callback. Advancing by 1ms per hop lets each
+ * queued delivery run in turn; 10 hops is far more than any chain needs.
+ */
+function flushMessages(): void {
+  for (let i = 0; i < 10; i++) {
+    vi.advanceTimersByTime(1)
   }
 }
 
@@ -116,17 +149,16 @@ describe('WsLeaderElection', () => {
       const cbs1 = makeCbs()
       const cbs2 = makeCbs()
 
-      const e1 = new WsLeaderElection(cbs1)
+      const e1 = newTab(cbs1)
       e1.start()
       // Tab 1 wins election
       vi.advanceTimersByTime(300)
       expect(cbs1.onBecomeLeader).toHaveBeenCalledTimes(1)
 
-      // Tab 2 starts — receives ACK from Tab 1
-      const e2 = new WsLeaderElection(cbs2)
+      // Tab 2 starts — receives ACK from Tab 1 (delivered on the next tick)
+      const e2 = newTab(cbs2)
       e2.start()
-      // ACK is synchronous via FakeBroadcastChannel.postMessage
-      vi.advanceTimersByTime(0)
+      flushMessages()
 
       expect(cbs2.onBecomeFollower).toHaveBeenCalledTimes(1)
       expect(cbs2.onBecomeLeader).not.toHaveBeenCalled()
@@ -139,17 +171,19 @@ describe('WsLeaderElection', () => {
       const cbs1 = makeCbs()
       const cbs2 = makeCbs()
 
-      const e1 = new WsLeaderElection(cbs1)
+      const e1 = newTab(cbs1)
       e1.start()
       vi.advanceTimersByTime(300)
 
-      const e2 = new WsLeaderElection(cbs2)
+      const e2 = newTab(cbs2)
       e2.start()
-      vi.advanceTimersByTime(0)
+      flushMessages()
 
-      // Leader resigns (tab closes)
+      // Leader resigns (tab closes). e1's channel is closed by the time e2
+      // processes RESIGN, so e2's re-claim goes unanswered and it wins.
       e1.destroy()
-      // Tab 2 receives RESIGN → starts claim → no other ACK → becomes leader
+      // Flush RESIGN delivery, then advance past the claim timeout
+      flushMessages()
       vi.advanceTimersByTime(300)
 
       expect(cbs2.onBecomeLeader).toHaveBeenCalledTimes(1)
@@ -161,13 +195,13 @@ describe('WsLeaderElection', () => {
       const cbs1 = makeCbs()
       const cbs2 = makeCbs()
 
-      const e1 = new WsLeaderElection(cbs1)
+      const e1 = newTab(cbs1)
       e1.start()
       vi.advanceTimersByTime(300)
 
-      const e2 = new WsLeaderElection(cbs2)
+      const e2 = newTab(cbs2)
       e2.start()
-      vi.advanceTimersByTime(0)
+      flushMessages()
 
       // Heartbeat fires at 2s intervals; after 6s without any heartbeat follower takes over
       // Destroy without calling RESIGN (simulates unresponsive tab)
@@ -191,13 +225,13 @@ describe('WsLeaderElection', () => {
       const cbs1 = makeCbs()
       const cbs2 = makeCbs()
 
-      const e1 = new WsLeaderElection(cbs1)
+      const e1 = newTab(cbs1)
       e1.start()
       vi.advanceTimersByTime(300)
 
-      const e2 = new WsLeaderElection(cbs2)
+      const e2 = newTab(cbs2)
       e2.start()
-      vi.advanceTimersByTime(0)
+      flushMessages()
 
       const msg = {
         type: 'price_update' as const,
@@ -209,6 +243,8 @@ describe('WsLeaderElection', () => {
       }
 
       e1.relayMessage(msg)
+      // RELAY is delivered on the next tick
+      flushMessages()
 
       expect(cbs2.onFollowerMessage).toHaveBeenCalledWith(msg)
 
@@ -220,13 +256,13 @@ describe('WsLeaderElection', () => {
       const cbs1 = makeCbs()
       const cbs2 = makeCbs()
 
-      const e1 = new WsLeaderElection(cbs1)
+      const e1 = newTab(cbs1)
       e1.start()
       vi.advanceTimersByTime(300)
 
-      const e2 = new WsLeaderElection(cbs2)
+      const e2 = newTab(cbs2)
       e2.start()
-      vi.advanceTimersByTime(0)
+      flushMessages()
 
       // Follower tries to relay — should be silently ignored
       e2.relayMessage({
