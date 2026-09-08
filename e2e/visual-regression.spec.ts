@@ -46,8 +46,36 @@ async function stableScreenshot(page: Page): Promise<Buffer> {
   // Wait for fonts and lazy images
   await page.evaluate(() => document.fonts.ready)
   await page.waitForLoadState('networkidle')
+  // The app mounts async content (charts, panels) shortly after load, which can
+  // change the document height after networkidle fires. Capture only once the
+  // height stops changing so baselines are deterministic.
+  await waitForStableLayout(page)
 
   return page.screenshot({ fullPage: true })
+}
+
+/**
+ * Waits until the document height has been unchanged across consecutive polls
+ * (rAF cadence), i.e. async renders have settled. Timed out at 15s so a page
+ * that genuinely never stabilises fails loudly instead of hanging.
+ */
+async function waitForStableLayout(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const doc = document as Document & { __ph?: number; __pc?: number }
+      const h = document.documentElement.scrollHeight
+      if (doc.__ph === h) {
+        doc.__pc = (doc.__pc ?? 0) + 1
+        // ~250 ms of unchanged height before we call it stable
+        return doc.__pc >= 15
+      }
+      doc.__ph = h
+      doc.__pc = 0
+      return false
+    },
+    undefined,
+    { timeout: 15_000 },
+  )
 }
 
 /**

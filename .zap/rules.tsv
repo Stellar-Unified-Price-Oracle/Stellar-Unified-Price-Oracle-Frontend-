@@ -8,9 +8,9 @@
 # 10015: "Re-examine Cache-control Directives" — informational, fires on static
 # hashed assets we intentionally cache long-term (immutable, content-hashed
 # filenames from the Vite build); caching itself is not a vulnerability here.
-10015	IGNORE
+10015	IGNORE	Re-examine Cache-control Directives on content-hashed static assets (verified false positive)
 #
 # 10096: "Timestamp Disclosure - Unix" — fires on numeric IDs/prices in mock API
 # fixtures that happen to fall in the Unix-timestamp range; not an actual
 # timestamp leak.
-10096	IGNORE
+10096	IGNORE	Timestamp Disclosure on numeric mock API fixture values (verified false positive)

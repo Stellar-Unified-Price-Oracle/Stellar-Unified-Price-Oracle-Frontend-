@@ -26,4 +26,7 @@ regexes = [
   # Example/placeholder addresses used throughout docs and .env.example files.
   '''you@example\.com''',
   '''0x0{40}''',
+  # Placeholder credentials / tokens shown in docs and UI copy — not real secrets.
+  '''staging-user:staging-password''',
+  '''YOUR_API_KEY''',
 ]

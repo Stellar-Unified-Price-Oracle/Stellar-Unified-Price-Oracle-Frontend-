@@ -34,7 +34,9 @@ jobs:
           persist-credentials: false
 
       - name: Run analysis
-        uses: ossf/scorecard-action@v2
+        # Pinned to an explicit tag — the floating `v2` ref is no longer
+        # resolvable by Actions ("unable to find version v2").
+        uses: ossf/scorecard-action@v2.4.4
         with:
           results_file: results.sarif
           results_format: sarif

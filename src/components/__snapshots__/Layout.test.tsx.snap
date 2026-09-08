@@ -1,0 +1,268 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshots > default 1`] = `
+<div
+  class="min-h-screen flex flex-col bg-white dark:bg-gray-950 transition-colors duration-200"
+>
+  <a
+    class="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:start-2 focus:px-4 focus:py-2 focus:bg-cyan-600 focus:text-white focus:rounded-lg focus:outline-none"
+    href="#main-content"
+  >
+    Skip to main content
+  </a>
+  <nav
+    aria-label="Main navigation"
+    class="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50 h-16"
+  >
+    <div
+      class="px-4 sm:px-6 h-full flex items-center justify-between"
+    >
+      <div
+        class="flex items-center gap-3"
+      >
+        <a
+          aria-current="page"
+          class="flex items-center gap-3 min-h-[44px] min-w-[44px] active"
+          data-discover="true"
+          href="/"
+        >
+          <div
+            class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-xs font-bold text-white"
+          >
+            O
+          </div>
+          <span
+            class="font-semibold text-lg hidden sm:block text-gray-900 dark:text-white"
+          >
+            Stellar Oracle
+          </span>
+        </a>
+        <div
+          class="hidden sm:flex items-center gap-1"
+        >
+          <a
+            aria-current="page"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 dark:bg-gray-800 text-cyan-700 dark:text-cyan-400"
+            data-discover="true"
+            href="/"
+          >
+            Home
+          </a>
+          <a
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+            data-discover="true"
+            href="/dashboard"
+          >
+            Dashboard
+          </a>
+          <a
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+            data-discover="true"
+            href="/api-docs"
+          >
+            API Docs
+          </a>
+          <a
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+            data-discover="true"
+            href="/webhooks"
+          >
+            Webhooks
+          </a>
+        </div>
+      </div>
+      <div
+        class="flex items-center gap-2"
+      >
+        <div
+          class="flex flex-col items-end gap-1"
+        >
+          <button
+            class="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cyan-700 text-white hover:bg-cyan-600 disabled:opacity-60 transition-colors"
+            type="button"
+          >
+            Connect Wallet
+          </button>
+        </div>
+        <button
+          aria-label="Settings"
+          class="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <svg
+            aria-hidden="true"
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+            <path
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+        </button>
+        <button
+          aria-label="Toggle price alerts"
+          class="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <svg
+            aria-hidden="true"
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+  <div
+    class="flex flex-1"
+  >
+    <main
+      class="flex-1 px-6 py-6 overflow-auto pb-20 sm:pb-6"
+      id="main-content"
+      tabindex="-1"
+    >
+      <div>
+        Content
+      </div>
+    </main>
+  </div>
+  <footer
+    class="hidden sm:block border-t border-gray-200 dark:border-gray-800 py-6 text-center text-sm text-gray-600 dark:text-gray-400"
+  >
+    Stellar Unified Price Oracle · Developer Portal & Analytics Dashboard
+    <span
+      aria-hidden="true"
+    >
+       · 
+    </span>
+    <a
+      class="underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-400"
+      data-discover="true"
+      href="/security"
+    >
+      Security
+    </a>
+  </footer>
+  <nav
+    aria-label="Mobile navigation"
+    class="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 flex items-stretch safe-area-inset-bottom"
+  >
+    <a
+      aria-current="page"
+      class="flex flex-col items-center justify-center gap-0.5 flex-1 py-2 relative transition-colors text-cyan-500 active"
+      data-discover="true"
+      href="/"
+    >
+      <span
+        class="relative"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+      </span>
+      <span
+        class="text-[10px] font-medium leading-none"
+      >
+        Dashboard
+      </span>
+      <span
+        class="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-cyan-500 rounded-b-full"
+      />
+    </a>
+    <a
+      class="flex flex-col items-center justify-center gap-0.5 flex-1 py-2 relative transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+      data-discover="true"
+      href="/api-docs"
+    >
+      <span
+        class="relative"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+      </span>
+      <span
+        class="text-[10px] font-medium leading-none"
+      >
+        API Docs
+      </span>
+    </a>
+    <button
+      aria-label="Toggle price alerts"
+      class="flex flex-col items-center justify-center gap-0.5 flex-1 py-2 relative text-gray-600 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+      type="button"
+    >
+      <span
+        class="relative"
+      >
+        <svg
+          aria-hidden="true"
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+      </span>
+      <span
+        class="text-[10px] font-medium leading-none"
+      >
+        Alerts
+      </span>
+    </button>
+  </nav>
+  <div
+    aria-atomic="true"
+    aria-live="polite"
+    class="sr-only"
+    id="price-announcer"
+    role="status"
+  />
+</div>
+`;
