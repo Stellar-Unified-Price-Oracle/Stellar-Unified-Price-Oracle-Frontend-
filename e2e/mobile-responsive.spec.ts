@@ -44,7 +44,10 @@ async function getInteractiveElements(page: Page): Promise<Array<{ name: string;
     const elements = document.querySelectorAll('button, a, input, [role="button"], [role="link"]')
     return Array.from(elements)
       .filter((el) => {
-        // Skip hidden elements
+        // Skip hidden elements and sr-only (keyboard-only) links — those are
+        // reachable via Tab but are not touch targets, so 44px does not apply.
+        const e = el as HTMLElement
+        if (e.classList.contains('sr-only')) return false
         const rect = el.getBoundingClientRect()
         return rect.width > 0 && rect.height > 0
       })
@@ -160,7 +163,7 @@ test.describe('@mobile Touch Target Accessibility', () => {
     // Warn about violations but don't fail if there are a few
     if (violations.length > 0) {
       console.warn(`Touch target violations found (${violations.length}):`)
-      violations.slice(0, 5).forEach((v) => console.warn(`  - ${v}`))
+      violations.forEach((v) => console.warn(`  - ${v}`))
     }
 
     // But fail if there are many violations (indicates real layout problem)
@@ -172,18 +175,25 @@ test.describe('@mobile Touch Target Accessibility', () => {
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
-    // Find all navigation buttons
-    const navButtons = page.locator('button, [role="button"]').locator(':visible')
-    const count = await navButtons.count()
+    // Target the actual navigation/action controls — header icon buttons and
+    // the bottom-nav tabs. (Sampling every visible button is flaky: transient
+    // dismiss/toast buttons on one browser can skew the first N.)
+    const headerButtons = page.locator('nav[aria-label="Main navigation"] button')
+    const bottomNav = page.locator('nav[aria-label="Mobile navigation"]')
+    const targets = headerButtons.or(bottomNav.locator('button, a'))
 
-    for (let i = 0; i < Math.min(count, 5); i++) {
-      const button = navButtons.nth(i)
-      const box = await button.boundingBox()
+    // networkidle can fire before the app mounts — wait for the nav to attach
+    // rather than counting an empty DOM.
+    await expect(targets.first()).toBeAttached({ timeout: 10_000 })
+    const count = await targets.count()
+    expect(count).toBeGreaterThan(0)
 
+    for (let i = 0; i < count; i++) {
+      const box = await targets.nth(i).boundingBox()
       // At least 40×40 (44×44 preferred, but some overlap is ok)
       if (box) {
-        expect(box.width, `Button ${i} width should be >= 40px`).toBeGreaterThanOrEqual(40)
-        expect(box.height, `Button ${i} height should be >= 40px`).toBeGreaterThanOrEqual(40)
+        expect(box.width, `Nav target ${i} width should be >= 40px`).toBeGreaterThanOrEqual(40)
+        expect(box.height, `Nav target ${i} height should be >= 40px`).toBeGreaterThanOrEqual(40)
       }
     }
   })
@@ -337,10 +347,11 @@ test.describe('@mobile Search and Filtering on Mobile', () => {
       await searchInput.fill('BTC')
       await page.waitForLoadState('networkidle')
 
-      // Results should be visible
-      const results = page.locator('[data-testid="price-card"], [class*="price-card"]')
-      const count = await results.count()
-      expect(count).toBeGreaterThan(0)
+      // The dashboard grid renders lazily after networkidle, so wait for at
+      // least one card rather than asserting an instant count.
+      const results = page.locator('[data-testid="price-card"]')
+      await expect(results.first()).toBeVisible({ timeout: 10_000 })
+      expect(await results.count()).toBeGreaterThan(0)
     }
   })
 })

@@ -147,7 +147,7 @@ export function CsvImportZone({ onImport, onClear, hasImport }: Props): ReactEle
         <p className="text-sm text-gray-400">
           {t('csv.dropOrBrowse')} <span className="text-cyan-400">{t('csv.browse')}</span>
         </p>
-        <p className="text-xs text-gray-600">{t('csv.hint')}</p>
+        <p className="text-xs text-gray-400">{t('csv.hint')}</p>
       </button>
       <input
         ref={inputRef}

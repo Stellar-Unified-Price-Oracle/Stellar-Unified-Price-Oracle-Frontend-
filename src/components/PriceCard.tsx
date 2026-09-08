@@ -136,68 +136,80 @@ export const PriceCard = memo(function PriceCard({
 
   return (
     <div
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
+      data-testid="price-card"
       className={`w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer ${isStale ? 'opacity-60' : ''} ${isSelected ? 'border-cyan-500 ring-2 ring-cyan-500/40' : 'border-gray-800'}`}
-      aria-label={t('priceCard.ariaLabel', { pair: price.assetPair })}
-      aria-selected={selectMode ? isSelected : undefined}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {selectMode ? (
-            <span
-              className={`w-4 h-4 flex items-center justify-center rounded border ${isSelected ? 'bg-cyan-600 border-cyan-500' : 'border-gray-600'}`}
-              aria-hidden="true"
-            >
-              {isSelected && (
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </span>
-          ) : null}
-          <h2 className="text-lg font-semibold text-gray-100">{price.assetPair}</h2>
+      {/*
+       * The card body and the alert control are *sibling* interactive
+       * elements — nesting a real <button> inside a role="button" container
+       * trips axe's nested-interactive rule (interactive controls must not
+       * be nested). The body owns the "view details" action; the footer
+       * owns "set alert".
+       */}
+      <div
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        className="outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 rounded-lg -m-1 p-1"
+        aria-label={t('priceCard.ariaLabel', { pair: price.assetPair })}
+        aria-selected={selectMode ? isSelected : undefined}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {selectMode ? (
+              <span
+                className={`w-4 h-4 flex items-center justify-center rounded border ${isSelected ? 'bg-cyan-600 border-cyan-500' : 'border-gray-600'}`}
+                aria-hidden="true"
+              >
+                {isSelected && (
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </span>
+            ) : null}
+            <h2 className="text-lg font-semibold text-gray-100">{price.assetPair}</h2>
+          </div>
         </div>
-      </div>
 
-      <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPrice(price.price)}</div>
+        <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPrice(price.price)}</div>
 
-      <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
-        <FreshnessBadge timestamp={price.timestamp} refreshIntervalMs={preferences.refreshInterval} />
-        <Tooltip content={t('priceCard.confidenceTooltip')}>
-          <span className="text-cyan-400">{t('priceCard.confidence', { value: confidencePct })}</span>
-        </Tooltip>
-      </div>
-
-      <div className="flex flex-wrap gap-1.5">
-        {price.sources.map((src) => (
-          <Tooltip
-            key={src}
-            content={
-              src === activeSource
-                ? `Active source (highest priority available)`
-                : t(`sources.${src as 'chainlink' | 'redstone' | 'band' | 'reflector'}`, {
-                    defaultValue: t('sources.defaultTooltip', { source: src }),
-                  })
-            }
-          >
-            <span
-              className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${SOURCE_COLORS[src] ?? 'bg-gray-800 text-gray-300 border-gray-700'} ${src === activeSource ? 'ring-1 ring-cyan-400' : ''}`}
-            >
-              {src === activeSource && <span aria-hidden="true">● </span>}
-              {src}
-            </span>
+        <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
+          <FreshnessBadge timestamp={price.timestamp} refreshIntervalMs={preferences.refreshInterval} />
+          <Tooltip content={t('priceCard.confidenceTooltip')}>
+            <span className="text-cyan-400">{t('priceCard.confidence', { value: confidencePct })}</span>
           </Tooltip>
-        ))}
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {price.sources.map((src) => (
+            <Tooltip
+              key={src}
+              content={
+                src === activeSource
+                  ? `Active source (highest priority available)`
+                  : t(`sources.${src as 'chainlink' | 'redstone' | 'band' | 'reflector'}`, {
+                      defaultValue: t('sources.defaultTooltip', { source: src }),
+                    })
+              }
+            >
+              <span
+                className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${SOURCE_COLORS[src] ?? 'bg-gray-800 text-gray-300 border-gray-700'} ${src === activeSource ? 'ring-1 ring-cyan-400' : ''}`}
+              >
+                {src === activeSource && <span aria-hidden="true">● </span>}
+                {src}
+              </span>
+            </Tooltip>
+          ))}
+        </div>
       </div>
 
       <div className="mt-3 pt-3 border-t border-gray-800">
         <button
           type="button"
           onClick={handleAlertClick}
-          className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${hasAlert ? 'text-amber-400 hover:text-amber-300' : 'text-gray-400 hover:text-gray-200'}`}
+          className={`min-h-[44px] flex items-center gap-1.5 text-xs font-medium transition-colors ${hasAlert ? 'text-amber-400 hover:text-amber-300' : 'text-gray-400 hover:text-gray-200'}`}
           aria-label={t('priceCard.alertAriaLabel', { pair: price.assetPair })}
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

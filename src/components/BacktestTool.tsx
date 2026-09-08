@@ -34,10 +34,7 @@ const AGGREGATION_MODES: { value: AggregationMode; label: string; description: s
   { value: 'vwap', label: 'VWAP / Confidence', description: 'Volume / confidence weighted average price' },
 ]
 
-export const BacktestTool = memo(function BacktestTool({
-  pair,
-  history,
-}: BacktestToolProps): ReactElement {
+export const BacktestTool = memo(function BacktestTool({ pair, history }: BacktestToolProps): ReactElement {
   const { preferences, updatePreference } = usePreferences()
 
   const presets = useMemo<BacktestPreset[]>(() => {
@@ -47,13 +44,15 @@ export const BacktestTool = memo(function BacktestTool({
   const [selectedPresetId, setSelectedPresetId] = useState<string>(presets[0]?.id ?? 'custom')
 
   const [config, setConfig] = useState<BacktestConfig>(() => {
-    return presets[0]?.config ?? {
-      mode: 'median',
-      outlierThresholdPercent: 1.5,
-      minSources: 2,
-      confidenceWeighting: true,
-      maxStalenessSec: 300,
-    }
+    return (
+      presets[0]?.config ?? {
+        mode: 'median',
+        outlierThresholdPercent: 1.5,
+        minSources: 2,
+        confidenceWeighting: true,
+        maxStalenessSec: 300,
+      }
+    )
   })
 
   const [newPresetName, setNewPresetName] = useState('')
@@ -148,7 +147,8 @@ export const BacktestTool = memo(function BacktestTool({
             Aggregation Parameter Backtester
           </h2>
           <p className="text-xs text-gray-400 mt-1">
-            Simulate and evaluate aggregation modes, thresholding, and outlier filters against {pair} history ({history.length} data points)
+            Simulate and evaluate aggregation modes, thresholding, and outlier filters against {pair} history (
+            {history.length} data points)
           </p>
         </div>
 
@@ -183,7 +183,7 @@ export const BacktestTool = memo(function BacktestTool({
             type="button"
             onClick={handleExportCsv}
             disabled={history.length === 0}
-            className="px-3 py-1.5 text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs font-medium bg-cyan-700 hover:bg-cyan-600 text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Export CSV
           </button>
@@ -218,7 +218,7 @@ export const BacktestTool = memo(function BacktestTool({
               </option>
             ))}
           </select>
-          <p className="text-[11px] text-gray-500 mt-1">
+          <p className="text-[11px] text-gray-400 mt-1">
             {AGGREGATION_MODES.find((m) => m.value === config.mode)?.description}
           </p>
         </div>
@@ -239,7 +239,7 @@ export const BacktestTool = memo(function BacktestTool({
             onChange={(e) => handleOutlierThresholdChange(parseFloat(e.target.value))}
             className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
           />
-          <p className="text-[11px] text-gray-500 mt-1">Deviations above this % are flagged/filtered</p>
+          <p className="text-[11px] text-gray-400 mt-1">Deviations above this % are flagged/filtered</p>
         </div>
 
         {/* Min Sources */}
@@ -258,7 +258,7 @@ export const BacktestTool = memo(function BacktestTool({
             onChange={(e) => handleMinSourcesChange(parseInt(e.target.value, 10))}
             className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
           />
-          <p className="text-[11px] text-gray-500 mt-1">Min active sources required for consensus</p>
+          <p className="text-[11px] text-gray-400 mt-1">Min active sources required for consensus</p>
         </div>
 
         {/* Max Staleness & Confidence Toggle */}
@@ -295,35 +295,27 @@ export const BacktestTool = memo(function BacktestTool({
       {/* ── Summary Metrics Cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gray-950 p-4 rounded-xl border border-gray-800">
-          <p className="text-xs text-gray-500 font-medium">Mean Deviation</p>
-          <p className="text-xl font-bold font-mono text-cyan-400 mt-1">
-            {result.meanDeviationPercent.toFixed(3)}%
-          </p>
-          <p className="text-[11px] text-gray-500 mt-0.5">Average % shift from baseline</p>
+          <p className="text-xs text-gray-400 font-medium">Mean Deviation</p>
+          <p className="text-xl font-bold font-mono text-cyan-400 mt-1">{result.meanDeviationPercent.toFixed(3)}%</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Average % shift from baseline</p>
         </div>
 
         <div className="bg-gray-950 p-4 rounded-xl border border-gray-800">
-          <p className="text-xs text-gray-500 font-medium">Max Deviation</p>
-          <p className="text-xl font-bold font-mono text-yellow-400 mt-1">
-            {result.maxDeviationPercent.toFixed(3)}%
-          </p>
-          <p className="text-[11px] text-gray-500 mt-0.5">Peak single-point variance</p>
+          <p className="text-xs text-gray-400 font-medium">Max Deviation</p>
+          <p className="text-xl font-bold font-mono text-yellow-400 mt-1">{result.maxDeviationPercent.toFixed(3)}%</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Peak single-point variance</p>
         </div>
 
         <div className="bg-gray-950 p-4 rounded-xl border border-gray-800">
-          <p className="text-xs text-gray-500 font-medium">Synthetic Anomaly Rate</p>
-          <p className="text-xl font-bold font-mono text-purple-400 mt-1">
-            {result.anomalyRatePercent.toFixed(1)}%
-          </p>
-          <p className="text-[11px] text-gray-500 mt-0.5">{result.anomalyCount} points flagged</p>
+          <p className="text-xs text-gray-400 font-medium">Synthetic Anomaly Rate</p>
+          <p className="text-xl font-bold font-mono text-purple-400 mt-1">{result.anomalyRatePercent.toFixed(1)}%</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{result.anomalyCount} points flagged</p>
         </div>
 
         <div className="bg-gray-950 p-4 rounded-xl border border-gray-800">
-          <p className="text-xs text-gray-500 font-medium">Outliers Filtered</p>
-          <p className="text-xl font-bold font-mono text-green-400 mt-1">
-            {result.outliersFilteredCount}
-          </p>
-          <p className="text-[11px] text-gray-500 mt-0.5">Spikes removed from feed</p>
+          <p className="text-xs text-gray-400 font-medium">Outliers Filtered</p>
+          <p className="text-xl font-bold font-mono text-green-400 mt-1">{result.outliersFilteredCount}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Spikes removed from feed</p>
         </div>
       </div>
 
@@ -380,7 +372,7 @@ export const BacktestTool = memo(function BacktestTool({
                 type="button"
                 onClick={handleSavePreset}
                 disabled={!newPresetName.trim()}
-                className="px-4 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-40"
+                className="px-4 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-600 text-white rounded-lg disabled:opacity-40"
               >
                 Save
               </button>
@@ -452,7 +444,7 @@ function BacktestVisualChart({ points }: BacktestVisualChartProps): ReactElement
         })}
       </svg>
 
-      <div className="flex justify-between items-center text-[10px] text-gray-500 pt-1 font-mono">
+      <div className="flex justify-between items-center text-[10px] text-gray-400 pt-1 font-mono">
         <span>Min: {formatPrice(minPrice)}</span>
         <span>Max: {formatPrice(maxPrice)}</span>
       </div>

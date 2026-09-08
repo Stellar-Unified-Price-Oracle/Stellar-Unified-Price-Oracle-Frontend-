@@ -18,21 +18,22 @@ test.describe('mobile viewport', () => {
     expect(hasOverflow).toBe(false)
   })
 
-  test('hamburger menu button is visible on mobile', async ({ page }) => {
+  test('mobile bottom navigation bar is visible on mobile', async ({ page }) => {
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
-    await expect(page.getByRole('button', { name: 'Toggle menu' })).toBeVisible({ timeout: 10_000 })
+    // Navigation on mobile is a bottom tab bar (no hamburger menu).
+    const nav = page.getByRole('navigation', { name: 'Mobile navigation' })
+    await expect(nav).toBeVisible({ timeout: 10_000 })
   })
 
-  test('mobile menu opens and shows nav links', async ({ page }) => {
+  test('mobile bottom nav provides links to the main routes', async ({ page }) => {
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
-    await page.getByRole('button', { name: 'Toggle menu' }).click()
-    // After opening, the Dashboard and API Docs links should be visible in the dropdown
-    await expect(page.getByRole('link', { name: 'Dashboard' }).first()).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByRole('link', { name: 'API Docs' }).first()).toBeVisible({ timeout: 5_000 })
+    const nav = page.getByRole('navigation', { name: 'Mobile navigation' })
+    await expect(nav.getByRole('link', { name: /Dashboard|Home/ }).first()).toBeVisible({ timeout: 5_000 })
+    await expect(nav.getByRole('link', { name: 'API Docs' })).toBeVisible({ timeout: 5_000 })
   })
 
   test('search input is visible on mobile', async ({ page }) => {

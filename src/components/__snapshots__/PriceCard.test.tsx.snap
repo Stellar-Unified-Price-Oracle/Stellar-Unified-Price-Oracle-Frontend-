@@ -2,111 +2,116 @@
 
 exports[`snapshots > default 1`] = `
 <div
-  aria-label="View details for BTC/USD"
   class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
-  role="button"
-  tabindex="0"
+  data-testid="price-card"
 >
   <div
-    class="flex items-center justify-between mb-3"
+    aria-label="View details for BTC/USD"
+    class="outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 rounded-lg -m-1 p-1"
+    role="button"
+    tabindex="0"
   >
     <div
-      class="flex items-center gap-2"
+      class="flex items-center justify-between mb-3"
     >
-      <h2
-        class="text-lg font-semibold text-gray-100"
+      <div
+        class="flex items-center gap-2"
       >
-        BTC/USD
-      </h2>
+        <h2
+          class="text-lg font-semibold text-gray-100"
+        >
+          BTC/USD
+        </h2>
+      </div>
     </div>
-  </div>
-  <div
-    class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
-  >
-    $
-    50,000.12
-  </div>
-  <div
-    class="flex items-center justify-between text-xs text-gray-400 mb-3"
-  >
-    <span
-      class="relative inline-flex items-center"
+    <div
+      class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
+    >
+      $
+      50,000.12
+    </div>
+    <div
+      class="flex items-center justify-between text-xs text-gray-400 mb-3"
     >
       <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
+        class="relative inline-flex items-center"
       >
         <span
-          aria-label="Data freshness: updated 27h ago"
-          class="inline-flex items-center gap-1.5"
-          role="status"
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
         >
           <span
-            aria-hidden="true"
-            class="w-1.5 h-1.5 rounded-full bg-red-500"
-          />
-          27h ago
-        </span>
-      </span>
-    </span>
-    <span
-      class="relative inline-flex items-center"
-    >
-      <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
-      >
-        <span
-          class="text-cyan-400"
-        >
-          98.8% confidence
-        </span>
-      </span>
-    </span>
-  </div>
-  <div
-    class="flex flex-wrap gap-1.5"
-  >
-    <span
-      class="relative inline-flex items-center"
-    >
-      <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
-      >
-        <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
-        >
-          <span
-            aria-hidden="true"
+            aria-label="Data freshness: updated 27h ago"
+            class="inline-flex items-center gap-1.5"
+            role="status"
           >
-            ● 
+            <span
+              aria-hidden="true"
+              class="w-1.5 h-1.5 rounded-full bg-red-500"
+            />
+            27h ago
           </span>
-          chainlink
         </span>
       </span>
-    </span>
-    <span
-      class="relative inline-flex items-center"
-    >
       <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
+        class="relative inline-flex items-center"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
         >
-          redstone
+          <span
+            class="text-cyan-400"
+          >
+            98.8% confidence
+          </span>
         </span>
       </span>
-    </span>
+    </div>
+    <div
+      class="flex flex-wrap gap-1.5"
+    >
+      <span
+        class="relative inline-flex items-center"
+      >
+        <span
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
+        >
+          <span
+            class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
+          >
+            <span
+              aria-hidden="true"
+            >
+              ● 
+            </span>
+            chainlink
+          </span>
+        </span>
+      </span>
+      <span
+        class="relative inline-flex items-center"
+      >
+        <span
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
+        >
+          <span
+            class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
+          >
+            redstone
+          </span>
+        </span>
+      </span>
+    </div>
   </div>
   <div
     class="mt-3 pt-3 border-t border-gray-800"
   >
     <button
       aria-label="Set alert for BTC/USD"
-      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
+      class="min-h-[44px] flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
       type="button"
     >
       <svg
@@ -131,111 +136,116 @@ exports[`snapshots > default 1`] = `
 
 exports[`snapshots > hasAlert 1`] = `
 <div
-  aria-label="View details for BTC/USD"
   class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
-  role="button"
-  tabindex="0"
+  data-testid="price-card"
 >
   <div
-    class="flex items-center justify-between mb-3"
+    aria-label="View details for BTC/USD"
+    class="outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 rounded-lg -m-1 p-1"
+    role="button"
+    tabindex="0"
   >
     <div
-      class="flex items-center gap-2"
+      class="flex items-center justify-between mb-3"
     >
-      <h2
-        class="text-lg font-semibold text-gray-100"
+      <div
+        class="flex items-center gap-2"
       >
-        BTC/USD
-      </h2>
+        <h2
+          class="text-lg font-semibold text-gray-100"
+        >
+          BTC/USD
+        </h2>
+      </div>
     </div>
-  </div>
-  <div
-    class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
-  >
-    $
-    50,000.12
-  </div>
-  <div
-    class="flex items-center justify-between text-xs text-gray-400 mb-3"
-  >
-    <span
-      class="relative inline-flex items-center"
+    <div
+      class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
+    >
+      $
+      50,000.12
+    </div>
+    <div
+      class="flex items-center justify-between text-xs text-gray-400 mb-3"
     >
       <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
+        class="relative inline-flex items-center"
       >
         <span
-          aria-label="Data freshness: updated 27h ago"
-          class="inline-flex items-center gap-1.5"
-          role="status"
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
         >
           <span
-            aria-hidden="true"
-            class="w-1.5 h-1.5 rounded-full bg-red-500"
-          />
-          27h ago
-        </span>
-      </span>
-    </span>
-    <span
-      class="relative inline-flex items-center"
-    >
-      <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
-      >
-        <span
-          class="text-cyan-400"
-        >
-          98.8% confidence
-        </span>
-      </span>
-    </span>
-  </div>
-  <div
-    class="flex flex-wrap gap-1.5"
-  >
-    <span
-      class="relative inline-flex items-center"
-    >
-      <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
-      >
-        <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
-        >
-          <span
-            aria-hidden="true"
+            aria-label="Data freshness: updated 27h ago"
+            class="inline-flex items-center gap-1.5"
+            role="status"
           >
-            ● 
+            <span
+              aria-hidden="true"
+              class="w-1.5 h-1.5 rounded-full bg-red-500"
+            />
+            27h ago
           </span>
-          chainlink
         </span>
       </span>
-    </span>
-    <span
-      class="relative inline-flex items-center"
-    >
       <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
+        class="relative inline-flex items-center"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
         >
-          redstone
+          <span
+            class="text-cyan-400"
+          >
+            98.8% confidence
+          </span>
         </span>
       </span>
-    </span>
+    </div>
+    <div
+      class="flex flex-wrap gap-1.5"
+    >
+      <span
+        class="relative inline-flex items-center"
+      >
+        <span
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
+        >
+          <span
+            class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
+          >
+            <span
+              aria-hidden="true"
+            >
+              ● 
+            </span>
+            chainlink
+          </span>
+        </span>
+      </span>
+      <span
+        class="relative inline-flex items-center"
+      >
+        <span
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
+        >
+          <span
+            class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
+          >
+            redstone
+          </span>
+        </span>
+      </span>
+    </div>
   </div>
   <div
     class="mt-3 pt-3 border-t border-gray-800"
   >
     <button
       aria-label="Set alert for BTC/USD"
-      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-amber-400 hover:text-amber-300"
+      class="min-h-[44px] flex items-center gap-1.5 text-xs font-medium transition-colors text-amber-400 hover:text-amber-300"
       type="button"
     >
       <svg
@@ -260,111 +270,116 @@ exports[`snapshots > hasAlert 1`] = `
 
 exports[`snapshots > isLive 1`] = `
 <div
-  aria-label="View details for BTC/USD"
   class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer  border-gray-800"
-  role="button"
-  tabindex="0"
+  data-testid="price-card"
 >
   <div
-    class="flex items-center justify-between mb-3"
+    aria-label="View details for BTC/USD"
+    class="outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 rounded-lg -m-1 p-1"
+    role="button"
+    tabindex="0"
   >
     <div
-      class="flex items-center gap-2"
+      class="flex items-center justify-between mb-3"
     >
-      <h2
-        class="text-lg font-semibold text-gray-100"
+      <div
+        class="flex items-center gap-2"
       >
-        BTC/USD
-      </h2>
+        <h2
+          class="text-lg font-semibold text-gray-100"
+        >
+          BTC/USD
+        </h2>
+      </div>
     </div>
-  </div>
-  <div
-    class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
-  >
-    $
-    50,000.12
-  </div>
-  <div
-    class="flex items-center justify-between text-xs text-gray-400 mb-3"
-  >
-    <span
-      class="relative inline-flex items-center"
+    <div
+      class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
+    >
+      $
+      50,000.12
+    </div>
+    <div
+      class="flex items-center justify-between text-xs text-gray-400 mb-3"
     >
       <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
+        class="relative inline-flex items-center"
       >
         <span
-          aria-label="Data freshness: updated 27h ago"
-          class="inline-flex items-center gap-1.5"
-          role="status"
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
         >
           <span
-            aria-hidden="true"
-            class="w-1.5 h-1.5 rounded-full bg-red-500"
-          />
-          27h ago
-        </span>
-      </span>
-    </span>
-    <span
-      class="relative inline-flex items-center"
-    >
-      <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
-      >
-        <span
-          class="text-cyan-400"
-        >
-          98.8% confidence
-        </span>
-      </span>
-    </span>
-  </div>
-  <div
-    class="flex flex-wrap gap-1.5"
-  >
-    <span
-      class="relative inline-flex items-center"
-    >
-      <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
-      >
-        <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
-        >
-          <span
-            aria-hidden="true"
+            aria-label="Data freshness: updated 27h ago"
+            class="inline-flex items-center gap-1.5"
+            role="status"
           >
-            ● 
+            <span
+              aria-hidden="true"
+              class="w-1.5 h-1.5 rounded-full bg-red-500"
+            />
+            27h ago
           </span>
-          chainlink
         </span>
       </span>
-    </span>
-    <span
-      class="relative inline-flex items-center"
-    >
       <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
+        class="relative inline-flex items-center"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
         >
-          redstone
+          <span
+            class="text-cyan-400"
+          >
+            98.8% confidence
+          </span>
         </span>
       </span>
-    </span>
+    </div>
+    <div
+      class="flex flex-wrap gap-1.5"
+    >
+      <span
+        class="relative inline-flex items-center"
+      >
+        <span
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
+        >
+          <span
+            class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
+          >
+            <span
+              aria-hidden="true"
+            >
+              ● 
+            </span>
+            chainlink
+          </span>
+        </span>
+      </span>
+      <span
+        class="relative inline-flex items-center"
+      >
+        <span
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
+        >
+          <span
+            class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
+          >
+            redstone
+          </span>
+        </span>
+      </span>
+    </div>
   </div>
   <div
     class="mt-3 pt-3 border-t border-gray-800"
   >
     <button
       aria-label="Set alert for BTC/USD"
-      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
+      class="min-h-[44px] flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
       type="button"
     >
       <svg
@@ -389,111 +404,116 @@ exports[`snapshots > isLive 1`] = `
 
 exports[`snapshots > isStale 1`] = `
 <div
-  aria-label="View details for BTC/USD"
   class="w-full text-left bg-gray-900 border rounded-xl p-5 hover:border-gray-700 hover:bg-gray-900/80 transition-all shadow-lg shadow-black/20 cursor-pointer opacity-60 border-gray-800"
-  role="button"
-  tabindex="0"
+  data-testid="price-card"
 >
   <div
-    class="flex items-center justify-between mb-3"
+    aria-label="View details for BTC/USD"
+    class="outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60 rounded-lg -m-1 p-1"
+    role="button"
+    tabindex="0"
   >
     <div
-      class="flex items-center gap-2"
+      class="flex items-center justify-between mb-3"
     >
-      <h2
-        class="text-lg font-semibold text-gray-100"
+      <div
+        class="flex items-center gap-2"
       >
-        BTC/USD
-      </h2>
+        <h2
+          class="text-lg font-semibold text-gray-100"
+        >
+          BTC/USD
+        </h2>
+      </div>
     </div>
-  </div>
-  <div
-    class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
-  >
-    $
-    50,000.12
-  </div>
-  <div
-    class="flex items-center justify-between text-xs text-gray-400 mb-3"
-  >
-    <span
-      class="relative inline-flex items-center"
+    <div
+      class="text-3xl font-bold text-white mb-3 font-mono tracking-tight"
+    >
+      $
+      50,000.12
+    </div>
+    <div
+      class="flex items-center justify-between text-xs text-gray-400 mb-3"
     >
       <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
+        class="relative inline-flex items-center"
       >
         <span
-          aria-label="Data freshness: updated 27h ago"
-          class="inline-flex items-center gap-1.5"
-          role="status"
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
         >
           <span
-            aria-hidden="true"
-            class="w-1.5 h-1.5 rounded-full bg-red-500"
-          />
-          27h ago
-        </span>
-      </span>
-    </span>
-    <span
-      class="relative inline-flex items-center"
-    >
-      <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
-      >
-        <span
-          class="text-cyan-400"
-        >
-          98.8% confidence
-        </span>
-      </span>
-    </span>
-  </div>
-  <div
-    class="flex flex-wrap gap-1.5"
-  >
-    <span
-      class="relative inline-flex items-center"
-    >
-      <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
-      >
-        <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
-        >
-          <span
-            aria-hidden="true"
+            aria-label="Data freshness: updated 27h ago"
+            class="inline-flex items-center gap-1.5"
+            role="status"
           >
-            ● 
+            <span
+              aria-hidden="true"
+              class="w-1.5 h-1.5 rounded-full bg-red-500"
+            />
+            27h ago
           </span>
-          chainlink
         </span>
       </span>
-    </span>
-    <span
-      class="relative inline-flex items-center"
-    >
       <span
-        class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-        tabindex="0"
+        class="relative inline-flex items-center"
       >
         <span
-          class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
         >
-          redstone
+          <span
+            class="text-cyan-400"
+          >
+            98.8% confidence
+          </span>
         </span>
       </span>
-    </span>
+    </div>
+    <div
+      class="flex flex-wrap gap-1.5"
+    >
+      <span
+        class="relative inline-flex items-center"
+      >
+        <span
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
+        >
+          <span
+            class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-blue-500/20 text-blue-300 border-blue-500/30 ring-1 ring-cyan-400"
+          >
+            <span
+              aria-hidden="true"
+            >
+              ● 
+            </span>
+            chainlink
+          </span>
+        </span>
+      </span>
+      <span
+        class="relative inline-flex items-center"
+      >
+        <span
+          class="cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+          tabindex="0"
+        >
+          <span
+            class="px-2 py-0.5 rounded text-xs font-medium border transition-colors bg-red-500/20 text-red-300 border-red-500/30 "
+          >
+            redstone
+          </span>
+        </span>
+      </span>
+    </div>
   </div>
   <div
     class="mt-3 pt-3 border-t border-gray-800"
   >
     <button
       aria-label="Set alert for BTC/USD"
-      class="flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
+      class="min-h-[44px] flex items-center gap-1.5 text-xs font-medium transition-colors text-gray-400 hover:text-gray-200"
       type="button"
     >
       <svg

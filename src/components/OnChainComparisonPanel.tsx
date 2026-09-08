@@ -41,7 +41,7 @@ export function OnChainComparisonPanel({ pair, offChainPrice, thresholdPercent }
     return (
       <p className="text-sm text-gray-400">
         No on-chain oracle contract is registered for this asset yet — see{' '}
-        <code className="text-xs text-gray-500">docs/on-chain.md</code> for how contracts are registered.
+        <code className="text-xs text-gray-400">docs/on-chain.md</code> for how contracts are registered.
       </p>
     )
   }
@@ -56,7 +56,11 @@ export function OnChainComparisonPanel({ pair, offChainPrice, thresholdPercent }
 
   if (loading || !divergence) {
     return (
-      <div className="h-24 rounded-lg bg-gray-800/60 animate-pulse" role="status" aria-label="Loading on-chain comparison" />
+      <div
+        className="h-24 rounded-lg bg-gray-800/60 animate-pulse"
+        role="status"
+        aria-label="Loading on-chain comparison"
+      />
     )
   }
 
@@ -73,18 +77,18 @@ export function OnChainComparisonPanel({ pair, offChainPrice, thresholdPercent }
       <div className="flex items-center justify-between mb-4">
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Off-chain</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Off-chain</p>
             <p className="text-xl font-mono font-semibold text-gray-100">${formatPrice(divergence.offChainPrice)}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">On-chain</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">On-chain</p>
             <p className="text-xl font-mono font-semibold text-gray-100">${formatPrice(divergence.onChainPrice)}</p>
           </div>
         </div>
         <span className={`px-2 py-0.5 rounded text-xs font-medium border shrink-0 ${style.badge}`}>{style.label}</span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 mb-4">
         <span>
           Divergence:{' '}
           <span className="font-mono text-gray-300">
@@ -99,7 +103,7 @@ export function OnChainComparisonPanel({ pair, offChainPrice, thresholdPercent }
       </div>
 
       {registryEntry && (
-        <div className="pt-3 border-t border-gray-800 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+        <div className="pt-3 border-t border-gray-800 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
           <span>
             Network: <span className="text-gray-300 capitalize">{registryEntry.network}</span>
           </span>

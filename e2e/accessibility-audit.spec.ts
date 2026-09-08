@@ -65,9 +65,11 @@ test('focus returns to a sensible element after closing the alert modal', async 
   await expect(dialog).not.toBeVisible({ timeout: 5_000 })
 
   // Focus must not have been dropped back to <body> — that reads as "lost" to
-  // screen reader users.
-  const activeTag = await page.evaluate(() => document.activeElement?.tagName?.toLowerCase())
-  expect(activeTag).not.toBe('body')
+  // screen reader users. Allow a beat for focus restoration to settle (it can
+  // race the dialog's unmount on slow CI runners).
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.tagName?.toLowerCase()), { timeout: 5_000 })
+    .not.toBe('body')
 })
 
 test('no focus loss when navigating between routes', async ({ page }) => {

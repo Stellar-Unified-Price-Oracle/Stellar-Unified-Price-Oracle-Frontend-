@@ -59,10 +59,7 @@ function KeyChip({ keys }: { keys: string }) {
   )
 }
 
-export function KeyboardShortcutHelp({
-  shortcuts,
-  onClose,
-}: KeyboardShortcutHelpProps): ReactElement {
+export function KeyboardShortcutHelp({ shortcuts, onClose }: KeyboardShortcutHelpProps): ReactElement {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   // Close on Escape or click-outside
@@ -83,15 +80,12 @@ export function KeyboardShortcutHelp({
   }, [])
 
   // Group shortcuts by category
-  const grouped = shortcuts.reduce<Record<string, ShortcutDefinition[]>>(
-    (acc, s) => {
-      const cat = s.category ?? 'General'
-      if (!acc[cat]) acc[cat] = []
-      acc[cat].push(s)
-      return acc
-    },
-    {},
-  )
+  const grouped = shortcuts.reduce<Record<string, ShortcutDefinition[]>>((acc, s) => {
+    const cat = s.category ?? 'General'
+    if (!acc[cat]) acc[cat] = []
+    acc[cat].push(s)
+    return acc
+  }, {})
 
   return createPortal(
     <div
@@ -115,7 +109,13 @@ export function KeyboardShortcutHelp({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 sticky top-0 bg-gray-900 rounded-t-2xl">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg
+              className="w-5 h-5 text-cyan-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             <h2 className="text-base font-semibold text-white">Keyboard Shortcuts</h2>
@@ -136,9 +136,7 @@ export function KeyboardShortcutHelp({
         <div className="p-5 space-y-5">
           {Object.entries(grouped).map(([category, items]) => (
             <section key={category}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                {category}
-              </h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{category}</h3>
               <ul className="space-y-1">
                 {items.map((s, i) => (
                   <li
@@ -156,7 +154,15 @@ export function KeyboardShortcutHelp({
 
         {/* Footer hint */}
         <div className="px-5 py-3 border-t border-gray-800 text-xs text-gray-500 text-center rounded-b-2xl">
-          Press <kbd className="inline-flex px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-300 font-mono">?</kbd> or <kbd className="inline-flex px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-300 font-mono">Shift+/</kbd> to toggle this help
+          Press{' '}
+          <kbd className="inline-flex px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-300 font-mono">
+            ?
+          </kbd>{' '}
+          or{' '}
+          <kbd className="inline-flex px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-gray-300 font-mono">
+            Shift+/
+          </kbd>{' '}
+          to toggle this help
         </div>
       </div>
     </div>,

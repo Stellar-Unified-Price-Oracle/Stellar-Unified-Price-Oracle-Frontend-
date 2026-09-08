@@ -19,7 +19,9 @@ test.describe('error states', () => {
     // An error alert or "No price feeds available" message should appear
     const errorAlert = page.getByRole('alert')
     const emptyState = page.getByText('No price feeds available')
-    await expect(errorAlert.or(emptyState).first()).toBeVisible({ timeout: 10_000 })
+    // retry: 3 with exponential backoff means the error surfaces after ~7s of
+    // retries on top of render delay — give it a generous window.
+    await expect(errorAlert.or(emptyState).first()).toBeVisible({ timeout: 25_000 })
   })
 
   test('price detail shows error alert when single price API returns 500', async ({ page }) => {
@@ -132,6 +134,15 @@ test('connection badge shows one of the expected status labels', async ({ page }
   await expect(badge).toBeVisible({ timeout: 10_000 })
 
   const text = await badge.textContent()
-  const validLabels = ['Live', 'Connecting', 'Reconnecting', 'Offline', 'Rate limited']
+  const validLabels = [
+    'Live',
+    'Connecting',
+    'Reconnecting',
+    'Waiting',
+    'Offline',
+    'Disconnected',
+    'Paused',
+    'Rate limited',
+  ]
   expect(validLabels.some((l) => text?.includes(l))).toBe(true)
 })

@@ -31,7 +31,7 @@ export function AuthCallback(): ReactElement {
         <button
           type="button"
           onClick={() => navigate('/', { replace: true })}
-          className="px-6 py-2.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-500/20 transition-colors"
+          className="px-6 py-2.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-500/20 transition-colors"
         >
           Back to dashboard
         </button>

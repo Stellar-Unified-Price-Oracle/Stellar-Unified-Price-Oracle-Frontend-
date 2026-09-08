@@ -148,7 +148,9 @@ test.describe('Error states', () => {
     await page.waitForLoadState('networkidle')
 
     const alert = page.getByRole('alert').first()
-    await expect(alert).toBeVisible({ timeout: 15_000 })
+    // Retries (3 with exponential backoff) delay the error surfacing — give it
+    // a generous window so slow CI runners don't flake (see error-states.spec).
+    await expect(alert).toBeVisible({ timeout: 25_000 })
   })
 
   test('shows error message for network failure', async ({ page }) => {
@@ -159,7 +161,8 @@ test.describe('Error states', () => {
     await page.waitForLoadState('networkidle')
 
     const alert = page.getByRole('alert').first()
-    await expect(alert).toBeVisible({ timeout: 15_000 })
+    // Same retry/backoff delay as above.
+    await expect(alert).toBeVisible({ timeout: 25_000 })
   })
 
   test('shows empty state when API returns empty', async ({ page }) => {

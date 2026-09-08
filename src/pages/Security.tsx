@@ -40,14 +40,13 @@ function Section({ title, children }: { title: string; children: ReactElement })
 export function Security(): ReactElement {
   return (
     <div className="max-w-3xl mx-auto py-10 px-4">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Security &amp; Vulnerability Disclosure</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+        Security &amp; Vulnerability Disclosure
+      </h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
-        We take the security of the Stellar Unified Price Oracle seriously and welcome reports from
-        researchers. This page is the canonical disclosure policy referenced by{' '}
-        <a
-          href="/.well-known/security.txt"
-          className="text-cyan-600 dark:text-cyan-400 underline underline-offset-2"
-        >
+        We take the security of the Stellar Unified Price Oracle seriously and welcome reports from researchers. This
+        page is the canonical disclosure policy referenced by{' '}
+        <a href="/.well-known/security.txt" className="text-cyan-700 dark:text-cyan-400 underline underline-offset-2">
           /.well-known/security.txt
         </a>{' '}
         and <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">SECURITY.md</code>.
@@ -65,7 +64,7 @@ export function Security(): ReactElement {
                 href="https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/security/advisories/new"
                 target="_blank"
                 rel="noreferrer"
-                className="text-cyan-600 dark:text-cyan-400 underline underline-offset-2"
+                className="text-cyan-700 dark:text-cyan-400 underline underline-offset-2"
               >
                 Report a vulnerability
               </a>
@@ -102,10 +101,7 @@ export function Security(): ReactElement {
           <table className="w-full text-sm">
             <tbody>
               {SLA.map((row, i) => (
-                <tr
-                  key={row.label}
-                  className={i % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : ''}
-                >
+                <tr key={row.label} className={i % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/50' : ''}>
                   <td className="px-4 py-2.5 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                     {row.label}
                   </td>
@@ -119,8 +115,8 @@ export function Security(): ReactElement {
 
       <Section title="Rewards">
         <p className="text-sm text-gray-600 dark:text-gray-300">
-          This project does not currently run a paid bug bounty. Valid reports are credited (with
-          permission) in the GitHub Security Advisory and release notes.
+          This project does not currently run a paid bug bounty. Valid reports are credited (with permission) in the
+          GitHub Security Advisory and release notes.
         </p>
       </Section>
     </div>

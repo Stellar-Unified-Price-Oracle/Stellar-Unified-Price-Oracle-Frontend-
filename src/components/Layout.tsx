@@ -17,8 +17,8 @@ import { WalletButton } from './WalletButton'
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
     isActive
-      ? 'bg-gray-100 dark:bg-gray-800 text-cyan-600 dark:text-cyan-400'
-      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50'
+      ? 'bg-gray-100 dark:bg-gray-800 text-cyan-700 dark:text-cyan-400'
+      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50'
   }`
 
 /** Mobile bottom nav tab */
@@ -47,7 +47,7 @@ function BottomTab({
       onMouseEnter={preload}
       onFocus={preload}
       className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-2 relative transition-colors ${
-        isActive ? 'text-cyan-500' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+        isActive ? 'text-cyan-500' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
       }`}
       aria-current={isActive ? 'page' : undefined}
     >
@@ -101,7 +101,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
         <div className="px-4 sm:px-6 h-full flex items-center justify-between">
           {/* Brand + desktop nav links */}
           <div className="flex items-center gap-3">
-            <NavLink to="/" end className="flex items-center gap-3 min-h-[44px]">
+            <NavLink to="/" end className="flex items-center gap-3 min-h-[44px] min-w-[44px]">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-xs font-bold text-white">
                 O
               </div>
@@ -249,7 +249,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
           onMouseEnter={preloadAlertPanel}
           onFocus={preloadAlertPanel}
           aria-label={t('nav.toggleAlerts')}
-          className="flex flex-col items-center justify-center gap-0.5 flex-1 py-2 relative text-gray-500 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
+          className="flex flex-col items-center justify-center gap-0.5 flex-1 py-2 relative text-gray-600 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors"
         >
           <span className="relative">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

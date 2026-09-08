@@ -225,7 +225,12 @@ export const ConfidenceDeviationChart = memo(function ConfidenceDeviationChart({
             className="w-full h-48"
             formatX={(x) => {
               const d = new Date(x)
-              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+              return d.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })
             }}
             formatY={activeFormatY}
           />
@@ -233,7 +238,7 @@ export const ConfidenceDeviationChart = memo(function ConfidenceDeviationChart({
       </div>
 
       {/* Description */}
-      <p className="text-xs text-gray-600 mt-2">
+      <p className="text-xs text-gray-400 mt-2">
         {activeTab === 'confidence'
           ? 'Confidence score (0–100%) over time. A sustained decline signals feed health degradation.'
           : 'Standard deviation of per-source reported prices at each tick. Higher values indicate less oracle agreement.'}

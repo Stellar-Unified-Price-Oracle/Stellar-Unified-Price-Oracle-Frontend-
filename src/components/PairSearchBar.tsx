@@ -138,10 +138,7 @@ export const PairSearchBar = memo(function PairSearchBar({
   // Close on outside click
   useEffect(() => {
     function onPointerDown(e: PointerEvent) {
-      if (
-        inputRef.current &&
-        !inputRef.current.closest('[data-pairsearch]')?.contains(e.target as Node)
-      ) {
+      if (inputRef.current && !inputRef.current.closest('[data-pairsearch]')?.contains(e.target as Node)) {
         setOpen(false)
       }
     }
@@ -169,7 +166,7 @@ export const PairSearchBar = memo(function PairSearchBar({
             onChange={handleChange}
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
-            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-700 bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="w-full pl-8 pr-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-gray-700 bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             aria-label="Search asset pairs"
           />
           {/* search icon */}
@@ -180,12 +177,20 @@ export const PairSearchBar = memo(function PairSearchBar({
             viewBox="0 0 24 24"
             aria-hidden="true"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"
+            />
           </svg>
           {value && (
             <button
               type="button"
-              onClick={() => { onChange(''); setOpen(false) }}
+              onClick={() => {
+                onChange('')
+                setOpen(false)
+              }}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
               aria-label="Clear search"
             >
@@ -200,13 +205,18 @@ export const PairSearchBar = memo(function PairSearchBar({
         {allSources.length > 0 && (
           <select
             value={sourceFilter}
-            onChange={(e) => { setSourceFilter(e.target.value); setOpen(true) }}
+            onChange={(e) => {
+              setSourceFilter(e.target.value)
+              setOpen(true)
+            }}
             className="py-1.5 px-2 text-sm rounded-lg border border-gray-700 bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             aria-label="Filter by oracle source"
           >
             <option value="">All sources</option>
             {allSources.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
         )}
@@ -221,12 +231,18 @@ export const PairSearchBar = memo(function PairSearchBar({
           className="absolute z-50 top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-y-auto max-h-56 py-1"
         >
           {!value && recent.length > 0 && (
-            <li className="px-3 py-1 text-[10px] uppercase tracking-wider text-gray-500 font-semibold" role="presentation">
+            <li
+              className="px-3 py-1 text-[10px] uppercase tracking-wider text-gray-500 font-semibold"
+              role="presentation"
+            >
               Recent searches
             </li>
           )}
           {value && suggestions.length > 0 && (
-            <li className="px-3 py-1 text-[10px] uppercase tracking-wider text-gray-500 font-semibold" role="presentation">
+            <li
+              className="px-3 py-1 text-[10px] uppercase tracking-wider text-gray-500 font-semibold"
+              role="presentation"
+            >
               Pairs
             </li>
           )}
@@ -239,9 +255,7 @@ export const PairSearchBar = memo(function PairSearchBar({
                 role="option"
                 aria-selected={i === activeIndex}
                 className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm transition-colors ${
-                  i === activeIndex
-                    ? 'bg-cyan-500/20 text-cyan-300'
-                    : 'text-gray-200 hover:bg-gray-700'
+                  i === activeIndex ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-200 hover:bg-gray-700'
                 }`}
                 onPointerDown={(e) => {
                   e.preventDefault()

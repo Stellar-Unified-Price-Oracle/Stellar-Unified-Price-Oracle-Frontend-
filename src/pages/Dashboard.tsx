@@ -449,7 +449,7 @@ export function Dashboard() {
           <button
             type="button"
             onClick={() => setNotifModalOpen(true)}
-            className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600 transition-colors"
             aria-label={t('dashboard.alerts.ariaLabel')}
             title={t('dashboard.alerts.title')}
           >
@@ -466,7 +466,7 @@ export function Dashboard() {
           <button
             type="button"
             onClick={() => setScheduledExportsOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600 transition-colors"
+            className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600 transition-colors"
             aria-label={t('scheduledExports.title', { defaultValue: 'Scheduled exports' }) as string}
             title={t('scheduledExports.title', { defaultValue: 'Scheduled exports' }) as string}
           >

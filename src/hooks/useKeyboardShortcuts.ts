@@ -34,25 +34,24 @@ function parseShortcut(keys: string): ParsedShortcut {
 
 function matchesShortcut(e: KeyboardEvent, parsed: ParsedShortcut): boolean {
   const key = e.key.toLowerCase()
-  return (
-    key === parsed.key &&
-    e.ctrlKey === parsed.ctrl &&
-    e.shiftKey === parsed.shift &&
-    e.altKey === parsed.alt &&
-    e.metaKey === parsed.meta
-  )
+  if (key !== parsed.key) return false
+  if (e.ctrlKey !== parsed.ctrl || e.altKey !== parsed.alt || e.metaKey !== parsed.meta) return false
+
+  // Shift is only load-bearing for keys that are typable without it (letters,
+  // digits, '/', named keys). A shifted symbol like '?' reports shiftKey=true
+  // when typed on a real keyboard, but synthetic presses (e.g. Playwright's
+  // keyboard.press('?')) deliver the same key with shiftKey=false — so accept
+  // either for symbols that require shift to produce.
+  const shiftDistinguishes = key.length !== 1 || /[a-z0-9]/.test(key) || key === '/'
+  if (shiftDistinguishes && e.shiftKey !== parsed.shift) return false
+  return true
 }
 
 function isInputFocused(): boolean {
   const el = document.activeElement
   if (!el) return false
   const tag = el.tagName.toLowerCase()
-  return (
-    tag === 'input' ||
-    tag === 'textarea' ||
-    tag === 'select' ||
-    (el as HTMLElement).isContentEditable
-  )
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || (el as HTMLElement).isContentEditable
 }
 
 /**

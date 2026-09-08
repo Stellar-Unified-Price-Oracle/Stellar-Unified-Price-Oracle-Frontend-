@@ -58,7 +58,9 @@ describe('SourceHistoryDrilldown', () => {
 
   it('shows total data points count', () => {
     render(<SourceHistoryDrilldown source="chainlink" history={sampleHistory} onClose={vi.fn()} />)
-    // 3 entries → "3" appears somewhere in the stats
-    expect(screen.getByText(/3/)).toBeInTheDocument()
+    // 3 entries → "3" appears somewhere in the stats. Exact match, not a regex:
+    // relative timestamps like "9/8 13:00" contain a "3" and would collide
+    // depending on the time of day the suite runs.
+    expect(screen.getByText('3', { exact: true })).toBeInTheDocument()
   })
 })

@@ -119,8 +119,10 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
 
       // ── Help ─────────────────────────────────────────────────────────
       {
-        // '?' is a shifted character on keyboard layouts, so register it with
-        // shift to match the actual keydown (otherwise it never fires).
+        // '?' is a shifted character: real keyboards report it with
+        // shiftKey=true, synthetic presses (e.g. Playwright's
+        // keyboard.press('?')) without. The matcher tolerates either, and
+        // registering with shift keeps the help overlay showing Shift+? keycaps.
         keys: 'shift+?',
         description: 'Show keyboard shortcut help',
         category: 'Help',

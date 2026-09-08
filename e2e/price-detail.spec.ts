@@ -106,7 +106,9 @@ test('CSV import shows error for invalid file type', async ({ page }) => {
     buffer: Buffer.from('not a csv'),
   })
 
-  await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 })
+  // The import zone renders its own inline alert; the page may also carry
+  // other role=alert regions (e.g. alert-history entries), so scope by text.
+  await expect(page.getByRole('alert').filter({ hasText: /CSV/ })).toBeVisible({ timeout: 5_000 })
 })
 
 test('CSV clear button removes imported data', async ({ page }) => {

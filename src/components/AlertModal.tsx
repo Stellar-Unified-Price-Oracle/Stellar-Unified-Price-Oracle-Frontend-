@@ -332,14 +332,23 @@ export function AlertModal({
     }
   }, [isOpen, alert, defaultAssetPair])
 
+  // Close on Escape from anywhere while open — the dialog's own onKeyDown only
+  // fires once focus has landed inside (via requestAnimationFrame), so a document
+  // listener makes close behavior race-free on slow runners.
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [isOpen, onClose])
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
       trapKeyDown(e)
     },
-    [onClose, trapKeyDown],
+    [trapKeyDown],
   )
 
   const setAndValidate = useCallback((field: keyof AlertFormData, value: string | boolean) => {

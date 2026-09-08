@@ -216,7 +216,7 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
         {loading ? t('apiDocs.sending') : t('apiDocs.tryItOut')}
       </button>
       {cacheStatus && (
-        <p className="mt-2 text-xs font-mono text-gray-500">
+        <p className="mt-2 text-xs font-mono text-gray-400">
           {t('apiDocs.cacheStatus', 'Cache:')} <span className="text-gray-300">{cacheStatus}</span>
         </p>
       )}
@@ -231,7 +231,7 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
         </pre>
       )}
       <div className="mt-3 grid gap-2">
-        <label className="text-xs text-gray-500">
+        <label className="text-xs text-gray-400">
           Path
           <input
             value={path}
@@ -240,7 +240,7 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
           />
         </label>
         {endpoint.method === 'POST' && (
-          <label className="text-xs text-gray-500">
+          <label className="text-xs text-gray-400">
             JSON body
             <textarea
               value={body}
@@ -252,7 +252,7 @@ function TryItOut({ endpoint }: { endpoint: Endpoint }) {
         )}
       </div>
       {(latency != null || Object.keys(headers).length > 0) && (
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-gray-400">
           {latency != null ? `${latency}ms` : ''}
           {Object.entries(headers)
             .map(([key, value]) => ` · ${key}: ${value}`)
@@ -279,36 +279,42 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden">
+    // Opaque dark card in every theme — the translucent version blended with
+    // the light page background and failed colour-contrast for its light text.
+    <div className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden">
       <div className="px-4 py-3 flex flex-wrap items-center gap-3">
         <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold border ${METHOD_COLORS[endpoint.method]}`}>
           {endpoint.method}
         </span>
         <code className="text-sm font-mono text-gray-200">{endpoint.path}</code>
         <p className="w-full text-sm text-gray-400 mt-0.5">{endpoint.description}</p>
-        {endpoint.note && <p className="w-full text-xs text-gray-500 italic">{endpoint.note}</p>}
+        {endpoint.note && <p className="w-full text-xs text-gray-400 italic">{endpoint.note}</p>}
       </div>
 
       <div className="border-t border-gray-800 px-4 pt-3 pb-4">
-        <div className="flex gap-1 mb-2" role="tablist" aria-label={t('export.langSelector')}>
-          {(['curl', 'javascript', 'python'] as SnippetLang[]).map((l) => (
-            <button
-              key={l}
-              type="button"
-              role="tab"
-              aria-selected={lang === l}
-              onClick={() => setLang(l)}
-              className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
-                lang === l ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-              }`}
-            >
-              {LANG_LABELS[l]}
-            </button>
-          ))}
+        {/* The Copy control sits beside — not inside — the tablist: a tablist
+            may only contain role=tab children (aria-required-children). */}
+        <div className="flex gap-1 mb-2 items-center">
+          <div className="flex gap-1" role="tablist" aria-label={t('export.langSelector')}>
+            {(['curl', 'javascript', 'python'] as SnippetLang[]).map((l) => (
+              <button
+                key={l}
+                type="button"
+                role="tab"
+                aria-selected={lang === l}
+                onClick={() => setLang(l)}
+                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                  lang === l ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                }`}
+              >
+                {LANG_LABELS[l]}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={handleCopy}
-            className="ml-auto text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            className="ml-auto text-xs text-gray-400 hover:text-gray-200 transition-colors"
             aria-label={t('apiDocs.copy')}
           >
             {copied ? t('apiDocs.copied') : t('apiDocs.copy')}
@@ -329,13 +335,13 @@ export function ApiDocs() {
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('apiDocs.title')}</h1>
-        <p className="text-sm text-gray-400 mt-1">{t('apiDocs.subtitle')}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('apiDocs.subtitle')}</p>
         {config.openApiSpecUrl && (
           <a
             href={config.openApiSpecUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 text-sm rounded-lg border border-cyan-800 bg-cyan-900/20 text-cyan-400 hover:bg-cyan-900/40 transition-colors"
+            className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 text-sm rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400 dark:hover:bg-cyan-900/40 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -352,7 +358,7 @@ export function ApiDocs() {
           href="https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/blob/main/docs/on-chain.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 mt-3 ml-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-800 bg-cyan-900/20 text-cyan-400 hover:bg-cyan-900/40 transition-colors"
+          className="inline-flex items-center gap-1.5 mt-3 ml-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400 dark:hover:bg-cyan-900/40 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -368,18 +374,19 @@ export function ApiDocs() {
           href="https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/blob/main/docs/sdk-quickstart.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 mt-3 ml-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-800 bg-cyan-900/20 text-cyan-400 hover:bg-cyan-900/40 transition-colors"
+          className="inline-flex items-center gap-1.5 mt-3 ml-2 px-3 py-1.5 text-sm rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400 dark:hover:bg-cyan-900/40 transition-colors"
         >
           SDK quickstarts
         </a>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-3 text-xs text-gray-500">
+      <div className="mb-4 flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400">
         <span>
-          {t('apiDocs.baseUrl')} <code className="font-mono text-gray-300">{config.apiUrl.replace(/\/api$/, '')}</code>
+          {t('apiDocs.baseUrl')}{' '}
+          <code className="font-mono text-gray-800 dark:text-gray-300">{config.apiUrl.replace(/\/api$/, '')}</code>
         </span>
         <span>
-          {t('apiDocs.ws')} <code className="font-mono text-gray-300">{config.wsUrl}</code>
+          {t('apiDocs.ws')} <code className="font-mono text-gray-800 dark:text-gray-300">{config.wsUrl}</code>
         </span>
       </div>
 

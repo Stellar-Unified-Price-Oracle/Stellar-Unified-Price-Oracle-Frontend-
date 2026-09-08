@@ -163,12 +163,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
         {/* Message */}
         <div>
-          <h2 className="text-base font-semibold text-gray-100 mb-1">
-            {featureLabel} encountered an error
-          </h2>
-          <p className="text-sm text-gray-400">
-            Something went wrong rendering this section. Try retrying or go back.
-          </p>
+          <h2 className="text-base font-semibold text-gray-100 mb-1">{featureLabel} encountered an error</h2>
+          <p className="text-sm text-gray-400">Something went wrong rendering this section. Try retrying or go back.</p>
         </div>
 
         {/* Recovery actions */}
@@ -224,10 +220,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
  * Page-level ErrorBoundary – fills most of the viewport, includes "Go back".
  * Used to wrap individual lazy-loaded route components.
  */
-export class PageErrorBoundary extends Component<
-  Omit<ErrorBoundaryProps, 'showGoBack'>,
-  ErrorBoundaryState
-> {
+export class PageErrorBoundary extends Component<Omit<ErrorBoundaryProps, 'showGoBack'>, ErrorBoundaryState> {
   constructor(props: Omit<ErrorBoundaryProps, 'showGoBack'>) {
     super(props)
     this.state = { hasError: false, error: null, showDetails: false }
@@ -287,9 +280,7 @@ export class PageErrorBoundary extends Component<
             </svg>
           </div>
 
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            {featureLabel} failed to load
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{featureLabel} failed to load</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
             An unexpected error occurred. You can retry or go back to the previous page.
           </p>
@@ -298,7 +289,7 @@ export class PageErrorBoundary extends Component<
             <button
               type="button"
               onClick={this.handleRetry}
-              className="px-6 py-2.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-500/20 transition-colors cursor-pointer"
+              className="px-6 py-2.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-500/20 transition-colors cursor-pointer"
               aria-label={`Retry loading ${featureLabel}`}
             >
               Retry
@@ -358,9 +349,7 @@ export class PageErrorBoundary extends Component<
  * }
  * ```
  */
-export function useGlobalErrorHandler(
-  onError?: (error: Error) => void,
-): void {
+export function useGlobalErrorHandler(onError?: (error: Error) => void): void {
   useEffect(() => {
     const report = onError ?? ((err: Error) => console.error('Unhandled error:', err))
 

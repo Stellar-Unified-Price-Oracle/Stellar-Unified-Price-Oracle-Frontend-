@@ -1,12 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDragSort } from '../hooks/useDragSort'
-import {
-  COLUMN_PRESETS,
-  EXPORT_COLUMNS,
-  type ColumnPresetName,
-  type ExportColumnKey,
-} from '../utils/exportColumns'
+import { COLUMN_PRESETS, EXPORT_COLUMNS, type ColumnPresetName, type ExportColumnKey } from '../utils/exportColumns'
 
 const PRESET_NAMES: ColumnPresetName[] = ['minimal', 'standard', 'full']
 const LABELS = Object.fromEntries(EXPORT_COLUMNS.map((c) => [c.key, c.label])) as Record<ExportColumnKey, string>
@@ -30,7 +25,12 @@ function DraggableColumnList({ columns, onChange, onRemove }: DraggableColumnLis
             dragState.dragIndex === i ? 'opacity-40' : ''
           } ${dragState.overIndex === i ? 'border-cyan-500' : 'border-gray-700'}`}
         >
-          <svg className="w-3.5 h-3.5 text-gray-500 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <svg
+            className="w-3.5 h-3.5 text-gray-500 shrink-0"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+          >
             <path d="M7 4a1 1 0 100 2 1 1 0 000-2zM7 9a1 1 0 100 2 1 1 0 000-2zM7 14a1 1 0 100 2 1 1 0 000-2zM13 4a1 1 0 100 2 1 1 0 000-2zM13 9a1 1 0 100 2 1 1 0 000-2zM13 14a1 1 0 100 2 1 1 0 000-2z" />
           </svg>
           <span className="flex-1">{LABELS[key]}</span>
@@ -135,16 +135,27 @@ export function ColumnSelectorModal({
                 key={c.key}
                 className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-gray-700 text-xs text-gray-300 cursor-pointer hover:bg-gray-800"
               >
-                <input type="checkbox" checked={columns.includes(c.key)} onChange={() => toggle(c.key)} className="accent-cyan-500" />
+                <input
+                  type="checkbox"
+                  checked={columns.includes(c.key)}
+                  onChange={() => toggle(c.key)}
+                  className="accent-cyan-500"
+                />
                 {c.label}
               </label>
             ))}
-            {filtered.length === 0 && <p className="text-xs text-gray-600">{t('export.columns.noMatches', { defaultValue: 'No matching columns' })}</p>}
+            {filtered.length === 0 && (
+              <p className="text-xs text-gray-600">
+                {t('export.columns.noMatches', { defaultValue: 'No matching columns' })}
+              </p>
+            )}
           </div>
         </div>
 
         <div>
-          <p className="text-xs text-gray-500 mb-1.5">{t('export.columns.selectedOrder', { defaultValue: 'Selected (drag to reorder)' })}</p>
+          <p className="text-xs text-gray-500 mb-1.5">
+            {t('export.columns.selectedOrder', { defaultValue: 'Selected (drag to reorder)' })}
+          </p>
           <DraggableColumnList key={columns.join(',')} columns={columns} onChange={onChange} onRemove={toggle} />
         </div>
 
@@ -157,7 +168,7 @@ export function ColumnSelectorModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-sm rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
+            className="px-4 py-1.5 text-sm rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white transition-colors"
           >
             {t('common.done', { defaultValue: 'Done' })}
           </button>

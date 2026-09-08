@@ -41,7 +41,7 @@ export const DraggablePriceGrid = memo(function DraggablePriceGrid({
     [onReorder],
   )
 
-  const { items: orderedItems, dragState, getItemProps } = useDragSort(items, handleReorder)
+  const { items: orderedItems, dragState, getItemProps } = useDragSort(items, handleReorder, (p) => p.assetPair)
 
   return (
     <section

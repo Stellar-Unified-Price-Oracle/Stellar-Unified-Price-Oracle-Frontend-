@@ -9,6 +9,7 @@ import { PriceDetailSkeleton } from './components/PriceDetailSkeleton'
 import { ApiDocsSkeleton } from './components/Skeletons/ApiDocsSkeleton'
 import { NotFoundSkeleton } from './components/Skeletons/NotFoundSkeleton'
 import { PriceProvider } from './context/PriceContext'
+import { KeyboardShortcutsProvider } from './context/KeyboardShortcutsContext'
 import { AlertsProvider } from './hooks/useAlerts'
 import { ToastProvider } from './context/ToastContext'
 import { PreferencesProvider } from './preferences/PreferencesContext'
@@ -175,8 +176,10 @@ export default function App(): ReactElement {
               <AuthProvider>
                 <WalletProvider>
                   <PriceProvider>
-                    <AppContent />
-                    {import.meta.env.DEV && <PerformanceOverlay />}
+                    <KeyboardShortcutsProvider>
+                      <AppContent />
+                      {import.meta.env.DEV && <PerformanceOverlay />}
+                    </KeyboardShortcutsProvider>
                   </PriceProvider>
                 </WalletProvider>
               </AuthProvider>

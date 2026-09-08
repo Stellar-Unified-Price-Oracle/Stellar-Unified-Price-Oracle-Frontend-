@@ -56,16 +56,16 @@ function StellarAssetPanel({ pair }: { pair: string }) {
             </span>
           )}
         </p>
-        <p className="text-xs text-gray-500 font-mono mt-0.5">{asset.canonical}</p>
+        <p className="text-xs text-gray-400 font-mono mt-0.5">{asset.canonical}</p>
         {asset.issuer && (
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-gray-400 mt-0.5">
             Issued by{' '}
             <span className="font-mono text-gray-400" title={asset.issuer}>
               {shortenAccount(asset.issuer)}
             </span>
           </p>
         )}
-        <p className="text-[11px] text-gray-600 mt-1">
+        <p className="text-[11px] text-gray-400 mt-1">
           This feed is denominated in a Stellar asset — readable on-chain with the Stellar SDK.
         </p>
       </div>
@@ -140,7 +140,10 @@ export function PriceDetail() {
   const showEmptyState = !loading && !priceError && !price
 
   return (
-    <div>
+    // The whole page is built from dark cards and dark-only text colours, so it
+    // renders on an always-dark canvas — its light-mode appearance was never
+    // coherent and failed colour-contrast (e.g. gray-100 headings on white).
+    <div className="-m-6 p-6 bg-gray-950">
       <button
         type="button"
         onClick={() => navigate('/dashboard')}
@@ -185,7 +188,7 @@ export function PriceDetail() {
                 className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   activeTab === tab
                     ? 'border-cyan-500 text-cyan-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-300'
+                    : 'border-transparent text-gray-400 hover:text-gray-200'
                 }`}
               >
                 {t(`priceDetail.tabs.${tab}`)}
@@ -214,7 +217,7 @@ export function PriceDetail() {
             <>
               {/* Price block */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">
                   {t('priceDetail.sections.currentPrice')}
                 </p>
                 <p className="text-5xl font-bold font-mono text-gray-100 mb-4">${formatPrice(price.price)}</p>
@@ -226,12 +229,12 @@ export function PriceDetail() {
                     {t('priceDetail.confidence', { value: (price.confidence * 100).toFixed(1) })}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600 mt-1">{formatTimestamp(price.timestamp)}</p>
+                <p className="text-xs text-gray-400 mt-1">{formatTimestamp(price.timestamp)}</p>
               </div>
 
               {/* Sources */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">
                   {t('priceDetail.sections.oracleSources')}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -255,13 +258,13 @@ export function PriceDetail() {
 
               {/* Stellar asset — resolved on-chain via @stellar/stellar-sdk */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Stellar Asset</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Stellar Asset</p>
                 <StellarAssetPanel pair={price.assetPair} />
               </div>
 
               {/* Benchmark comparison section */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Benchmark comparison</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Benchmark comparison</p>
                 <div className="flex flex-wrap items-center gap-4 mb-4">
                   {/* Benchmark pair picker */}
                   <div className="flex items-center gap-2">
@@ -337,7 +340,7 @@ export function PriceDetail() {
                   ))}
 
                 {benchmarkPair === null && (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     Select a pair above to compare it against {decodedPair} on the same chart.
                   </p>
                 )}
@@ -345,7 +348,7 @@ export function PriceDetail() {
 
               {/* Off-chain vs on-chain price comparison */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">On-Chain Comparison</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">On-Chain Comparison</p>
                 <OnChainComparisonPanel
                   pair={price.assetPair}
                   offChainPrice={price.price}
@@ -355,7 +358,7 @@ export function PriceDetail() {
 
               {/* Paginated History chart */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">
                   {t('priceDetail.sections.priceHistory')}
                 </p>
                 {historyError ? (
@@ -407,7 +410,7 @@ export function PriceDetail() {
 
               {/* #462 – Confidence & deviation history charts */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">
                   Confidence &amp; Deviation History
                 </p>
                 {history.length === 0 ? (
@@ -425,7 +428,7 @@ export function PriceDetail() {
               {/* #461 – Excluded sources toggle */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Excluded Source Ticks</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider">Excluded Source Ticks</p>
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -450,7 +453,7 @@ export function PriceDetail() {
                               key={`${e.timestamp}-${ex.source}`}
                               className="flex items-center gap-3 text-xs px-3 py-2 rounded-lg bg-gray-800/60 border border-gray-700/50"
                             >
-                              <span className="font-mono text-gray-500 shrink-0">
+                              <span className="font-mono text-gray-400 shrink-0">
                                 {new Date(e.timestamp).toLocaleTimeString()}
                               </span>
                               <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300 font-medium border border-gray-600 shrink-0">
@@ -463,19 +466,19 @@ export function PriceDetail() {
                                   maximumFractionDigits: 4,
                                 })}
                               </span>
-                              <span className="text-gray-500 truncate">{ex.reason}</span>
+                              <span className="text-gray-400 truncate">{ex.reason}</span>
                             </div>
                           )),
                         )}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-400">
                       No excluded source data available — the API does not currently include exclusion metadata for this
                       pair.
                     </p>
                   )
                 ) : (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     Enable the toggle above to audit which oracle sources were excluded by the aggregator and why.
                   </p>
                 )}
@@ -483,7 +486,7 @@ export function PriceDetail() {
 
               {/* Price history table */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Price History (Table)</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Price History (Table)</p>
                 {historyError ? (
                   <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400" role="alert">
                     Failed to load price history: {historyError.message}
@@ -512,7 +515,7 @@ export function PriceDetail() {
 
               {/* CSV import */}
               <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">
+                <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">
                   {t('priceDetail.sections.importData')}
                 </p>
                 <CsvImportZone

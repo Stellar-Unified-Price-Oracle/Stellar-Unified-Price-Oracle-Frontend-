@@ -166,7 +166,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-800">
           <div>
             <h2 className="text-base font-semibold text-gray-100">Reliability Leaderboard</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               Ranked by reliability score & uptime over the selected window
             </p>
           </div>
@@ -185,7 +185,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                   onClick={() => setWindow(w)}
                   aria-pressed={window === w}
                   className={[
-                    'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
+                    'px-3 py-1.5 min-h-[44px] min-w-[44px] text-xs font-medium rounded-md transition-colors',
                     window === w ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200',
                   ].join(' ')}
                 >
@@ -200,7 +200,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                 type="button"
                 onClick={handleExportCsv}
                 disabled={metrics.length === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -216,7 +216,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                 type="button"
                 onClick={handleExportJson}
                 disabled={metrics.length === 0}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 JSON
               </button>
@@ -253,7 +253,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                       <th
                         key={col}
                         scope="col"
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap"
                       >
                         {col}
                       </th>
@@ -344,7 +344,7 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
                         <button
                           type="button"
                           onClick={() => handleDrilldown(metric.source)}
-                          className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline transition-colors"
+                          className="min-h-[44px] inline-flex items-center text-xs text-cyan-400 hover:text-cyan-300 hover:underline transition-colors"
                         >
                           Details
                         </button>

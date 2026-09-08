@@ -31,9 +31,37 @@ function priceUpdate(overrides: Partial<(typeof BASE_PRICES)[number]> & { seq?: 
 // mocks in this file (the SW handles requests ahead of Playwright routing).
 test.use({ serviceWorkers: 'block' })
 
-async function mockPricesApi(page: import('@playwright/test').Page) {
+// The real backend aggregates prices itself, so a WS price_update is always
+// confirmed by the next REST call — a WS value only persists in the UI when
+// REST returns the same value. The mocked REST therefore needs to track the
+// latest WS-pushed state per pair, or every optimistic update is rolled back
+// to the stale seed price a moment after it renders (flaky assertions).
+interface MutablePriceFeed {
+  /** Current REST-visible price per asset pair (falls back to the seed price). */
+  current: (pair: string) => { assetPair: string; price: number; timestamp: number }
+  /** Record a WS-pushed price so REST confirms it instead of the seed. */
+  applyUpdate: (assetPair: string, price: number, timestamp: number) => void
+}
+
+function createPriceFeed(): MutablePriceFeed {
+  const byPair = new Map(
+    BASE_PRICES.map((p) => [p.assetPair, { assetPair: p.assetPair, price: p.price, timestamp: p.timestamp }]),
+  )
+  return {
+    current: (pair) => byPair.get(pair) ?? { assetPair: pair, price: 0, timestamp: Date.now() },
+    applyUpdate: (assetPair, price, timestamp) => {
+      byPair.set(assetPair, { assetPair, price, timestamp })
+    },
+  }
+}
+
+async function mockPricesApi(page: import('@playwright/test').Page, feed: MutablePriceFeed) {
   await page.route('**/api/prices**', (route) => {
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify(BASE_PRICES) })
+    const list = BASE_PRICES.map((p) => {
+      const current = feed.current(p.assetPair)
+      return { ...p, price: current.price, timestamp: current.timestamp }
+    })
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify(list) })
   })
 }
 
@@ -41,24 +69,29 @@ test.describe('WebSocket chaos', () => {
   test('malformed and truncated frames do not break the live feed — the next good update still lands', async ({
     page,
   }) => {
-    await mockPricesApi(page)
+    const feed = createPriceFeed()
+    await mockPricesApi(page, feed)
 
     await page.routeWebSocket(WS_PATTERN, (ws: WebSocketRoute) => {
       ws.onMessage((message) => {
         const parsed = JSON.parse(String(message)) as { type: string; protocolVersion?: number }
         if (parsed.type === 'hello') {
           ws.send(JSON.stringify({ type: 'welcome', protocolVersion: parsed.protocolVersion ?? 1 }))
+
+          // A burst of garbage a flaky connection might deliver, none of it
+          // should ever reach the UI or break the socket. Sent after the
+          // handshake so every browser has the socket open (frames sent
+          // before the client connects can be dropped, e.g. Firefox).
+          ws.send('{"type":"price_upd') // truncated mid-frame
+          ws.send('not json at all')
+          ws.send(JSON.stringify({ type: 'price_update', assetPair: 'BTC/USD', price: 'not-a-number' }))
+
+          // Then a real update — this is the one that should actually render.
+          const good = priceUpdate({ price: 61_234, seq: 1 })
+          feed.applyUpdate(good.assetPair, good.price, good.timestamp)
+          ws.send(JSON.stringify(good))
         }
       })
-
-      // A burst of garbage a flaky connection might deliver, none of it
-      // should ever reach the UI or break the socket.
-      ws.send('{"type":"price_upd') // truncated mid-frame
-      ws.send('not json at all')
-      ws.send(JSON.stringify({ type: 'price_update', assetPair: 'BTC/USD', price: 'not-a-number' }))
-
-      // Then a real update — this is the one that should actually render.
-      ws.send(JSON.stringify(priceUpdate({ price: 61_234, seq: 1 })))
     })
 
     await page.goto('/dashboard')
@@ -71,22 +104,27 @@ test.describe('WebSocket chaos', () => {
   })
 
   test('out-of-order and duplicate frames resolve to the latest value, not a stale one', async ({ page }) => {
-    await mockPricesApi(page)
+    const feed = createPriceFeed()
+    await mockPricesApi(page, feed)
 
     await page.routeWebSocket(WS_PATTERN, (ws: WebSocketRoute) => {
       ws.onMessage((message) => {
         const parsed = JSON.parse(String(message)) as { type: string; protocolVersion?: number }
         if (parsed.type === 'hello') {
           ws.send(JSON.stringify({ type: 'welcome', protocolVersion: parsed.protocolVersion ?? 1 }))
+
+          // The server's current value only ever reflects the frames it sends;
+          // the stale re-delivery below is not a server state change.
+          const latest = priceUpdate({ price: 70_000, seq: 5 })
+          feed.applyUpdate(latest.assetPair, latest.price, latest.timestamp)
+          ws.send(JSON.stringify(latest))
+          // A stale, out-of-order re-delivery of an earlier value — must be
+          // discarded, not overwrite the newer price already shown.
+          ws.send(JSON.stringify(priceUpdate({ price: 12_345, seq: 2 })))
+          // An exact duplicate of the first frame.
+          ws.send(JSON.stringify(priceUpdate({ price: 70_000, seq: 5 })))
         }
       })
-
-      ws.send(JSON.stringify(priceUpdate({ price: 70_000, seq: 5 })))
-      // A stale, out-of-order re-delivery of an earlier value — must be
-      // discarded, not overwrite the newer price already shown.
-      ws.send(JSON.stringify(priceUpdate({ price: 12_345, seq: 2 })))
-      // An exact duplicate of the first frame.
-      ws.send(JSON.stringify(priceUpdate({ price: 70_000, seq: 5 })))
     })
 
     await page.goto('/dashboard')
@@ -98,21 +136,24 @@ test.describe('WebSocket chaos', () => {
   })
 
   test('a throttled (slow) connection still delivers the update once it arrives', async ({ page }) => {
-    await mockPricesApi(page)
+    const feed = createPriceFeed()
+    await mockPricesApi(page, feed)
 
     await page.routeWebSocket(WS_PATTERN, (ws: WebSocketRoute) => {
       ws.onMessage((message) => {
         const parsed = JSON.parse(String(message)) as { type: string; protocolVersion?: number }
         if (parsed.type === 'hello') {
           ws.send(JSON.stringify({ type: 'welcome', protocolVersion: parsed.protocolVersion ?? 1 }))
+
+          // Simulate a throttled link: the update is delayed well past a
+          // normal round-trip before it's sent at all.
+          setTimeout(() => {
+            const update = priceUpdate({ price: 55_555, seq: 1 })
+            feed.applyUpdate(update.assetPair, update.price, update.timestamp)
+            ws.send(JSON.stringify(update))
+          }, 3_000)
         }
       })
-
-      // Simulate a throttled link: the update is delayed well past a normal
-      // round-trip before it's sent at all.
-      setTimeout(() => {
-        ws.send(JSON.stringify(priceUpdate({ price: 55_555, seq: 1 })))
-      }, 3_000)
     })
 
     await page.goto('/dashboard')
@@ -127,7 +168,8 @@ test.describe('WebSocket chaos', () => {
   })
 
   test('recovers after a disconnect: reconnects and the UI reflects fresh data again', async ({ page }) => {
-    await mockPricesApi(page)
+    const feed = createPriceFeed()
+    await mockPricesApi(page, feed)
 
     let connectionAttempt = 0
 
@@ -139,17 +181,24 @@ test.describe('WebSocket chaos', () => {
         const parsed = JSON.parse(String(message)) as { type: string; protocolVersion?: number }
         if (parsed.type === 'hello') {
           ws.send(JSON.stringify({ type: 'welcome', protocolVersion: parsed.protocolVersion ?? 1 }))
+
+          if (isFirstConnection) {
+            const first = priceUpdate({ price: 40_000, seq: 1 })
+            feed.applyUpdate(first.assetPair, first.price, first.timestamp)
+            ws.send(JSON.stringify(first))
+            // Simulate the connection dropping shortly after.
+            setTimeout(() => ws.close({ code: 1006, reason: 'simulated network drop' }), 500)
+          } else {
+            // The client's automatic reconnect lands here — recovery. The
+            // server keeps one monotonic seq counter per client session, so
+            // it resumes at seq 2, not 1 (the client drops anything ≤ the
+            // last seen seq).
+            const fresh = priceUpdate({ price: 90_909, seq: 2 })
+            feed.applyUpdate(fresh.assetPair, fresh.price, fresh.timestamp)
+            ws.send(JSON.stringify(fresh))
+          }
         }
       })
-
-      if (isFirstConnection) {
-        ws.send(JSON.stringify(priceUpdate({ price: 40_000, seq: 1 })))
-        // Simulate the connection dropping shortly after.
-        setTimeout(() => ws.close({ code: 1006, reason: 'simulated network drop' }), 500)
-      } else {
-        // The client's automatic reconnect lands here — recovery.
-        ws.send(JSON.stringify(priceUpdate({ price: 90_909, seq: 1 })))
-      }
     })
 
     await page.goto('/dashboard')

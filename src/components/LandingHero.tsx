@@ -15,9 +15,7 @@ const MarketStat = memo(function MarketStat({ label, value, subValue, highlight 
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs text-gray-400 uppercase tracking-wider">{label}</span>
-      <span className={`text-2xl font-bold font-mono ${highlight ? 'text-cyan-400' : 'text-white'}`}>
-        {value}
-      </span>
+      <span className={`text-2xl font-bold font-mono ${highlight ? 'text-cyan-400' : 'text-white'}`}>{value}</span>
       {subValue && <span className="text-xs text-gray-500">{subValue}</span>}
     </div>
   )
@@ -41,12 +39,16 @@ const TopPairCard = memo(function TopPairCard({ price }: TopPairCardProps) {
         </div>
         <div>
           <div className="text-sm font-semibold text-gray-100">{price.assetPair}</div>
-          <div className="text-xs text-gray-500">{price.sources.length} {t('landing.topPairs.sources')}</div>
+          <div className="text-xs text-gray-500">
+            {price.sources.length} {t('landing.topPairs.sources')}
+          </div>
         </div>
       </div>
       <div className="text-right">
         <div className="text-sm font-bold font-mono text-white">${formatPrice(price.price)}</div>
-        <div className="text-xs text-cyan-400">{(price.confidence * 100).toFixed(0)}% {t('landing.topPairs.confidence')}</div>
+        <div className="text-xs text-cyan-400">
+          {(price.confidence * 100).toFixed(0)}% {t('landing.topPairs.confidence')}
+        </div>
       </div>
     </Link>
   )
@@ -63,15 +65,12 @@ export const LandingHero = memo(function LandingHero({ prices, loading = false, 
 
   const totalPairs = prices.length
   const activeSources = [...new Set(prices.flatMap((p) => p.sources))].length
-  const avgConfidence = prices.length > 0
-    ? (prices.reduce((sum, p) => sum + p.confidence, 0) / prices.length * 100).toFixed(1)
-    : '—'
+  const avgConfidence =
+    prices.length > 0 ? ((prices.reduce((sum, p) => sum + p.confidence, 0) / prices.length) * 100).toFixed(1) : '—'
   const highConfCount = prices.filter((p) => p.confidence > 0.9).length
 
   // Top 4 pairs sorted by confidence desc
-  const topPairs = [...prices]
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 4)
+  const topPairs = [...prices].sort((a, b) => b.confidence - a.confidence).slice(0, 4)
 
   return (
     <section
@@ -79,10 +78,7 @@ export const LandingHero = memo(function LandingHero({ prices, loading = false, 
       aria-label={t('landing.hero.ariaLabel')}
     >
       {/* Background glow */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        aria-hidden="true"
-      >
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
         <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
       </div>
@@ -97,23 +93,24 @@ export const LandingHero = memo(function LandingHero({ prices, loading = false, 
                 {t('landing.hero.liveStatus')}
               </span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 leading-tight">
-              {t('landing.hero.title')}
-            </h1>
-            <p className="text-gray-400 text-base leading-relaxed">
-              {t('landing.hero.subtitle')}
-            </p>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 leading-tight">{t('landing.hero.title')}</h1>
+            <p className="text-gray-400 text-base leading-relaxed">{t('landing.hero.subtitle')}</p>
           </div>
 
           <div className="flex flex-col gap-3 shrink-0">
             <Link
               to="/dashboard"
               onClick={onEnterDashboard}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-cyan-900/30"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-cyan-700 hover:bg-cyan-600 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-cyan-900/30"
               aria-label={t('landing.hero.ctaAriaLabel')}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
               </svg>
               {t('landing.hero.cta')}
             </Link>
