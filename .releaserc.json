@@ -1,16 +1,18 @@
 {
-  "branches": [
-    "main",
-    { "name": "develop", "prerelease": true },
-    { "name": "staging", "prerelease": "rc" }
-  ],
+  "branches": ["main", { "name": "develop", "prerelease": true }, { "name": "staging", "prerelease": "rc" }],
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
     "@semantic-release/changelog",
     "@semantic-release/npm",
     "@semantic-release/git",
-    "@semantic-release/github"
+    [
+      "@semantic-release/github",
+      {
+        "successCommentCondition": false,
+        "failCommentCondition": false
+      }
+    ]
   ],
   "release": {
     "analyzeCommits": "conventional",
@@ -57,11 +59,7 @@
       }
     ],
     "parserOpts": {
-      "noteKeywords": [
-        "BREAKING CHANGE",
-        "BREAKING-CHANGE",
-        "BREAKING CHANGES"
-      ]
+      "noteKeywords": ["BREAKING CHANGE", "BREAKING-CHANGE", "BREAKING CHANGES"]
     }
   },
   "releaseNotesGenerator": {
