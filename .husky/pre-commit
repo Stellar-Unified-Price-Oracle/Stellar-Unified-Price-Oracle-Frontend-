@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Secret scan (#494) — same rule set/allowlist CI uses (.gitleaks.toml), scoped
 # to staged changes so it stays fast. Skips silently if gitleaks isn't installed
 # locally (CI's secret-scan.yml is the enforced backstop either way) rather than

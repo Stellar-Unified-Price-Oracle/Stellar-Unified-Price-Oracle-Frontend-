@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 echo "--- pre-push: frontend build ---"
 npm run build
 BUILD_EXIT=$?
