@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/compare/v1.0.0...v1.0.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **ci:** stop semantic-release success step failing on unresolvable issues ([c36e827](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/commit/c36e8275696fcb0cfad567be897c32cd6220bd4c))
+
 # 1.0.0 (2026-09-09)
 
 
