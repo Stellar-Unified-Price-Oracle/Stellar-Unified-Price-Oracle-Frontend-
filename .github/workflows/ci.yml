@@ -209,9 +209,17 @@ jobs:
       # Appends this run's sizes to the checked-in history file so budget
       # trends are visible over time (#511), not just per-PR. Only on pushes
       # to main — PR branches don't get history commits.
+      #
+      # The push races the Release workflow, which commits to main
+      # concurrently (semantic-release). On rejection we rebase onto the
+      # freshly-updated main and retry, exactly as if the two had landed in
+      # sequence. HUSKY=0 keeps the husky pre-push hook (build + full test
+      # suite) from running here — this job already depends on `frontend`.
       - name: Record size history
         if: >
           !cancelled() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          HUSKY: '0'
         run: |
           node -e "
             const fs = require('fs');
@@ -227,7 +235,15 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add .github/bundle-size-history.jsonl
           git diff --cached --quiet || git commit -m 'chore(bundle-size): record size history [skip ci]'
-          git push
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "size-history push rejected (attempt $attempt); rebasing onto origin/main"
+            git pull --rebase origin main
+          done
+          echo "failed to push size history after 3 attempts" >&2
+          exit 1
 
       # Comments the gzip/brotli size diff between this PR and its base branch,
       # using the same size-limit config as the budget check above. Advisory —
