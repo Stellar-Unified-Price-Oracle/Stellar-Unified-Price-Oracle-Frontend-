@@ -270,20 +270,9 @@ Add a `rewrites` rule to support client-side routing:
 
 ### Netlify Alternative
 
-A `netlify.toml` equivalent configuration:
-
-```toml
-[build]
-  command = "npm run build"
-  publish = "dist"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-```
-
-Deploy with:
+The repository includes a [`netlify.toml`](netlify.toml) covering the build command, the SPA
+fallback redirect, and the same security headers as `vercel.json`. Netlify applies it
+automatically. Deploy with:
 
 ```bash
 npm install -g netlify-cli
@@ -371,18 +360,47 @@ VITE_WS_URL=wss://api.example.com
 
 ### Content Security Policy (CSP)
 
-To restrict resource origins, add CSP headers on your hosting platform. An example policy for this application:
+The policy ships with the app: [`vercel.json`](vercel.json) sets it for the Vercel target and
+[`netlify.toml`](netlify.toml) mirrors it for Netlify. You do not need to add the headers by
+hand. If you deploy to some other platform, copy the `Content-Security-Policy` value from
+`vercel.json` verbatim rather than writing your own:
 
 ```
-Content-Security-Policy:
-  default-src 'self';
-  script-src 'self' 'unsafe-inline';
-  connect-src 'self' https://api.example.com wss://api.example.com;
-  img-src 'self' data:;
-  style-src 'self' 'unsafe-inline';
+default-src 'self';
+base-uri 'self';
+object-src 'none';
+frame-ancestors 'none';
+form-action 'self';
+script-src 'self';
+style-src-elem 'self' https://fonts.googleapis.com;
+style-src-attr 'unsafe-inline';
+font-src 'self' https://fonts.gstatic.com data:;
+img-src 'self' data: blob:;
+connect-src 'self' https: wss:;
+worker-src 'self';
+manifest-src 'self';
+media-src 'self';
+upgrade-insecure-requests;
+report-uri /api/csp-report;
+report-to csp-endpoint
 ```
 
-Adjust `connect-src` to match your `VITE_API_URL` and `VITE_WS_URL` origins.
+Do not add `'unsafe-inline'` to `script-src`. The app contains no inline scripts, and the
+allowance exists only to weaken the policy — startup JavaScript belongs in
+[`public/theme-init.js`](public/theme-init.js).
+
+`style-src` is deliberately split into `style-src-elem` (stylesheets) and `style-src-attr`
+(inline `style` attributes). Do not collapse them back into a single
+`style-src 'self' 'unsafe-inline'`: that relaxes the directive that governs stylesheets,
+which is the part worth keeping strict.
+
+Adjust `connect-src` to match your `VITE_API_URL` and `VITE_WS_URL` origins. The shipped
+policy allows any `https:`/`wss:` origin so it works with whatever backend a deployment is
+pointed at; narrow it to the real origin, e.g.
+`connect-src 'self' https://api.example.com wss://api.example.com`.
+
+Before changing the policy, trial it with `Content-Security-Policy-Report-Only` on staging
+and watch for violations — see the rollout procedure in [SECURITY.md](SECURITY.md).
 
 ---
 
