@@ -3,6 +3,8 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { fetchPricesBatched } from '../api/rest'
+import { ATTRIBUTION_RING_BUFFER_SIZE } from '../types'
+import type { TickCoalescerStats } from '../utils/tickCoalescer'
 import { ToastProvider } from './ToastContext'
 import { PriceProvider, usePriceContext } from './PriceContext'
 
@@ -110,8 +112,37 @@ function TestConsumer() {
       <span data-testid="live-size">{ctx.livePrices.size}</span>
       <span data-testid="btc-live-price">{btcLive?.data.price ?? 'none'}</span>
       <span data-testid="btc-live-state">{btcLive?.syncState ?? 'none'}</span>
+      <span data-testid="tick-policy">{JSON.stringify(ctx.tickPolicy ?? null)}</span>
+      <span data-testid="attribution-length">{ctx.attributionHistory.get('BTC/USD')?.length ?? 0}</span>
     </div>
   )
+}
+
+/** Builds the price_update shape the mocked realtime client hands to the provider. */
+function priceUpdate(assetPair: string, price: number) {
+  return {
+    type: 'price_update' as const,
+    assetPair,
+    price,
+    timestamp: 1700000000000,
+    confidence: 0.99,
+    sources: ['chainlink'],
+  }
+}
+
+/**
+ * Lets the paint-cadence flush scheduled by the backpressure policy land.
+ * Ticks arriving faster than the frame budget are buffered, so a burst is only
+ * visible in the DOM after the next animation frame has run.
+ */
+async function settleFrame(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 60))
+  })
+}
+
+function readTickPolicy(): TickCoalescerStats {
+  return JSON.parse(screen.getByTestId('tick-policy').textContent ?? 'null') as TickCoalescerStats
 }
 
 beforeEach(() => {
@@ -294,5 +325,111 @@ describe('usePriceContext', () => {
     }
 
     expect(() => render(<BadComponent />)).toThrow('usePriceContext must be used within a PriceProvider')
+  })
+})
+
+/**
+ * Renderer backpressure policy under load (#469).
+ *
+ * The feed can deliver 200 ticks/sec into a 30 Hz renderer. These tests drive a
+ * burst through the real provider and assert the two things the policy promises:
+ * memory stays bounded by the tracked pair set, and the commits/REST calls the
+ * renderer performs are decoupled from the tick rate — while the price actually
+ * on screen is still the newest one, not a stale one from mid-burst.
+ */
+describe('PriceProvider render backpressure (#469)', () => {
+  /** 200 ticks/sec for one second, alternating between two pairs. */
+  function deliverBurst(totalTicks: number, pairs: string[] = ['BTC/USD', 'ETH/USD']): void {
+    act(() => {
+      for (let i = 0; i < totalTicks; i++) {
+        messageHandler?.(priceUpdate(pairs[i % pairs.length], 50_000 + i))
+      }
+    })
+  }
+
+  it('paints the first tick immediately so a slow feed gains no latency', () => {
+    render(<TestConsumer />, { wrapper: Wrapper })
+
+    act(() => {
+      messageHandler?.(priceUpdate('BTC/USD', 50_042))
+    })
+
+    // Synchronous — the tick did not wait on an animation frame.
+    expect(screen.getByTestId('btc-live-price').textContent).toBe('50042')
+    expect(screen.getByTestId('btc-live-state').textContent).toBe('optimistic')
+  })
+
+  it('coalesces a 200-tick burst into a couple of commits instead of 200', async () => {
+    render(<TestConsumer />, { wrapper: Wrapper })
+
+    deliverBurst(200)
+    await settleFrame()
+
+    const stats = readTickPolicy()
+    expect(stats.received).toBe(200)
+    // Two pairs tracked, so at most two slots are ever occupied — no queue.
+    expect(stats.pending).toBeLessThanOrEqual(2)
+    expect(stats.peakPending).toBeLessThanOrEqual(2)
+    expect(stats.dropped).toBe(0)
+    // One immediate flush for the first tick, one for the frame. Not 200.
+    expect(stats.flushes).toBeLessThanOrEqual(2)
+    // And nothing was lost silently: every tick is either applied or accounted
+    // for as superseded.
+    expect(stats.flushed + stats.coalesced + stats.dropped + stats.pending).toBe(200)
+  })
+
+  it('shows the newest price after a burst, never a stale one from mid-burst', async () => {
+    render(<TestConsumer />, { wrapper: Wrapper })
+
+    deliverBurst(200, ['BTC/USD'])
+
+    // The immediate path already painted tick 0.
+    expect(screen.getByTestId('btc-live-price').textContent).toBe('50000')
+
+    await settleFrame()
+
+    // The frame flush jumped straight to tick 199, skipping the 198 in between.
+    expect(screen.getByTestId('btc-live-price').textContent).toBe('50199')
+  })
+
+  it('collapses the per-tick REST revalidation storm to one request per pair', async () => {
+    render(<TestConsumer />, { wrapper: Wrapper })
+
+    vi.mocked(fetchPricesBatched).mockClear()
+    deliverBurst(200, ['BTC/USD'])
+    await settleFrame()
+
+    const requests = vi.mocked(fetchPricesBatched).mock.calls.length
+    // Previously one fetch per tick — 200 requests/second against the API.
+    expect(requests).toBeGreaterThan(0)
+    expect(requests).toBeLessThanOrEqual(2)
+  })
+
+  it('keeps pending work bounded across a sustained multi-thousand tick flood', async () => {
+    render(<TestConsumer />, { wrapper: Wrapper })
+
+    deliverBurst(4_000)
+    await settleFrame()
+
+    const stats = readTickPolicy()
+    expect(stats.received).toBe(4_000)
+    expect(stats.peakPending).toBeLessThanOrEqual(2)
+    expect(stats.pending).toBeLessThanOrEqual(2)
+    expect(stats.dropped).toBe(0)
+    expect(stats.coalesceRatio).toBeGreaterThan(0.9)
+  })
+
+  it('still records attribution for every raw tick, not just the painted ones', async () => {
+    // 30 ticks, comfortably under the 50-entry ring buffer: if the render policy
+    // decimated history, this would only hold a handful of records.
+    const tickCount = Math.floor(ATTRIBUTION_RING_BUFFER_SIZE * 0.6)
+    render(<TestConsumer />, { wrapper: Wrapper })
+
+    deliverBurst(tickCount, ['BTC/USD'])
+    await settleFrame()
+
+    expect(Number(screen.getByTestId('attribution-length').textContent)).toBe(tickCount)
+    // ...while the render itself was coalesced.
+    expect(readTickPolicy().coalesced).toBeGreaterThan(0)
   })
 })
