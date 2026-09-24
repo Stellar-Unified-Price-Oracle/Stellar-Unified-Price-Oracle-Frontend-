@@ -8,6 +8,7 @@ import {
   preloadAlertPanel,
   preloadApiDocs,
   preloadDashboard,
+  preloadGovernance,
   preloadLanding,
   preloadSettingsPanel,
 } from '../utils/chunks'
@@ -76,6 +77,7 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
     { path: '/', label: t('nav.home'), preload: preloadLanding },
     { path: '/dashboard', label: t('nav.dashboard'), preload: preloadDashboard },
     { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
+    { path: '/governance', label: 'Governance', preload: preloadGovernance },
     { path: '/webhooks', label: 'Webhooks' },
   ]
 

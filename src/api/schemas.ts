@@ -260,6 +260,42 @@ export const PriceProofSchema = z.object({
   network: z.enum(['testnet', 'mainnet']),
 })
 
+// ── Governance schemas ───────────────────────────────────────────────────────
+//
+// Strict by design. Unlike the price schemas (whose callers fall back to raw
+// data so a feed outage degrades gracefully), a governance payload that fails
+// validation is *dropped* — see `fetchGovernanceProposals`. A malformed or
+// tampered tally must never reach the UI.
+
+/** Non-negative whole vote count. */
+export const VoteTallySchema = z.object({
+  for: z.number().int().min(0),
+  against: z.number().int().min(0),
+  abstain: z.number().int().min(0),
+})
+
+/**
+ * Strict schema for {@link import('../types/governance').GovernanceProposal}.
+ * All fields are required (nullable ones must be explicitly `null`, not absent)
+ * so a server omission is caught here rather than silently rendered as zero.
+ */
+export const GovernanceProposalSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  summary: z.string(),
+  status: z.enum(['pending', 'active', 'passed', 'rejected', 'cancelled', 'executed']),
+  createdAt: z.number().int().min(0),
+  closesAt: z.number().int().min(0).nullable(),
+  tally: VoteTallySchema,
+  quorum: z.number().finite().nonnegative().nullable(),
+  totalVotingPower: z.number().finite().nonnegative().nullable(),
+  category: z.string().nullable(),
+  relatedSources: z.array(z.string()),
+})
+
+/** Response of `GET /api/governance/proposals`. */
+export const GovernanceProposalsSchema = z.array(GovernanceProposalSchema)
+
 // ── Type inference from schemas ──────────────────────────────────────────────
 
 export type PriceDataFromSchema = z.infer<typeof PriceDataSchema>
@@ -269,3 +305,4 @@ export type AlertFromSchema = z.infer<typeof AlertSchema>
 export type AlertHistoryEntryFromSchema = z.infer<typeof AlertHistoryEntrySchema>
 export type WsMessageFromSchema = z.infer<typeof WsMessageSchema>
 export type PriceProofFromSchema = z.infer<typeof PriceProofSchema>
+export type GovernanceProposalFromSchema = z.infer<typeof GovernanceProposalSchema>

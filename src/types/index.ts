@@ -29,6 +29,9 @@ export type {
 
 export { isPriceData, ATTRIBUTION_RING_BUFFER_SIZE } from './price'
 
+// Governance types — see src/types/governance.ts
+export type { ProposalStatus, VoteChoice, VoteTally, GovernanceProposal } from './governance'
+
 // On-chain price / proof types — see src/types/onChainPrice.ts
 export type { OnChainPriceRecord, SourceContribution, PriceProof } from './onChainPrice'
 export { onChainRecordToPriceData, isSourceContribution, isPriceProof } from './onChainPrice'
