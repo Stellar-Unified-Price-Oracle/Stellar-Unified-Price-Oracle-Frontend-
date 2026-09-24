@@ -5,10 +5,13 @@ import './index.css'
 import { getMissingRequiredEnvVars } from './config/validateEnv'
 import { installConsoleAggregator } from './utils/consoleAggregator'
 import { installCspReporting } from './utils/cspReporting'
+import { installDurableWriteListeners } from './utils/durableWrites'
 import { checkStorageSizeWarning } from './utils/storage'
 
 installConsoleAggregator()
 installCspReporting()
+// Retry any storage write a previous session failed to persist (see durableWrites)
+installDurableWriteListeners()
 // Warn in dev if localStorage usage is approaching the quota limit
 checkStorageSizeWarning()
 
