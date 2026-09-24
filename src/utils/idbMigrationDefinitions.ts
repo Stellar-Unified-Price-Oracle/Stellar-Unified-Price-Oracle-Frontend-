@@ -8,7 +8,7 @@
  * v1: Initial schema with prices, history, preferences stores
  * v2: Add pendingMutations store for offline-first sync queue
  * v3: Add indexes on commonly queried fields
- * v4: (future) Example of data transformation migration
+ * v4: Add time-series engine stores (tsPoints, tsSeries)
  */
 
 import { createMigrationRegistry, DataTransformer, createMigrationRunner } from './idbMigrations'
@@ -75,7 +75,36 @@ export const v3Migration: MigrationStep = {
 }
 
 /**
- * Example v4 migration showing data transformation.
+ * v4: Time-series engine stores.
+ *
+ * `tsPoints` is keyed by the compound `['series','tier','t']` so a range query
+ * for one series/tier is a single primary-key scan, and retention deletes are
+ * an upper-bound range. `tsSeries` records each concrete series' resolved
+ * retention so maintenance can still trim a series whose descriptor is gone.
+ * Existing data (legacy cache blobs, alert history) is imported at runtime by
+ * the engine's callers, not here — a versionchange transaction cannot await the
+ * extra reads an import needs.
+ */
+export const v4Migration: MigrationStep = {
+  version: 4,
+  name: 'add-time-series-engine',
+  description: 'Create tsPoints and tsSeries stores for the time-series engine',
+  up: (db) => {
+    if (!db.objectStoreNames.contains('tsPoints')) {
+      db.createObjectStore('tsPoints', { keyPath: ['series', 'tier', 't'] })
+    }
+    if (!db.objectStoreNames.contains('tsSeries')) {
+      db.createObjectStore('tsSeries', { keyPath: 'series' })
+    }
+  },
+  down: (db) => {
+    if (db.objectStoreNames.contains('tsPoints')) db.deleteObjectStore('tsPoints')
+    if (db.objectStoreNames.contains('tsSeries')) db.deleteObjectStore('tsSeries')
+  },
+}
+
+/**
+ * Example v5 migration showing data transformation.
  * This is here as a template for future migrations that need to transform data.
  * Uncomment and use when needed.
  *
@@ -124,7 +153,7 @@ export function createAppMigrationRegistry() {
   registry.register(1, v1Migration)
   registry.register(2, v2Migration)
   registry.register(3, v3Migration)
-  // registry.register(4, v4Migration)  // Uncomment when v4 is ready
+  registry.register(4, v4Migration)
   return registry
 }
 
@@ -142,4 +171,4 @@ export type { MigrationRunner } from './idbMigrations'
  * The current target database version.
  * Update this when adding a new migration.
  */
-export const CURRENT_DB_VERSION = 3
+export const CURRENT_DB_VERSION = 4
