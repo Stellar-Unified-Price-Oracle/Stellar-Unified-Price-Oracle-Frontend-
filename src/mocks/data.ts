@@ -1,4 +1,4 @@
-import type { PriceData, PriceHistoryResponse, PriceProof } from '../types'
+import type { GovernanceProposal, PriceData, PriceHistoryResponse, PriceProof } from '../types'
 import { VALID_PAIRS } from '../types'
 import type { AggregationBreakdown, AggregationMode } from '../types/price'
 import type { OnChainPriceRecord, OracleNetwork } from '../types/onchain'
@@ -122,6 +122,97 @@ export function mockPriceProof(pair: string, timestamp: number | undefined = Dat
     transactionHash: '0'.repeat(64),
     network: 'testnet',
   }
+}
+
+// ── Governance fixtures ──────────────────────────────────────────────────────
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Deterministic governance fixtures (no `Math.random`) so the mock build and
+ * E2E assertions stay reproducible.
+ *
+ * The set deliberately includes the awkward cases the dashboard must handle
+ * honestly rather than the happy path alone: a proposal still marked `active`
+ * after its deadline, a proposal with no votes cast yet, and proposals whose
+ * quorum / total-voting-power are unreported (`null`).
+ */
+export function mockGovernanceProposals(): GovernanceProposal[] {
+  const now = Date.now()
+  return [
+    {
+      id: 'GOV-0142',
+      title: 'Add Reflector as a primary source for ETH/USD',
+      summary:
+        'Reflector has cleared the reliability bar for three consecutive windows. This promotes it from fallback to a weighted contributor for ETH/USD.',
+      status: 'active',
+      createdAt: now - 3 * DAY_MS,
+      closesAt: now + 2 * DAY_MS,
+      tally: { for: 4_100_000, against: 900_000, abstain: 250_000 },
+      quorum: 3_000_000,
+      totalVotingPower: 12_500_000,
+      category: 'oracle-sources',
+      relatedSources: ['reflector'],
+    },
+    {
+      id: 'GOV-0139',
+      title: 'Reduce Chainlink weight for BTC/USD from 1.0 to 0.8',
+      summary:
+        'Chainlink has driven the largest share of BTC/USD ticks while showing the widest measured divergence. Lower its weight pending a review.',
+      status: 'active',
+      createdAt: now - 12 * DAY_MS,
+      // Deadline passed, but the API still reports this as active — exercises
+      // the "status not yet reconciled" caveat rather than a guessed outcome.
+      closesAt: now - 6 * 60 * 60 * 1000,
+      tally: { for: 2_800_000, against: 2_950_000, abstain: 100_000 },
+      quorum: 3_000_000,
+      totalVotingPower: 12_500_000,
+      category: 'oracle-weights',
+      relatedSources: ['chainlink'],
+    },
+    {
+      id: 'GOV-0131',
+      title: 'Sunset the legacy Band fallback path',
+      summary: 'Band has been superseded by Reflector; retire its fallback route and its contract allowance.',
+      status: 'passed',
+      createdAt: now - 30 * DAY_MS,
+      closesAt: now - 16 * DAY_MS,
+      tally: { for: 6_800_000, against: 1_200_000, abstain: 400_000 },
+      quorum: 3_000_000,
+      totalVotingPower: 12_500_000,
+      category: 'oracle-sources',
+      relatedSources: ['band'],
+    },
+    {
+      id: 'GOV-0127',
+      title: 'Raise the outlier-rejection z-score threshold to 3.0',
+      summary: 'A looser threshold would admit more sources per tick; the community rejected it as too permissive.',
+      status: 'rejected',
+      createdAt: now - 52 * DAY_MS,
+      closesAt: now - 40 * DAY_MS,
+      tally: { for: 1_900_000, against: 5_400_000, abstain: 220_000 },
+      quorum: 3_000_000,
+      totalVotingPower: 12_500_000,
+      category: 'aggregation',
+      relatedSources: [],
+    },
+    {
+      id: 'GOV-0143',
+      title: 'Establish a quarterly source-performance review',
+      summary:
+        'Formalise a recurring review of each oracle source against the published reliability thresholds. Voting has not opened yet.',
+      status: 'pending',
+      createdAt: now - 2 * 60 * 60 * 1000,
+      closesAt: null,
+      // No votes and no reported thresholds: the UI must say "no votes" and
+      // "quorum not reported", never render an invented 0% bar or a fake met.
+      tally: { for: 0, against: 0, abstain: 0 },
+      quorum: null,
+      totalVotingPower: null,
+      category: 'process',
+      relatedSources: [],
+    },
+  ]
 }
 
 export function mockHistory(pair: string, count = 100): PriceHistoryResponse {
