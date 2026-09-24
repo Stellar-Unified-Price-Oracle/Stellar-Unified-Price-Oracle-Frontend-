@@ -6,6 +6,7 @@ import { afterFirstPaint, markBoot, markStage, runWhenIdle } from './perf/startu
 import { getMissingRequiredEnvVars } from './config/validateEnv'
 import { installConsoleAggregator } from './utils/consoleAggregator'
 import { installCspReporting } from './utils/cspReporting'
+import { installDurableWriteListeners } from './utils/durableWrites'
 import { checkStorageSizeWarning } from './utils/storage'
 
 // Stage clock starts before any other boot work so every stage below is measured
@@ -14,6 +15,8 @@ markBoot()
 
 installConsoleAggregator()
 installCspReporting()
+// Retry any storage write a previous session failed to persist (see durableWrites)
+installDurableWriteListeners()
 // Warn in dev if localStorage usage is approaching the quota limit
 checkStorageSizeWarning()
 

@@ -33,8 +33,13 @@ export function loadAlertHistory(): AlertHistoryEntry[] {
   }
 }
 
+/**
+ * Persists the fired-alert log durably. A failed write is queued for retry
+ * rather than dropped, so the log survives a quota error the same way the alert
+ * definitions do (see `utils/durableWrites.ts`).
+ */
 export function saveAlertHistory(history: AlertHistoryEntry[]): void {
-  writeJson(STORAGE_KEYS.alertHistory, history)
+  persistDurable(STORAGE_KEYS.alertHistory, history)
 }
 
 /**
@@ -49,9 +54,25 @@ const HISTORY_WRITE_DEBOUNCE_MS = 400
 
 let historyWriteTimer: ReturnType<typeof setTimeout> | null = null
 let pendingHistory: AlertHistoryEntry[] | null = null
+let unloadFlushInstalled = false
+
+/**
+ * Registers the one-time `pagehide` flush, on first debounce.
+ *
+ * The debounce window is the one gap a tab kill can slip through: the timer
+ * never fires, so a fired alert never reaches storage even though the durable
+ * write path would have queued it. `pagehide` is the last reliable hook before
+ * the page is torn down.
+ */
+function ensureUnloadFlush(): void {
+  if (unloadFlushInstalled || typeof window === 'undefined') return
+  unloadFlushInstalled = true
+  window.addEventListener('pagehide', flushAlertHistory)
+}
 
 /** Debounced `saveAlertHistory` — coalesces write storms during alert bursts. */
 export function saveAlertHistoryDebounced(history: AlertHistoryEntry[]): void {
+  ensureUnloadFlush()
   pendingHistory = history
   if (historyWriteTimer !== null) clearTimeout(historyWriteTimer)
   historyWriteTimer = setTimeout(() => {

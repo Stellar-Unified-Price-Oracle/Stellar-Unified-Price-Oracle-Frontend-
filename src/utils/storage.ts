@@ -77,13 +77,41 @@ export function readRaw(key: StorageKey): string | null {
   }
 }
 
-/** Writes a raw string. No-ops when storage is unavailable. */
-export function writeRaw(key: StorageKey, value: string): void {
+/** Outcome of a raw storage write. */
+export interface RawWriteResult {
+  ok: boolean
+  /** Failure message when `ok` is `false` (empty when storage is unavailable anonymously). */
+  error?: string
+}
+
+/**
+ * Writes a raw string and reports whether it landed.
+ *
+ * `localStorage.setItem` throws for a whole class of conditions the app must
+ * survive — Safari private mode, blocked cookies, and a full quota — and this
+ * is the only place that catches them. Prefer this over {@link writeRaw} when
+ * the failure is meaningful: a dropped write means the in-memory state the
+ * user is looking at is no longer on disk.
+ */
+export function tryWriteRaw(key: StorageKey, value: string): RawWriteResult {
   try {
     localStorage.setItem(key, value)
-  } catch {
-    /* storage unavailable (private mode, quota, blocked cookies) */
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
+}
+
+/**
+ * Writes a raw string. Returns `false` when storage is unavailable (private
+ * mode, quota, blocked cookies) or the write failed for any other reason.
+ *
+ * A `false` return is a signal, not an error — callers that must not lose the
+ * write should route through `persistDurable` in `utils/durableWrites.ts`,
+ * which retries it until it lands.
+ */
+export function writeRaw(key: StorageKey, value: string): boolean {
+  return tryWriteRaw(key, value).ok
 }
 
 /**
@@ -105,12 +133,16 @@ export function readJson<T>(key: StorageKey, fallback: T, validate?: (value: unk
   }
 }
 
-/** Serializes and writes JSON. No-ops when storage is unavailable. */
-export function writeJson(key: StorageKey, value: unknown): void {
+/**
+ * Serializes and writes JSON. Returns `false` when the value was not
+ * serializable or the write did not land — see {@link writeRaw}.
+ */
+export function writeJson(key: StorageKey, value: unknown): boolean {
   try {
-    writeRaw(key, JSON.stringify(value))
+    return writeRaw(key, JSON.stringify(value))
   } catch {
     /* value was not serializable */
+    return false
   }
 }
 
@@ -121,6 +153,23 @@ export function remove(key: StorageKey): void {
   } catch {
     /* storage unavailable */
   }
+}
+
+/**
+ * Reset hook for the durable-write outbox, registered by
+ * `utils/durableWrites.ts` at module load.
+ *
+ * {@link clearAllData} has to drop in-flight pending writes along with the data
+ * they would restore: a failed alerts write queued earlier in the session would
+ * otherwise retry *after* the wipe and resurrect the deleted alerts. The hook
+ * keeps the dependency one-directional (`durableWrites` → `storage`), so there
+ * is no import cycle.
+ */
+let durableResetHook: (() => void) | null = null
+
+/** @internal — called by `utils/durableWrites.ts` on module load. */
+export function _registerDurableReset(fn: () => void): void {
+  durableResetHook = fn
 }
 
 /**

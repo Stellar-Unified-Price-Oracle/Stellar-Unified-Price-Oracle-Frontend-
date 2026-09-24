@@ -11,7 +11,8 @@ import { migrateLegacyAlertConditions } from '../types/alerts'
 import { usePriceContext } from '../context/PriceContext'
 import { AlertsArraySchema } from '../api/schemas'
 import { createBroadcastChannel } from '../utils/broadcastChannel'
-import { readRaw, writeJson, STORAGE_KEYS } from '../utils/storage'
+import { readRaw, STORAGE_KEYS } from '../utils/storage'
+import { persistDurable } from '../utils/durableWrites'
 import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
 import { evaluateCompoundCondition } from '../utils/alertEvaluator'
@@ -234,8 +235,13 @@ function loadAlerts(): Alert[] {
   }
 }
 
+/**
+ * Persists alerts durably. A `localStorage` write can fail (full quota, private
+ * mode); `persistDurable` queues the value for retry instead of dropping it
+ * silently, so an alert the user can see is never quietly lost on reload.
+ */
 function saveAlerts(alerts: Alert[]): void {
-  writeJson(STORAGE_KEYS.alerts, alerts)
+  persistDurable(STORAGE_KEYS.alerts, alerts)
 }
 
 const AlertsContext = createContext<AlertsContextType | null>(null)
