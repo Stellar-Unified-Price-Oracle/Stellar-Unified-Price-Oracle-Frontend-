@@ -1,0 +1,75 @@
+{
+  "$docs": {
+    "purpose": "Structural bundle budgets enforced by scripts/check-bundle-budgets.mjs. Every emitted JS/CSS byte must be classified and budgeted; every rule here is a reviewable diff.",
+    "compression": "All sizes are brotli (quality 11), matching `npm run size-limit`.",
+    "initialLoad": {
+      "entryJsLimitKb": "Brotli size of the HTML entry chunk(s) alone (app code, no vendor).",
+      "totalJsLimitKb": "Brotli size of everything downloaded before first paint: entry chunk(s) plus every chunk statically reachable from them. Lazy chunks never count toward this, so moving code into a lazily-loaded chunk cannot hide it here — but lazy routes are pinned by `lazyRoutes` below.",
+      "cssLimitKb": "Brotli size of CSS referenced by the initial chunks."
+    },
+    "vendorChunks": {
+      "semantics": "Key = Rollup manualChunks name. `packages` is an exact allowlist of npm packages allowed inside the chunk (verified from the build's module map, not chunk names). A new dependency, transitive or not, must be added here explicitly. `mustBeLazy: true` fails the build if the chunk becomes statically reachable from the entry."
+    },
+    "lazyRoutes": {
+      "semantics": "Exact allowlist of dynamic route entries (manifest keys). A dynamic import for anything not listed fails CI, so `lazy()` can no longer be used to dodge the initial-load budget. `chunkLimitKb` budgets the route's own chunk; `subtreeLimitKb` budgets everything non-initial it pulls in (vendor chunks included)."
+    },
+    "invariants": [
+      "Coverage: every emitted JS/CSS file must be classified (initial, vendor, or claimed by a lazy route) — no orphan chunks.",
+      "Initial-load boundary: initial download = entry + statically reachable vendor chunks only; the lazy-route set is closed under this config.",
+      "Vendor attribution: each vendor chunk is budgeted and its npm packages are verified against the allowlist."
+    ]
+  },
+  "compression": "brotli",
+  "initialLoad": {
+    "entryJsLimitKb": 12,
+    "totalJsLimitKb": 78,
+    "cssLimitKb": 6
+  },
+  "vendorChunks": {
+    "vendor-react": {
+      "limitKb": 55,
+      "packages": ["react", "react-dom", "scheduler"]
+    },
+    "vendor-router": {
+      "limitKb": 13,
+      "packages": ["cookie", "react-router", "react-router-dom", "set-cookie-parser"]
+    },
+    "vendor-charts": {
+      "limitKb": 90,
+      "mustBeLazy": true,
+      "packages": [
+        "@babel/runtime",
+        "clsx",
+        "d3-array",
+        "d3-color",
+        "d3-format",
+        "d3-interpolate",
+        "d3-path",
+        "d3-scale",
+        "d3-shape",
+        "d3-time",
+        "d3-time-format",
+        "decimal.js-light",
+        "dom-helpers",
+        "eventemitter3",
+        "fast-equals",
+        "internmap",
+        "lodash",
+        "prop-types",
+        "react-is",
+        "react-smooth",
+        "react-transition-group",
+        "recharts",
+        "recharts-scale",
+        "tiny-invariant",
+        "victory-vendor"
+      ]
+    }
+  },
+  "lazyRoutes": {
+    "src/pages/PriceDetail.tsx": {
+      "chunkLimitKb": 4,
+      "subtreeLimitKb": 95
+    }
+  }
+}

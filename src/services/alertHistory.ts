@@ -9,8 +9,8 @@
  */
 import type { Alert, AlertHistoryEntry, EscalationStep } from '../types'
 import { AlertHistoryArraySchema } from '../api/schemas'
-import { readRaw, STORAGE_KEYS } from '../utils/storage'
-import { persistDurable } from '../utils/durableWrites'
+import { readRaw, writeJson, STORAGE_KEYS } from '../utils/storage'
+import { SERIES_IDS, timeSeries } from '../storage/timeseries'
 
 /** Cap on the fired-alert history log (#309), oldest entries dropped first. */
 export const HISTORY_LIMIT = 500
@@ -92,6 +92,45 @@ export function flushAlertHistory(): void {
     saveAlertHistory(pendingHistory)
     pendingHistory = null
   }
+}
+
+// ── Time-series mirror ──────────────────────────────────────────────────────
+//
+// The localStorage log above stays the synchronous boot cache (the UI reads it
+// once via `useState(loadAlertHistory)`) and keeps full fidelity. Alongside it,
+// every fired entry is mirrored into the `alert-events` time-series so it gets
+// retention/rollups and can be range-queried ("how many times did BTC/USD fire
+// last month?") without loading the whole log.
+
+let alertImportStarted = false
+
+/** Mirrors freshly fired entries into the durable time-series. Fire-and-forget. */
+export function recordAlertEvents(entries: AlertHistoryEntry[]): void {
+  if (entries.length === 0) return
+  void timeSeries.appendMany(SERIES_IDS.alertEvents, entries)
+}
+
+/**
+ * One-time backfill of the existing localStorage log into the time-series, run
+ * when the alerts provider mounts. Skipped once the series already has points,
+ * so it only imports on the first load after the engine ships (or after a
+ * full data wipe).
+ */
+export function importAlertHistoryToEngine(): void {
+  if (alertImportStarted) return
+  alertImportStarted = true
+  void (async () => {
+    await timeSeries.initialize()
+    const stats = await timeSeries.stats(SERIES_IDS.alertEvents)
+    if (stats && stats.points.raw + stats.points.hourly + stats.points.daily > 0) return
+    const legacy = loadAlertHistory()
+    if (legacy.length > 0) await timeSeries.appendMany(SERIES_IDS.alertEvents, legacy)
+  })()
+}
+
+/** Clears the durable mirror when the user clears their alert history (#309). */
+export function clearAlertEventSeries(): void {
+  void timeSeries.clear(SERIES_IDS.alertEvents)
 }
 
 /** Builds the history entry for an alert's initial trigger (or a persistent re-fire). */

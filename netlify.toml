@@ -1,0 +1,31 @@
+# Netlify deployment config.
+#
+# Vercel is the primary target (see vercel.json), but this is documented as a
+# supported alternative — and it previously shipped no security headers at all,
+# so the same app was protected in one environment and wide open in the other.
+#
+# The Content-Security-Policy below MUST stay byte-identical to the one in
+# vercel.json. src/test/cspPolicy.test.ts fails if the two diverge.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback. Netlify serves matching static files before applying redirects,
+# so /offline.html, /offline.css, /offline.js and /sw.js are unaffected.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src-elem 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https: wss:; worker-src 'self'; manifest-src 'self'; media-src 'self'; upgrade-insecure-requests; report-uri /api/csp-report; report-to csp-endpoint"
+    Reporting-Endpoints = "csp-endpoint=\"/api/csp-report\""
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+    Cross-Origin-Opener-Policy = "same-origin"

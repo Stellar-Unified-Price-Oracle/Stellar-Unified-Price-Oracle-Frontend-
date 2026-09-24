@@ -7,12 +7,57 @@ history.
 
 ## Layers
 
-| Data                                    | Engine         | Module                           |
-| --------------------------------------- | -------------- | -------------------------------- |
-| Prices / price history (cache)          | IndexedDB      | `src/hooks/useIndexedDB.ts`      |
-| Preferences, saved views, exports, etc. | IndexedDB      | `useIdbQuery` / `useIdbMutation` |
-| Alerts + alert history                  | `localStorage` | `src/services/alertHistory.ts`   |
-| Durable-write outbox                    | IndexedDB      | `src/utils/durableWrites.ts`     |
+| Data                                     | Engine                            | Module                           |
+| ---------------------------------------- | --------------------------------- | -------------------------------- |
+| Alert events, export runs, price history | IndexedDB (`tsPoints`/`tsSeries`) | `src/storage/timeseries`         |
+| Prices / price history (response cache)  | IndexedDB                         | `src/hooks/useIndexedDB.ts`      |
+| Preferences, saved views, etc.           | IndexedDB                         | `useIdbQuery` / `useIdbMutation` |
+| Alert history (boot cache + full log)    | `localStorage`                    | `src/services/alertHistory.ts`   |
+
+## Time-series engine (`src/storage/timeseries`)
+
+Append-only data (fired alerts, export runs, fetched price history) lives in a
+purpose-built time-series engine rather than as a growing settings blob. Every
+series is kept in up to three resolution tiers and is answered by a query
+planner, so a boot read or an export never has to walk the whole history.
+
+- **Stores:** `tsPoints` (one row per `(series, tier, t)`, keyed by that compound
+  key so a range scan is a single primary-key `getAll`) and `tsSeries` (each
+  series' resolved retention, so maintained series are still trimmed after a
+  descriptor is removed). Added by migration **v4**.
+- **Retention:** each tier is trimmed to a window, independently per series
+  (`enforceRetention`). Defaults are 24h raw → 30d hourly → 1y daily, overridable
+  per descriptor. Alert events keep 30d raw, export runs 90d raw, price history
+  7d raw — chosen per dataset in `config.ts`.
+- **Compaction:** complete raw buckets roll into hourly, hourly into daily
+  (`compactSeries`). Each tier is streamed inside a single transaction — the
+  aggregated bucket is written and its source rows deleted atomically, so an
+  aborted pass leaves the source intact and a re-run recomputes the identical
+  bucket (idempotent). Rollups are weighted by observation count `n`, so an
+  average of averages stays correct.
+- **Query planner:** `planQuery` picks the cheapest tier for a range — raw for
+  short windows, hourly/daily for longer ones — and coarsens further to honour a
+  `maxPoints` budget. Callers never read raw points just to draw a year-long
+  chart.
+- **Maintenance cadence:** writes schedule a debounced (2s) maintenance pass; a
+  pass also runs once at `initialize()` so retention is enforced even when
+  nothing is written.
+- **Writes are best-effort:** a failed append/compaction resolves quietly rather
+  than throwing into a render, matching the rest of the storage layer.
+
+### Migrated datasets
+
+| Series                 | Source of truth                                                      | Rollup         |
+| ---------------------- | -------------------------------------------------------------------- | -------------- |
+| `alert-events`         | mirrored from `localStorage` alert log; imported once                | count of fires |
+| `export-runs`          | was a `preferences` blob; migrated + legacy blob imported once       | run count      |
+| `price-history:<pair>` | projected from fetched history responses; legacy blobs imported once | avg price      |
+
+`localStorage` remains the synchronous boot cache for the alert _log UI_ (the
+provider reads it once on mount); the engine is the durable, retained, queryable
+copy. The price-history **response cache** stays in the `history` store for fast
+2-minute repeat reads — the engine series is what gives that history long-term
+retention and rollups.
 
 ## IndexedDB budget & eviction
 

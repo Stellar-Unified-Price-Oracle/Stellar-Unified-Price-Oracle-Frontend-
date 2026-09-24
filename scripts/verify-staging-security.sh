@@ -114,6 +114,49 @@ check_header() {
   fi
 }
 
+# Raw Content-Security-Policy header value, or an empty string if absent.
+fetch_csp() {
+  local url=$1
+  local auth=$2
+
+  if [ -z "$auth" ]; then
+    curl -s -i "$url" 2>/dev/null | grep -i "^Content-Security-Policy:" | head -1 | tr -d '\r' || true
+  else
+    curl -s -i -H "Authorization: Basic $auth" "$url" 2>/dev/null | grep -i "^Content-Security-Policy:" | head -1 | tr -d '\r' || true
+  fi
+}
+
+# The most dangerous CSP regression is re-adding 'unsafe-inline' to script-src:
+# it silently undoes the entire policy, and DEPLOYMENT.md used to recommend it.
+# The script-src directive is checked in isolation because a naive substring
+# search for 'unsafe-inline' also matches the legitimate style-src-attr entry.
+check_csp_scripts_hardened() {
+  local auth=$1
+  local csp=$(fetch_csp "$STAGING_URL" "$auth")
+
+  if [ -z "$csp" ]; then
+    echo -e "${YELLOW}⚠${NC} CSP: header unreadable, skipping inline-script check"
+    return 1
+  fi
+
+  # Split the policy on ';' and keep the directive starting with `script-src`.
+  # The trailing space excludes script-src-elem / script-src-attr.
+  local script_src=$(printf '%s' "$csp" | tr ';' '\n' | grep -iE '^[[:space:]]*script-src[[:space:]]' || true)
+
+  if [ -z "$script_src" ]; then
+    echo -e "${RED}✗${NC} CSP: no script-src directive found"
+    return 1
+  fi
+
+  if [[ "$script_src" == *"'unsafe-inline'"* ]]; then
+    echo -e "${RED}✗${NC} CSP: script-src allows 'unsafe-inline'"
+    return 1
+  fi
+
+  echo -e "${GREEN}✓${NC} CSP: script-src does not allow 'unsafe-inline'"
+  return 0
+}
+
 check_status_code() {
   local url=$1
   local auth=$2
@@ -154,14 +197,17 @@ echo ""
 
 # Check basic auth requirement
 echo -e "${BLUE}[2/5] Basic Authentication${NC}"
-local code=$(curl -s -o /dev/null -w "%{http_code}" "$STAGING_URL" 2>/dev/null)
+# Plain assignment, not `local`: `local` is only valid inside a function, and at
+# top level under `set -e` it aborted the script right here — so no check below
+# this point had ever actually run.
+code=$(curl -s -o /dev/null -w "%{http_code}" "$STAGING_URL" 2>/dev/null || true)
 if [ "$code" = "401" ]; then
   echo -e "${GREEN}✓${NC} Basic auth is required (401 without credentials)"
   
   # If credentials provided, verify access
   if [ -n "$AUTH_USER" ] && [ -n "$AUTH_PASS" ]; then
-    local auth=$(echo -n "$AUTH_USER:$AUTH_PASS" | base64)
-    local auth_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Basic $auth" "$STAGING_URL" 2>/dev/null)
+    auth=$(echo -n "$AUTH_USER:$AUTH_PASS" | base64)
+    auth_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Basic $auth" "$STAGING_URL" 2>/dev/null || true)
     if [ "$auth_code" = "200" ]; then
       echo -e "${GREEN}✓${NC} Authentication successful with provided credentials"
     else
@@ -176,11 +222,12 @@ echo ""
 # Check security headers
 echo -e "${BLUE}[3/5] Security Headers${NC}"
 if [ -n "$AUTH_USER" ] && [ -n "$AUTH_PASS" ]; then
-  local auth=$(echo -n "$AUTH_USER:$AUTH_PASS" | base64)
+  auth=$(echo -n "$AUTH_USER:$AUTH_PASS" | base64)
   check_header "Content-Security-Policy" "default-src" "$STAGING_URL" "$auth"
   check_header "Strict-Transport-Security" "max-age" "$STAGING_URL" "$auth"
   check_header "X-Frame-Options" "DENY" "$STAGING_URL" "$auth"
   check_header "X-Content-Type-Options" "nosniff" "$STAGING_URL" "$auth"
+  check_csp_scripts_hardened "$auth"
 else
   echo -e "${YELLOW}→${NC} Provide credentials with --user and --pass to check authenticated requests"
 fi
@@ -189,7 +236,7 @@ echo ""
 # Check API endpoints
 echo -e "${BLUE}[4/5] API Connectivity${NC}"
 if [ -n "$AUTH_USER" ] && [ -n "$AUTH_PASS" ]; then
-  local auth=$(echo -n "$AUTH_USER:$AUTH_PASS" | base64)
+  auth=$(echo -n "$AUTH_USER:$AUTH_PASS" | base64)
   
   # Try to extract API URL from app
   echo "  Checking API endpoints..."

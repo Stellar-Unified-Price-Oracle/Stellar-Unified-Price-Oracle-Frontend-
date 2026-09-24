@@ -33,6 +33,7 @@
  */
 
 import { idbCache } from '../hooks/useIndexedDB'
+import { timeSeries } from '../storage/timeseries'
 
 /**
  * Every `localStorage` key the app owns.
@@ -183,8 +184,7 @@ export async function clearAllData(): Promise<void> {
     remove(key)
   }
   await Promise.all(IDB_STORES.map((store) => idbCache.clear(store)))
-  // After the stores are gone, so a retry firing mid-teardown cannot restore them.
-  durableResetHook?.()
+  await timeSeries.clearAll()
 }
 
 // ---------------------------------------------------------------------------
@@ -298,12 +298,10 @@ function formatBytes(bytes: number): string {
  * |-------------|----------|--------------------------------------------------------|
  * | prices      | 5 min    | Aggregated price cache. LRU-evicted at 50 MB.          |
  * | history     | 5 min    | Price history cache. Same eviction policy.             |
- * | preferences | ∞        | User display settings + the durable-write outbox.      |
- *
- * The `preferences` store also holds `durable-writes`, the outbox of
- * `localStorage` writes that failed and are awaiting retry. It lives in
- * IndexedDB rather than `localStorage` on purpose: the failure it recovers from
- * is usually a full `localStorage` quota. See `utils/durableWrites.ts`.
+ * | preferences | ∞        | User display settings. Cleared by clearAllData().      |
+ * | tsPoints    | per-tier | Time-series points. Retention + rollups, see           |
+ * |             |          | docs/STORAGE_BUDGET.md.                                 |
+ * | tsSeries    | ∞        | Time-series registrations (retention policy).          |
  *
  * Nothing sensitive is stored in either mechanism.
  * See `AGENTS.md` for the full data-handling policy.
@@ -358,6 +356,17 @@ export const STORAGE_INVENTORY = Object.freeze({
       store: 'preferences' as const,
       ttlMs: Infinity,
       description: 'User preferences. No expiry; cleared by clearAllData().',
+    },
+    {
+      store: 'tsPoints' as const,
+      ttlMs: Infinity,
+      description:
+        'Time-series points (raw/hourly/daily). Tier retention windows, rollups, and index-backed range queries.',
+    },
+    {
+      store: 'tsSeries' as const,
+      ttlMs: Infinity,
+      description: 'Time-series series registrations (resolved retention policy).',
     },
   ],
 })

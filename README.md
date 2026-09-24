@@ -136,7 +136,8 @@ See [Local HTTPS Setup Guide](./docs/https-setup.md) for more information.
 ```bash
 npm run build          # outputs to dist/
 npm run build:analyze  # build + generate bundle analysis report (reports/bundle-stats.html)
-npm run size-limit     # check bundle size against configured budgets
+npm run check:budgets  # structural bundle budget guard (run after build)
+npm run size-limit     # size-limit backstop over the initial-load set
 npm run preview        # preview production build locally
 ```
 
@@ -226,15 +227,36 @@ Set `VITE_API_URL` and `VITE_WS_URL` as environment variables in the Vercel proj
 
 The policy runs `script-src 'self'` — no `'unsafe-inline'`. Keep it that way: put startup
 JavaScript in [`public/theme-init.js`](public/theme-init.js) rather than an inline `<script>`
-block or an inline `on*` handler in [`index.html`](index.html), both of which CSP blocks.
-`style-src` does allow `'unsafe-inline'`, which Tailwind and Recharts require.
+block or an inline `on*` handler in [`index.html`](index.html), both of which CSP blocks. The
+same rule applies to the standalone [`public/offline.html`](public/offline.html), which loads
+`/offline.css` and `/offline.js` instead of inlining them.
+
+Styles are split across the two CSP3 directives instead of a blanket `'unsafe-inline'`:
+
+- `style-src-elem 'self' https://fonts.googleapis.com` governs stylesheets and `<style>`
+  blocks. Tailwind compiles to a static same-origin stylesheet, so it does **not** need an
+  inline allowance — nothing may inject a `<style>` element at runtime.
+- `style-src-attr 'unsafe-inline'` governs inline `style` attributes only. This is what the
+  React components need for dynamic values (bar widths, chart colours, crosshair position).
+
+CSS that has to be generated at runtime should use a constructable stylesheet
+(`new CSSStyleSheet()` + `document.adoptedStyleSheets`), because `style-src` does not apply
+to those — see [`src/utils/highContrastStyles.ts`](src/utils/highContrastStyles.ts).
+The split directives are supported by Chrome 75+, Firefox 108+ and Safari 15.4+.
+
+`worker-src` is `'self'`: Vite builds the workers in `src/workers/` as same-origin files.
 
 `connect-src` is `'self' https: wss:` so that any `VITE_API_URL` / `VITE_WS_URL` works out of
-the box. Once the backend origin is fixed for a deployment, narrow it to that origin.
+the box. Once the backend origin is fixed for a deployment, narrow it to that origin — the
+`vercel.json` defaults are `https://api.example.com` and `wss://api.example.com`.
+
+[`src/test/cspPolicy.test.ts`](src/test/cspPolicy.test.ts) pins these directives, so a
+loosening of the policy fails the unit test suite rather than shipping silently.
 
 ### Netlify
 
-A [`netlify.toml`](netlify.toml) is included with the equivalent redirect rule:
+A [`netlify.toml`](netlify.toml) is included with the equivalent redirect rule and the same
+security headers as `vercel.json` (kept in sync by `src/test/cspPolicy.test.ts`).
 
 ```bash
 npm install -g netlify-cli

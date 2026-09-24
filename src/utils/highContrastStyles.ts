@@ -1,18 +1,18 @@
 /**
  * High Contrast Mode CSS utilities and system color helpers.
- * 
+ *
  * These utilities help ensure the app works correctly in:
  * - Windows High Contrast Mode (forced-colors: active)
  * - Systems with prefers-contrast: more
  * - Any user agent that respects forced color mode
- * 
+ *
  * Reference: https://www.w3.org/TR/css-color-adjust-1/
  */
 
 /**
  * System colors available in High Contrast Mode.
  * These map to Windows system colors.
- * 
+ *
  * Reference: https://www.w3.org/TR/css-color-4/#css-system-colors
  */
 export const SYSTEM_COLORS = {
@@ -183,9 +183,7 @@ export const HIGH_CONTRAST_CLASSES = {
  * Generate inline styles for high contrast mode.
  * Use when you need dynamic styling.
  */
-export function getHighContrastStyles(
-  isActive: boolean,
-): React.CSSProperties {
+export function getHighContrastStyles(isActive: boolean): React.CSSProperties {
   if (!isActive) return {}
 
   return {
@@ -198,9 +196,7 @@ export function getHighContrastStyles(
  * Get border styles for high contrast mode.
  * Ensures borders are visible in all modes.
  */
-export function getHighContrastBorderStyles(
-  isActive: boolean,
-): React.CSSProperties {
+export function getHighContrastBorderStyles(isActive: boolean): React.CSSProperties {
   if (!isActive) {
     return {
       borderWidth: '1px',
@@ -227,16 +223,57 @@ export const HIGH_CONTRAST_MEDIA_QUERIES = {
  * Apply high contrast mode CSS to the document.
  * Call this in your app initialization to inject the styles.
  */
-export function applyHighContrastStyles(): void {
-  if (typeof document === 'undefined') return
+/** Guards the fallback path; the constructable path is idempotent on its own. */
+let applied = false
 
-  // Check if styles already applied
+/**
+ * Adopt `HIGH_CONTRAST_CSS` as a constructable stylesheet.
+ *
+ * Constructable stylesheets are not subject to `style-src`, so this survives
+ * the strict `style-src-elem 'self'` policy in `vercel.json`. Appending a
+ * `<style>` element with `textContent` is classified as inline CSS and is
+ * blocked by that policy.
+ *
+ * Returns false when the engine has no constructable stylesheet support, so
+ * the caller can fall back.
+ */
+function tryAdoptConstructableSheet(): boolean {
+  try {
+    if (typeof CSSStyleSheet !== 'function') return false
+    if (typeof CSSStyleSheet.prototype?.replaceSync !== 'function') return false
+    if (!('adoptedStyleSheets' in document)) return false
+
+    const sheet = new CSSStyleSheet()
+    sheet.replaceSync(HIGH_CONTRAST_CSS)
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Apply high contrast mode CSS to the document.
+ * Call this in your app initialization to inject the styles.
+ */
+export function applyHighContrastStyles(): void {
+  if (typeof document === 'undefined' || applied) return
+
+  if (tryAdoptConstructableSheet()) {
+    applied = true
+    return
+  }
+
+  // Fallback for engines without constructable stylesheets. Those engines
+  // also predate the `style-src-elem` directive, so the inline element is not
+  // blocked by the policy there.
   if (document.getElementById('hc-styles')) return
 
   const style = document.createElement('style')
   style.id = 'hc-styles'
   style.textContent = HIGH_CONTRAST_CSS
   document.head.appendChild(style)
+  applied = true
 }
 
 export type SystemColor = (typeof SYSTEM_COLORS)[keyof typeof SYSTEM_COLORS]
