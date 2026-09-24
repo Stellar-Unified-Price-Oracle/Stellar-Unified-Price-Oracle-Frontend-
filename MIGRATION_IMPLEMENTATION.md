@@ -17,6 +17,7 @@ A complete migration engine with:
 - **MigrationMetadata**: Automatic tracking of applied migrations
 
 **Key Features:**
+
 - Atomic transactions per migration (all-or-nothing execution)
 - Automatic metadata tracking in `__migrations__` store
 - Version validation to prevent backward migrations
@@ -27,15 +28,16 @@ A complete migration engine with:
 
 Application-specific migrations:
 
-| Version | Name | Purpose |
-|---------|------|---------|
-| 1 | `initial-schema` | Create prices, history, preferences stores |
-| 2 | `add-pending-mutations` | Add offline sync queue store |
-| 3 | `add-query-indexes` | Add indexes for performance |
+| Version | Name                    | Purpose                                    |
+| ------- | ----------------------- | ------------------------------------------ |
+| 1       | `initial-schema`        | Create prices, history, preferences stores |
+| 2       | `add-pending-mutations` | Add offline sync queue store               |
+| 3       | `add-query-indexes`     | Add indexes for performance                |
 
 **Features:**
+
 - `createAppMigrationRegistry()`: Factory to instantiate the app's migrations
-- `CURRENT_DB_VERSION`: Central version constant (currently 3)
+- `CURRENT_DB_VERSION`: Central version constant (currently 4)
 - Example v4 migration template (commented) for future developers
 
 ### 3. useIndexedDB Integration (`src/hooks/useIndexedDB.ts`)
@@ -64,18 +66,21 @@ Updated cache layer to use the migration system:
 ### 5. Comprehensive Test Suite
 
 **`src/utils/idbMigrations.test.ts`** (440 lines)
+
 - MigrationRegistry tests: registration, ordering, range queries
 - MigrationRunner tests: version tracking, atomic execution, error handling
 - MigrationError tests: error context and reporting
 - DataTransformer tests: all transformation utilities
 
 **`src/utils/idbMigrationDefinitions.test.ts`** (253 lines)
+
 - Version constant tests
 - Individual migration tests (v1-v3)
 - Integration tests for progressive migration
 - Idempotency verification
 
 **Test Coverage:**
+
 - Schema creation and store setup
 - Index creation and verification
 - Migration history tracking
@@ -119,6 +124,7 @@ Updated cache layer to use the migration system:
 ### Example: Adding a New Migration
 
 1. Create migration function:
+
 ```typescript
 export const v4Migration: MigrationStep = {
   version: 4,
@@ -131,11 +137,13 @@ export const v4Migration: MigrationStep = {
 ```
 
 2. Register it:
+
 ```typescript
 registry.register(4, v4Migration)
 ```
 
 3. Update version:
+
 ```typescript
 export const CURRENT_DB_VERSION = 4
 ```
@@ -145,12 +153,14 @@ export const CURRENT_DB_VERSION = 4
 ## Error Handling
 
 **MigrationError** provides:
+
 - `version`: Which version failed
 - `reason`: Type of failure (execute | rollback | validation | metadata)
 - `originalError`: Underlying error
 - Complete error message with context
 
 **All errors are non-fatal:**
+
 - Transaction automatically rolls back
 - Database left in consistent state
 - No partial updates or data corruption
@@ -169,6 +179,7 @@ Automatically tracked in `__migrations__` store:
 ```
 
 Developers can query history:
+
 ```typescript
 const runner = getMigrationRunner()
 const history = await runner.getMigrationHistory(db)

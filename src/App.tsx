@@ -33,6 +33,7 @@ import { Webhooks } from './pages/Webhooks'
 import {
   LazyApiDocs,
   LazyDashboard,
+  LazyGovernance,
   LazyLanding,
   LazyNotFound,
   LazyPriceDetail,
@@ -144,6 +145,14 @@ export function AppContent(): ReactElement {
               element={
                 <RouteSuspense fallback={<NotFoundSkeleton />}>
                   <LazySecurity />
+                </RouteSuspense>
+              }
+            />
+            <Route
+              path="/governance"
+              element={
+                <RouteSuspense fallback={<DashboardSkeleton />}>
+                  <LazyGovernance />
                 </RouteSuspense>
               }
             />

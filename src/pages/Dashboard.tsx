@@ -28,6 +28,7 @@ import type { AlertFormData, LivePriceEntry, PriceData, SourceHealth } from '../
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
 import { buildConditionGroupFromFormData } from '../utils/alertEvaluator'
+import { deriveSourceHealths } from '../utils/sourceHealth'
 
 const SKELETON_COUNT = 8
 
@@ -202,35 +203,9 @@ export function Dashboard() {
     legacySource,
   ])
 
-  // ── Command palette: price pairs, filters/sort, alerts, exports ──────────
-  useDashboardCommands({
-    pairs: pairNames,
-    hasExportData: filtered.length > 0,
-    exportAllowed,
-    exportCooldownSec,
-    onExport: (format) => enqueueExport(format, filtered, exportColumns),
-    onOpenColumnSelector: () => setColumnModalOpen(true),
-    onCreateAlert: () => {
-      setModalPair('')
-      setModalOpen(true)
-    },
-  })
-
-  const sourceHealths = useMemo<SourceHealth[]>(() => {
-    const knownSources = ['chainlink', 'redstone', 'band', 'reflector'] as const
-    const now = Date.now()
-    return knownSources.map((src) => {
-      const active = merged.filter((p) => p.sources.includes(src))
-      const lastUpdate = active.length > 0 ? Math.max(...active.map((p) => p.timestamp)) : null
-      const status: SourceHealth['status'] = active.length > 0 ? 'healthy' : 'down'
-      return {
-        source: src,
-        status,
-        lastUpdate,
-        latency: lastUpdate ? Math.max(12, Math.min(250, now - lastUpdate)) : null,
-      }
-    })
-  }, [merged])
+  // Shared with the Governance page via `deriveSourceHealths` — the two views
+  // must never report different source metrics.
+  const sourceHealths = useMemo<SourceHealth[]>(() => deriveSourceHealths(merged), [merged])
 
   const handleCardClick = useCallback(
     (pair: string) => {

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   v1Migration,
   v2Migration,
+  v4Migration,
   createAppMigrationRegistry,
   createAppMigrationRunner,
   CURRENT_DB_VERSION,
@@ -56,25 +57,26 @@ describe('Migration Definitions', () => {
   })
 
   describe('CURRENT_DB_VERSION', () => {
-    it('is set to 3', () => {
-      expect(CURRENT_DB_VERSION).toBe(3)
+    it('is set to 4', () => {
+      expect(CURRENT_DB_VERSION).toBe(4)
     })
   })
 
   describe('createAppMigrationRegistry', () => {
     it('registers all migrations', () => {
       const registry = createAppMigrationRegistry()
-      expect(registry.getLatestVersion()).toBe(3)
+      expect(registry.getLatestVersion()).toBe(4)
     })
 
     it('has all migrations in order', () => {
       const registry = createAppMigrationRegistry()
       const all = registry.getAll()
 
-      expect(all).toHaveLength(3)
+      expect(all).toHaveLength(4)
       expect(all[0].version).toBe(1)
       expect(all[1].version).toBe(2)
       expect(all[2].version).toBe(3)
+      expect(all[3].version).toBe(4)
     })
   })
 
@@ -152,6 +154,45 @@ describe('Migration Definitions', () => {
     })
   })
 
+  describe('v4Migration', () => {
+    it('creates the time-series stores with the expected key paths', async () => {
+      const runner = createAppMigrationRunner()
+      const { db: opened } = await openWithMigrations('migration-def-test', 4, runner)
+      db = opened
+
+      expect(opened.objectStoreNames.contains('tsPoints')).toBe(true)
+      expect(opened.objectStoreNames.contains('tsSeries')).toBe(true)
+
+      const points = opened.transaction('tsPoints', 'readonly').objectStore('tsPoints')
+      expect(points.keyPath).toEqual(['series', 'tier', 't'])
+
+      const series = opened.transaction('tsSeries', 'readonly').objectStore('tsSeries')
+      expect(series.keyPath).toBe('series')
+    })
+
+    it('can be rolled back', async () => {
+      const runner = createAppMigrationRunner()
+      const { db: opened } = await openWithMigrations('migration-def-test', 4, runner)
+      opened.close()
+
+      const reopened = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open('migration-def-test', 5)
+        req.onupgradeneeded = () => {
+          const tx = req.transaction!
+          v1Migration.up(req.result, tx)
+          v4Migration.up(req.result, tx)
+          v4Migration.down?.(req.result, tx)
+        }
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      db = reopened
+
+      expect(reopened.objectStoreNames.contains('tsPoints')).toBe(false)
+      expect(reopened.objectStoreNames.contains('tsSeries')).toBe(false)
+    })
+  })
+
   describe('createAppMigrationRunner', () => {
     it('creates a migration runner with all migrations', () => {
       const runner = createAppMigrationRunner()
@@ -163,13 +204,15 @@ describe('Migration Definitions', () => {
       const { db: opened, applied } = await openWithMigrations('migration-def-test', CURRENT_DB_VERSION, runner)
       db = opened
 
-      expect(applied).toBe(3)
+      expect(applied).toBe(4)
 
       // Verify all stores exist
       expect(opened.objectStoreNames.contains('prices')).toBe(true)
       expect(opened.objectStoreNames.contains('history')).toBe(true)
       expect(opened.objectStoreNames.contains('preferences')).toBe(true)
       expect(opened.objectStoreNames.contains('pendingMutations')).toBe(true)
+      expect(opened.objectStoreNames.contains('tsPoints')).toBe(true)
+      expect(opened.objectStoreNames.contains('tsSeries')).toBe(true)
 
       // Verify indexes
       const historyStore = opened.transaction('history', 'readonly').objectStore('history')
@@ -183,10 +226,11 @@ describe('Migration Definitions', () => {
 
       const history = await runner.getMigrationHistory(opened)
 
-      expect(history).toHaveLength(3)
+      expect(history).toHaveLength(4)
       expect(history[0].name).toBe('initial-schema')
       expect(history[1].name).toBe('add-pending-mutations')
       expect(history[2].name).toBe('add-query-indexes')
+      expect(history[3].name).toBe('add-time-series-engine')
     })
   })
 
@@ -229,7 +273,7 @@ describe('Migration Definitions', () => {
 
       expect(second.applied).toBe(0)
       const history = await runner.getMigrationHistory(second.db)
-      expect(history).toHaveLength(3)
+      expect(history).toHaveLength(4)
     })
   })
 })

@@ -1,14 +1,22 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ConnectionStatus, ConnectionDiagnostics } from '../api/websocket'
 import { RealtimeClient } from '../api/realtimeClient'
 import { WsLeaderElection } from '../api/wsLeaderElection'
 import { fetchAllPrices, fetchPricesBatched } from '../api/rest'
 import { rateLimitManager, type RateLimitStatus } from '../api/rateLimit'
+import { markStage } from '../perf/startup'
 import { useOutboundQueue } from '../hooks/useOutboundQueue'
 import { offlinePriceStore, type OfflineSnapshot } from '../services/offlinePriceStore'
 import { config } from '../config'
 import { computeAttribution, appendToRingBuffer, type SourcePriceState } from '../utils/moveAttribution'
+import {
+  TICK_POLICY,
+  TickCoalescer,
+  MAX_PENDING_ATTRIBUTIONS_PER_PAIR,
+  createFlushPump,
+  type TickCoalescerStats,
+} from '../utils/tickCoalescer'
 import type { LivePriceEntry, PriceData, MoveAttribution, WsPriceUpdate } from '../types'
 import { useToast } from './ToastContext'
 
@@ -99,6 +107,14 @@ export interface PriceContextValue {
    */
   attributionHistory: Map<string, MoveAttribution[]>
   /**
+   * Counters describing how the renderer backpressure policy is treating the
+   * incoming tick stream (#469) — how many ticks were received, coalesced to the
+   * paint cadence, or dropped, and how many flushes that took.
+   *
+   * Optional: always provided by {@link PriceProvider}; older consumers/tests may omit it.
+   */
+  tickPolicy?: TickCoalescerStats
+  /**
    * Whether this tab is the BroadcastChannel realtime leader.
    * `true` — this tab owns the real connection.
    * `false` — this tab receives relayed updates from the leader tab.
@@ -138,7 +154,20 @@ const PriceContext = createContext<PriceContextValue | null>(null)
  * ### Attribution
  * On each WS tick (whether from a real socket or a relay) per-source price
  * deltas are computed and stored in a bounded ring-buffer exposed as
- * `attributionHistory`.
+ * `attributionHistory`. Attribution is computed per *raw* tick, before the
+ * render-backpressure policy below coalesces anything.
+ *
+ * ### Render backpressure (#469)
+ * The feed can outrun the renderer (e.g. 200 ticks/sec into a 30 Hz paint).
+ * Rather than queueing every tick (unbounded memory, a UI that falls further
+ * behind every frame) or dropping blindly, ticks are **coalesced latest-wins
+ * per asset pair** and applied once per animation frame. Superseded ticks are
+ * counted, not lost silently. One consequence: at most one REST revalidation
+ * per pair per {@link TICK_POLICY.revalidateIntervalMs}, instead of one per
+ * tick. Counters are exposed as `tickPolicy`.
+ *
+ * See [`tickCoalescer.ts`](../utils/tickCoalescer.ts) for the policy itself and
+ * `docs/adr/ADR-004-render-backpressure-policy.md` for the rationale.
  *
  * ### Offline cache (#470)
  * The latest REST-confirmed snapshot is debounce-persisted to IndexedDB and
@@ -167,6 +196,14 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const outbound = useOutboundQueue()
 
   const [livePrices, setLivePrices] = useState<Map<string, LivePriceEntry>>(new Map())
+  /**
+   * Latest-wins tick buffer + paint-cadence flush (see the module docs). Created
+   * once and held in a ref so its buffered contents survive re-renders.
+   */
+  const tickCoalescerRef = useRef<TickCoalescer<WsPriceUpdate> | null>(null)
+  if (tickCoalescerRef.current === null) tickCoalescerRef.current = new TickCoalescer<WsPriceUpdate>()
+  const tickCoalescer = tickCoalescerRef.current
+  const [tickPolicy, setTickPolicy] = useState<TickCoalescerStats>(() => tickCoalescer.getStats())
   const [wsStatus, setWsStatus] = useState<ConnectionStatus>('disconnected')
   const [diagnostics, setDiagnostics] = useState<ConnectionDiagnostics>({
     retryCount: 0,
@@ -198,6 +235,16 @@ export function PriceProvider({ children }: { children: ReactNode }) {
   const wsRef = useRef<RealtimeClient | null>(null)
   const requestIdsRef = useRef<Map<string, number>>(new Map())
   const cleanupTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  /** Pairs with a REST revalidation currently in flight — never fire a second one. */
+  const revalidateInFlightRef = useRef<Set<string>>(new Set())
+  /** Last time each pair was revalidated — the per-tick REST storm is collapsed to one request per pair per window. */
+  const revalidateAtRef = useRef<Map<string, number>>(new Map())
+  /**
+   * Attribution records accumulated per pair since the last flush. Bounded by
+   * {@link MAX_PENDING_ATTRIBUTIONS_PER_PAIR} per pair, so a flood (or a hidden
+   * tab, where animation frames stop) cannot grow it without limit.
+   */
+  const pendingAttributionsRef = useRef<Map<string, MoveAttribution[]>>(new Map())
 
   // Offline-first price cache (#470): last confirmed snapshot, persisted to IndexedDB
   // and used as the display source when the REST fetch has no data (first offline load).
@@ -223,13 +270,13 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     pricesRef.current = prices
   }, [prices])
 
-  const clearCleanupTimer = (pair: string): void => {
+  const clearCleanupTimer = useCallback((pair: string): void => {
     const timer = cleanupTimersRef.current.get(pair)
     if (timer) {
       clearTimeout(timer)
       cleanupTimersRef.current.delete(pair)
     }
-  }
+  }, [])
 
   useEffect(() => {
     const unsubscribeFromRateLimit = rateLimitManager.onStatusChange((status, retryAfterMs) => {
@@ -240,16 +287,183 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     return unsubscribeFromRateLimit
   }, [])
 
-  // ── Core price-update handler (shared by both leader WS and follower relay) ─
+  // ── REST revalidation ─────────────────────────────────────────────────────
+
+  const scheduleSettledState = useCallback(
+    (pair: string, timers: Map<string, ReturnType<typeof setTimeout>>) => {
+      clearCleanupTimer(pair)
+      const timer = setTimeout(() => {
+        setLivePrices((prev) => {
+          const current = prev.get(pair)
+          if (!current || current.syncState === 'optimistic') return prev
+
+          const next = new Map(prev)
+          next.set(pair, { ...current, syncState: 'synced' })
+          return next
+        })
+        timers.delete(pair)
+      }, 1200)
+      timers.set(pair, timer)
+    },
+    [clearCleanupTimer],
+  )
+
+  const revalidatePair = useCallback(
+    async (
+      pair: string,
+      requestId: number,
+      requestIds: Map<string, number>,
+      timers: Map<string, ReturnType<typeof setTimeout>>,
+    ) => {
+      try {
+        const restPrice = await fetchPricesBatched(pair)
+
+        if (requestIds.get(pair) !== requestId) return
+
+        // Patch the REST cache with the WS-confirmed value so it doesn't serve a
+        // stale entry for this pair until the next poll cycle (#321).
+        queryClient.setQueryData<PriceData[]>(['prices'], (old) =>
+          old ? old.map((p) => (p.assetPair === pair ? restPrice : p)) : old,
+        )
+
+        setLivePrices((prev) => {
+          const current = prev.get(pair)
+          if (!current) return prev
+
+          const isConfirmed =
+            current.data.timestamp === restPrice.timestamp &&
+            current.data.price === restPrice.price &&
+            current.data.confidence === restPrice.confidence &&
+            current.data.sources.join('|') === restPrice.sources.join('|')
+
+          const next = new Map(prev)
+          next.set(pair, {
+            data: isConfirmed ? current.data : restPrice,
+            syncState: isConfirmed ? 'confirmed' : 'rollback',
+            flashVersion: current.flashVersion + 1,
+          })
+          return next
+        })
+
+        scheduleSettledState(pair, timers)
+      } catch {
+        // Keep optimistic data visible and let polling retry the canonical state.
+      }
+    },
+    [queryClient, scheduleSettledState],
+  )
+
+  /**
+   * Revalidate `pair` against REST, at most once per
+   * {@link TICK_POLICY.revalidateIntervalMs} and never while a request for the
+   * same pair is still in flight.
+   *
+   * Before this gate each tick fired its own request — 200 requests/sec under the
+   * flood this policy exists to absorb. ADR-002 flagged that cost ("every
+   * WebSocket update triggers a REST call"); "REST is canonical" still holds, the
+   * confirmation interval is now bounded instead of unbounded.
+   */
+  const maybeRevalidatePair = useCallback(
+    (pair: string, requestIds: Map<string, number>, timers: Map<string, ReturnType<typeof setTimeout>>) => {
+      if (revalidateInFlightRef.current.has(pair)) return
+
+      const now = Date.now()
+      const lastRevalidatedAt = revalidateAtRef.current.get(pair) ?? 0
+      if (now - lastRevalidatedAt < TICK_POLICY.revalidateIntervalMs) return
+
+      revalidateAtRef.current.set(pair, now)
+      revalidateInFlightRef.current.add(pair)
+      const requestId = (requestIds.get(pair) ?? 0) + 1
+      requestIds.set(pair, requestId)
+      void revalidatePair(pair, requestId, requestIds, timers).finally(() => {
+        revalidateInFlightRef.current.delete(pair)
+      })
+    },
+    [revalidatePair],
+  )
+
+  // ── Render backpressure: coalesced flush (#469) ───────────────────────────
+
+  /**
+   * Applies one coalesced batch of ticks.
+   *
+   * Every `setState` here is issued in the same tick, so React commits the whole
+   * batch as a single render — that is the point of the policy. Attribution
+   * records were accumulated per raw tick before coalescing, so the ring-buffer
+   * history is not decimated by this; only the commit count is.
+   */
+  const applyTickBatch = useCallback(
+    (batch: Array<[string, WsPriceUpdate]>) => {
+      const timers = cleanupTimersRef.current
+      const requestIds = requestIdsRef.current
+
+      // ── Optimistic live price update (latest tick per pair) ──────────────
+      setLivePrices((prev) => {
+        const next = new Map(prev)
+        for (const [pair, msg] of batch) {
+          const current = prev.get(pair)
+          const entry: LivePriceEntry = {
+            data: {
+              assetPair: pair,
+              price: msg.price,
+              timestamp: msg.timestamp,
+              confidence: msg.confidence,
+              sources: msg.sources,
+            },
+            syncState: 'optimistic',
+            flashVersion: (current?.flashVersion ?? 0) + 1,
+          }
+          next.set(pair, entry)
+          priceUpdateEmitter.emit(pair, entry)
+        }
+        return next
+      })
+
+      // ── Attribution: one commit for every record buffered this frame ─────
+      // Snapshot (and clear) before handing anything to React: a `setState`
+      // updater is not guaranteed to run before the next tick arrives, so the
+      // updater must not read a buffer that the ingest path keeps mutating.
+      const pendingAttributions = pendingAttributionsRef.current
+      if (pendingAttributions.size > 0) {
+        const recordsByPair = new Map(pendingAttributions)
+        pendingAttributions.clear()
+        setAttributionHistory((prev) => {
+          const next = new Map(prev)
+          for (const [pair, records] of recordsByPair) {
+            next.set(pair, records.reduce(appendToRingBuffer, prev.get(pair) ?? []))
+          }
+          return next
+        })
+      }
+
+      for (const [pair] of batch) {
+        clearCleanupTimer(pair)
+        maybeRevalidatePair(pair, requestIds, timers)
+      }
+
+      setTickPolicy(tickCoalescer.getStats())
+    },
+    [clearCleanupTimer, maybeRevalidatePair, tickCoalescer],
+  )
+
+  const flushPump = useMemo(() => createFlushPump(tickCoalescer, applyTickBatch), [tickCoalescer, applyTickBatch])
+
+  // Abandon any frame-scheduled flush when the provider unmounts.
+  useEffect(() => () => flushPump.stop(), [flushPump])
 
   /**
    * Process an incoming price_update — either from the real WebSocket (leader /
-   * fallback) or relayed via BroadcastChannel (follower).  Updates attribution
-   * ring-buffer, live prices, and triggers REST revalidation.
+   * fallback) or relayed via BroadcastChannel (follower).
+   *
+   * Attribution is computed eagerly, once per raw tick: it is pure arithmetic
+   * with no React commit, so coalescing must not skip it. The live price, by
+   * contrast, is last-writer-wins state — an intermediate price nobody painted
+   * has no observer — so it goes through the latest-wins coalescer and is
+   * applied on the paint cadence.
    */
   const handlePriceUpdate = useCallback(
-    (msg: WsPriceUpdate, requestIds: Map<string, number>, timers: Map<string, ReturnType<typeof setTimeout>>) => {
-      // ── Attribution computation ───────────────────────────────────────────
+    (msg: WsPriceUpdate) => {
+      // ── Attribution computation (per raw tick) ────────────────────────────
       const sourcePriceState = sourcePriceStateRef.current
       if (!sourcePriceState.has(msg.assetPair)) {
         sourcePriceState.set(msg.assetPair, {})
@@ -259,107 +473,30 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       const attribution = computeAttribution(msg, prevSourcePrices, prevAggPrice)
       prevAggPriceRef.current.set(msg.assetPair, msg.price)
 
-      setAttributionHistory((prev) => {
-        const existing = prev.get(msg.assetPair) ?? []
-        const next = new Map(prev)
-        next.set(msg.assetPair, appendToRingBuffer(existing, attribution))
-        return next
-      })
+      const pendingAttributions = pendingAttributionsRef.current
+      const buffered = pendingAttributions.get(msg.assetPair)
+      if (buffered) {
+        // A single flush can never retain more than the ring buffer holds, so
+        // buffering beyond that would only evict records we just collected.
+        // This is also what keeps the map bounded when animation frames stop
+        // (a hidden tab keeps coalescing, but never accumulates).
+        if (buffered.length >= MAX_PENDING_ATTRIBUTIONS_PER_PAIR) buffered.shift()
+        buffered.push(attribution)
+      } else {
+        pendingAttributions.set(msg.assetPair, [attribution])
+      }
 
-      // ── Optimistic live price update ──────────────────────────────────────
-      setLivePrices((prev) => {
-        const next = new Map(prev)
-        const current = prev.get(msg.assetPair)
-        const entry: LivePriceEntry = {
-          data: {
-            assetPair: msg.assetPair,
-            price: msg.price,
-            timestamp: msg.timestamp,
-            confidence: msg.confidence,
-            sources: msg.sources,
-          },
-          syncState: 'optimistic',
-          flashVersion: (current?.flashVersion ?? 0) + 1,
-        }
-        next.set(msg.assetPair, entry)
-        priceUpdateEmitter.emit(msg.assetPair, entry)
-        return next
-      })
-
-      clearCleanupTimer(msg.assetPair)
-      const requestId = (requestIds.get(msg.assetPair) ?? 0) + 1
-      requestIds.set(msg.assetPair, requestId)
-      void revalidatePair(msg.assetPair, requestId, requestIds, timers)
+      // ── Latest-wins coalescing for the live-price render ──────────────────
+      tickCoalescer.enqueue(msg.assetPair, msg)
+      flushPump.request()
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [tickCoalescer, flushPump],
   )
-
-  // ── REST revalidation ─────────────────────────────────────────────────────
-
-  const scheduleSettledState = (pair: string, timers: Map<string, ReturnType<typeof setTimeout>>) => {
-    clearCleanupTimer(pair)
-    const timer = setTimeout(() => {
-      setLivePrices((prev) => {
-        const current = prev.get(pair)
-        if (!current || current.syncState === 'optimistic') return prev
-
-        const next = new Map(prev)
-        next.set(pair, { ...current, syncState: 'synced' })
-        return next
-      })
-      timers.delete(pair)
-    }, 1200)
-    timers.set(pair, timer)
-  }
-
-  const revalidatePair = async (
-    pair: string,
-    requestId: number,
-    requestIds: Map<string, number>,
-    timers: Map<string, ReturnType<typeof setTimeout>>,
-  ) => {
-    try {
-      const restPrice = await fetchPricesBatched(pair)
-
-      if (requestIds.get(pair) !== requestId) return
-
-      // Patch the REST cache with the WS-confirmed value so it doesn't serve a
-      // stale entry for this pair until the next poll cycle (#321).
-      queryClient.setQueryData<PriceData[]>(['prices'], (old) =>
-        old ? old.map((p) => (p.assetPair === pair ? restPrice : p)) : old,
-      )
-
-      setLivePrices((prev) => {
-        const current = prev.get(pair)
-        if (!current) return prev
-
-        const isConfirmed =
-          current.data.timestamp === restPrice.timestamp &&
-          current.data.price === restPrice.price &&
-          current.data.confidence === restPrice.confidence &&
-          current.data.sources.join('|') === restPrice.sources.join('|')
-
-        const next = new Map(prev)
-        next.set(pair, {
-          data: isConfirmed ? current.data : restPrice,
-          syncState: isConfirmed ? 'confirmed' : 'rollback',
-          flashVersion: current.flashVersion + 1,
-        })
-        return next
-      })
-
-      scheduleSettledState(pair, timers)
-    } catch {
-      // Keep optimistic data visible and let polling retry the canonical state.
-    }
-  }
 
   // ── Realtime connection + leader election setup ───────────────────────────
 
   useEffect(() => {
     const timers = cleanupTimersRef.current
-    const requestIds = requestIdsRef.current
 
     /**
      * Open a real realtime connection.  Called both by the leader and by
@@ -373,10 +510,12 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       const unsubStatus = client.onStatusChange((status) => {
         setWsStatus(status)
         setDiagnostics(client.diagnostics)
+        // Stage 3 (live): the realtime connection is up.
+        if (status === 'connected') markStage('live')
       })
       const unsubMsg = client.onMessage((msg) => {
         if (msg.type === 'price_update') {
-          handlePriceUpdate(msg, requestIds, timers)
+          handlePriceUpdate(msg)
 
           // Leader relays to followers
           if (isLeader && electionRef.current) {
@@ -419,7 +558,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       },
 
       onFollowerMessage: (msg) => {
-        handlePriceUpdate(msg, requestIds, timers)
+        handlePriceUpdate(msg)
       },
 
       onLeaderFallback: () => {
@@ -448,10 +587,10 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       }
       timers.clear()
     }
-    // handlePriceUpdate is stable (no deps that change after mount).
-    // Including prices here would re-run the effect on every REST poll, which
-    // would tear down and re-establish the WS unnecessarily; subscriptions are
-    // handled separately in the effect below.
+    // handlePriceUpdate is identity-stable across renders (every callback it
+    // closes over is memoized), so this effect runs once. Including prices here
+    // would re-run it on every REST poll, tearing down and re-establishing the
+    // WS unnecessarily; subscriptions are handled separately in the effect below.
   }, [queryClient, handlePriceUpdate])
 
   // Re-subscribe to all pairs whenever the REST snapshot changes (e.g., new pairs added)
@@ -490,7 +629,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
 
       return changed ? next : prev
     })
-  }, [prices])
+  }, [prices, clearCleanupTimer])
 
   // Offline-first (#470): debounced persist of the latest REST-confirmed snapshot,
   // bounded by the shared IndexedDB LRU cache and read back on the next disconnect/reload.
@@ -554,6 +693,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     diagnostics,
     rateLimitStatus,
     rateLimitRetryAfterMs,
+    tickPolicy,
     outboundQueued: outbound.queued,
     pricesQueued: outbound.queuedByGroup.prices > 0,
     requestsThrottled: outbound.degraded,

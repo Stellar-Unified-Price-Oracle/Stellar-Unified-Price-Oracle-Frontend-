@@ -1,6 +1,6 @@
 import { config } from '../config'
 import { showApiErrorToast } from '../context/ToastContext'
-import type { PriceData, PriceHistoryResponse, PriceProof, RateLimitInfo } from '../types'
+import type { GovernanceProposal, PriceData, PriceHistoryResponse, PriceProof, RateLimitInfo } from '../types'
 import type { OnChainPriceRecord, OracleNetwork } from '../types/onchain'
 import { fetchWithRetry } from './retry'
 import {
@@ -10,6 +10,7 @@ import {
   HealthSchema,
   OnChainPriceRecordSchema,
   PriceProofSchema,
+  GovernanceProposalSchema,
 } from './schemas'
 import { validate } from './validate'
 import { getAcceptVersionHeader } from './version'
@@ -327,6 +328,43 @@ export async function fetchPriceProof(pair: string, timestamp?: number): Promise
     if (err instanceof ApiError && err.status === 404) return null
     throw err
   }
+}
+
+/**
+ * Fetches the community governance proposals (open votes and their outcomes)
+ * from `GET /api/governance/proposals`.
+ *
+ * ## Why this is fail-closed
+ *
+ * The price endpoints use {@link validate}, which logs a schema mismatch but
+ * still returns the raw payload so a feed hiccup degrades gracefully. That
+ * trade-off is unacceptable here: these tallies decide oracle weighting, so a
+ * malformed — or tampered — payload must be dropped, never rendered.
+ *
+ * An entry that fails validation is discarded individually (with a warning) so
+ * one bad proposal cannot blank the whole page, and a non-array response yields
+ * an empty list rather than a crash. Callers should treat an empty result as
+ * "no data shown", which the UI renders as an explicit unavailable state.
+ */
+export async function fetchGovernanceProposals(signal?: AbortSignal): Promise<GovernanceProposal[]> {
+  const raw = await request<unknown>('/api/governance/proposals', undefined, signal)
+
+  if (!Array.isArray(raw)) {
+    console.warn('[governance] expected an array of proposals; received', typeof raw)
+    return []
+  }
+
+  const proposals: GovernanceProposal[] = []
+  for (const item of raw) {
+    const parsed = GovernanceProposalSchema.safeParse(item)
+    if (parsed.success) {
+      proposals.push(parsed.data)
+      continue
+    }
+    const message = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
+    console.warn(`[governance] dropping malformed proposal — ${message}`)
+  }
+  return proposals
 }
 
 // ---------------------------------------------------------------------------

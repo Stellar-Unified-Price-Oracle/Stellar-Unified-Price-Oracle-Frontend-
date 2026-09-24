@@ -217,18 +217,34 @@ Risk: LOW
 
 ### Key Policies
 ```
-script-src 'self'           — No inline or unsafe-eval scripts
-style-src 'unsafe-inline'   — Tailwind requires this
-connect-src 'self' https: wss: — API + WebSocket
-object-src 'none'           — No plugins/objects
-base-uri 'self'             — No javascript: URLs in base href
+script-src 'self'                       — No inline or unsafe-eval scripts
+style-src-elem 'self' fonts.googleapis  — Stylesheets; no inline <style> blocks
+style-src-attr 'unsafe-inline'          — Inline style attributes only (React dynamic values)
+connect-src 'self' https: wss:          — API + WebSocket (narrow to the backend origin)
+worker-src 'self'                       — Vite-built workers are same-origin files
+object-src 'none'                       — No plugins/objects
+base-uri 'self'                         — No javascript: URLs in base href
 ```
+
+`style-src` is split into the two CSP3 directives rather than using a blanket
+`style-src 'unsafe-inline'`. Tailwind compiles to a static same-origin stylesheet and does
+not need an inline allowance — the allowance is for inline `style` *attributes*, which is
+all that the split grants.
 
 ### Enforcement
 - ✅ Startup JS in `public/theme-init.js` (not inline)
 - ✅ Event handlers via React synthetic events
 - ✅ No `<script>` tags with user content
-- ✅ All styles via Tailwind classes
+- ✅ Static documents load external CSS/JS — `public/offline.html` uses `/offline.css` and `/offline.js`
+- ✅ Runtime-generated CSS uses constructable stylesheets (`src/utils/highContrastStyles.ts`), which `style-src` does not govern
+- ✅ `src/test/cspPolicy.test.ts` pins the directives and fails on regression
+- ⚠️ `connect-src` still permits any `https:`/`wss:` origin — see the note in [README.md](README.md)
+
+Violation reports are collected in four places: the `report-uri` / `report-to` endpoint
+(`api/csp-report.ts`), the in-app `securitypolicyviolation` listener
+(`src/utils/cspReporting.ts`), the `CspViolationsPanel` component, and the staging header
+check in `scripts/verify-staging-security.sh`. Treat a non-empty violation list as a
+regression: under an enforced policy every entry is a feature that is silently broken.
 
 ---
 

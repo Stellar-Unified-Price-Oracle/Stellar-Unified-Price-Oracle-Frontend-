@@ -2,13 +2,21 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import './index.css'
+import { afterFirstPaint, markBoot, markStage, runWhenIdle } from './perf/startup'
 import { getMissingRequiredEnvVars } from './config/validateEnv'
 import { installConsoleAggregator } from './utils/consoleAggregator'
 import { installCspReporting } from './utils/cspReporting'
+import { installDurableWriteListeners } from './utils/durableWrites'
 import { checkStorageSizeWarning } from './utils/storage'
+
+// Stage clock starts before any other boot work so every stage below is measured
+// against the real entry-point cost, not against first render.
+markBoot()
 
 installConsoleAggregator()
 installCspReporting()
+// Retry any storage write a previous session failed to persist (see durableWrites)
+installDurableWriteListeners()
 // Warn in dev if localStorage usage is approaching the quota limit
 checkStorageSizeWarning()
 
@@ -57,3 +65,11 @@ if (missingEnvVars.length > 0) {
     )
   })
 }
+
+// Stage 1 (shell): the first frame has painted, so the skeleton UI is visible.
+// The idle window after it is when deferred work (preloading, analytics) is
+// allowed to run.
+afterFirstPaint(() => {
+  markStage('shell')
+  runWhenIdle(() => markStage('idle'))
+})

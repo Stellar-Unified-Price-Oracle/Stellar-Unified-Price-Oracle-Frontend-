@@ -49,6 +49,16 @@ export interface SwrResult<T> {
 }
 
 /**
+ * Drops every cached entry and in-flight dedupe promise. Exposed for test
+ * isolation — the cache is module-level, so two cases that share a key would
+ * otherwise bleed data into each other.
+ */
+export function clearSwrCache(): void {
+  cache.clear()
+  inFlight.clear()
+}
+
+/**
  * Minimal stale-while-revalidate hook for data fetching.
  *
  * Key improvements over the original implementation:

@@ -106,6 +106,17 @@ function openDB(): Promise<IDBDatabase> {
   return dbPromise
 }
 
+/**
+ * Opens (and caches) the shared `stellar-oracle` connection.
+ *
+ * Exposed for the time-series engine, which owns separate object stores in the
+ * same database. Importing from here — rather than opening a second connection —
+ * keeps schema migrations and connection state in one place.
+ */
+export function openCacheConnection(): Promise<IDBDatabase> {
+  return openDB()
+}
+
 function byteSize(value: unknown): number {
   try {
     return new TextEncoder().encode(JSON.stringify(value)).length
@@ -481,6 +492,20 @@ export const idbCache = {
       notifySubscribers(store, '*', null)
     } catch {
       // Cache clear failure is non-fatal
+    }
+  },
+
+  /**
+   * Reads every value in `store`, ignoring TTL (the caller decides what is
+   * stale). Used to backfill the time-series engine from legacy cache blobs.
+   */
+  async getAll<T>(store: StoreName): Promise<T[]> {
+    try {
+      const db = await openDB()
+      const entries = await idbGetAll<T>(db, store)
+      return entries.map((entry) => entry.value)
+    } catch {
+      return []
     }
   },
 

@@ -12,7 +12,11 @@
 const CACHE_VERSION = 'stellar-oracle-shell-v1'
 const SCOPE_URL = new URL('.', self.location.href)
 const OFFLINE_URL = new URL('offline.html', SCOPE_URL).href
-const SHELL_URLS = [SCOPE_URL.href, OFFLINE_URL]
+// offline.html's stylesheet and script are same-origin files (the CSP forbids
+// inline ones), so they must be precached too — an offline document that still
+// needs the network for its CSS and retry handler is not an offline document.
+const OFFLINE_ASSETS = ['offline.css', 'offline.js'].map((file) => new URL(file, SCOPE_URL).href)
+const SHELL_URLS = [SCOPE_URL.href, OFFLINE_URL, ...OFFLINE_ASSETS]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(SHELL_URLS)))

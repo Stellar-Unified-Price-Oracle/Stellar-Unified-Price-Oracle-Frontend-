@@ -11,7 +11,8 @@ import { migrateLegacyAlertConditions } from '../types/alerts'
 import { usePriceContext } from '../context/PriceContext'
 import { AlertsArraySchema } from '../api/schemas'
 import { createBroadcastChannel } from '../utils/broadcastChannel'
-import { readRaw, writeJson, STORAGE_KEYS } from '../utils/storage'
+import { readRaw, STORAGE_KEYS } from '../utils/storage'
+import { persistDurable } from '../utils/durableWrites'
 import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
 import { evaluateCompoundCondition } from '../utils/alertEvaluator'
@@ -22,6 +23,9 @@ import {
   buildTriggerHistoryEntry,
   buildEscalationHistoryEntry,
   appendHistoryEntries,
+  recordAlertEvents,
+  importAlertHistoryToEngine,
+  clearAlertEventSeries,
 } from '../services/alertHistory'
 import { loadBotSecrets, sendTelegramMessage, sendDiscordMessage } from '../services/botNotifications'
 import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../services/notificationConfig'
@@ -231,8 +235,13 @@ function loadAlerts(): Alert[] {
   }
 }
 
+/**
+ * Persists alerts durably. A `localStorage` write can fail (full quota, private
+ * mode); `persistDurable` queues the value for retry instead of dropping it
+ * silently, so an alert the user can see is never quietly lost on reload.
+ */
 function saveAlerts(alerts: Alert[]): void {
-  writeJson(STORAGE_KEYS.alerts, alerts)
+  persistDurable(STORAGE_KEYS.alerts, alerts)
 }
 
 const AlertsContext = createContext<AlertsContextType | null>(null)
@@ -264,6 +273,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const historyRef = useRef(history)
   historyRef.current = history
   useEffect(() => registerMemoryProbe('alertHistory', () => historyRef.current.length), [])
+
+  // Backfill the existing localStorage log into the durable time-series the
+  // first time the provider mounts (idempotent — see importAlertHistoryToEngine).
+  useEffect(() => {
+    importAlertHistoryToEngine()
+  }, [])
 
   const { livePrices } = usePriceContext()
 
@@ -464,6 +479,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     if (firedEntries.length > 0) {
       // Newest first, capped (#309)
       setHistory((prev) => appendHistoryEntries(prev, firedEntries))
+      // Mirror into the time-series engine for retention/rollups/range queries.
+      recordAlertEvents(firedEntries)
     }
   }, [livePrices, alerts])
 
@@ -632,7 +649,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /** Clears the fired-alert history log (#309) */
-  const clearAlertHistory = useCallback(() => setHistory([]), [])
+  const clearAlertHistory = useCallback(() => {
+    setHistory([])
+    clearAlertEventSeries()
+  }, [])
 
   const value: AlertsContextType = {
     alerts,
