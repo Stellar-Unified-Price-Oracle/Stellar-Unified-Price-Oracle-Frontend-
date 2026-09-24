@@ -120,8 +120,7 @@ const ar = {
     setAlert: 'ضبط تنبيه',
     ariaLabel: 'عرض تفاصيل {{pair}}',
     alertAriaLabel: 'ضبط تنبيه لـ {{pair}}',
-    confidenceTooltip:
-      'تعكس الثقة مدى اتساق السعر عبر مصادر الأوراكل. ١٠٠٪ تعني أن جميع المصادر تتفق تماماً.',
+    confidenceTooltip: 'تعكس الثقة مدى اتساق السعر عبر مصادر الأوراكل. ١٠٠٪ تعني أن جميع المصادر تتفق تماماً.',
   },
 
   // ── PriceTableView ────────────────────────────────────────────────────────
@@ -511,7 +510,8 @@ const ar = {
   // ── Source descriptions ───────────────────────────────────────────────────
   sources: {
     chainlink: 'Chainlink شبكة أوراكل لامركزية تقدم بيانات أسعار محمية من التلاعب من موفري بيانات متميزين.',
-    redstone: 'RedStone أوراكل معياري يبث تغذيات أسعار موقّعة عند الطلب، مما يقلل تكاليف الغاز بتخزين البيانات خارج السلسلة.',
+    redstone:
+      'RedStone أوراكل معياري يبث تغذيات أسعار موقّعة عند الطلب، مما يقلل تكاليف الغاز بتخزين البيانات خارج السلسلة.',
     band: 'Band Protocol يجمع البيانات الواقعية من مصادر متعددة ويتيحها على السلسلة عبر مدققين مفوّضين.',
     reflector: 'Reflector أوراكل أصلي لشبكة Stellar ينشر أسعار الأصول مباشرةً على شبكة Stellar.',
     defaultTooltip: '{{source}} ساهم بتغذية سعر لهذه القيمة المجمّعة.',
@@ -523,7 +523,8 @@ const ar = {
       ariaLabel: 'قسم نظرة عامة على السوق',
       liveStatus: 'مباشر · جميع الأوراكل نشطة',
       title: 'Stellar Unified Price Oracle',
-      subtitle: 'أسعار أصول مجمّعة في الوقت الفعلي من Chainlink وRedstone وBand وReflector — تُبثّ مباشرةً لتطبيقك عبر REST وWebSocket.',
+      subtitle:
+        'أسعار أصول مجمّعة في الوقت الفعلي من Chainlink وRedstone وBand وReflector — تُبثّ مباشرةً لتطبيقك عبر REST وWebSocket.',
       cta: 'فتح لوحة التحكم',
       ctaAriaLabel: 'فتح لوحة تحكم أوراكل الأسعار',
       apiDocs: 'وثائق API',
@@ -554,6 +555,60 @@ const ar = {
     dragHint: 'اسحب لإعادة الترتيب',
     ariaLabel: 'اسحب لإعادة ترتيب بطاقات الأسعار',
     dropTarget: 'أسقط هنا',
+  },
+
+  // ── لوحة الأوامر ──────────────────────────────────────────────────────────
+  commandPalette: {
+    title: 'لوحة الأوامر',
+    open: 'فتح لوحة الأوامر',
+    openShort: 'بحث',
+    placeholder: 'اكتب أمرًا أو ابحث…',
+    noResults: 'لا توجد أوامر تطابق “{{query}}”',
+    noResultsHint: 'جرّب مصطلح بحث آخر.',
+    resultCount_one: '{{count}} أمر',
+    resultCount_other: '{{count}} أوامر',
+    hintNavigate: 'تنقّل',
+    hintExecute: 'تنفيذ',
+    hintClose: 'إغلاق',
+    categories: {
+      navigation: 'التنقل',
+      pricePairs: 'أزواج الأسعار',
+      filters: 'الفلاتر والترتيب',
+      alerts: 'التنبيهات',
+      exports: 'تصدير',
+      theme: 'المظهر',
+      savedViews: 'العروض المحفوظة',
+    },
+    nav: {
+      webhooks: 'Webhooks',
+      security: 'الأمان',
+    },
+    filters: {
+      clear: 'مسح كل الفلاتر',
+      allSources: 'عرض كل مصادر الأوراكل',
+      sourceOnly: 'عرض {{source}} فقط',
+      updatedWithin: 'محدّث خلال {{window}}',
+      sortBy: 'ترتيب حسب {{field}}',
+      toggleDirection: 'عكس اتجاه الترتيب',
+    },
+    alerts: {
+      create: 'إنشاء تنبيه سعر…',
+      togglePanel: 'تبديل لوحة التنبيهات',
+    },
+    exports: {
+      csv: 'تصدير بصيغة CSV',
+      json: 'تصدير بصيغة JSON',
+      xlsx: 'تصدير بصيغة XLSX',
+      columns: 'اختيار أعمدة التصدير…',
+      disabledNoData: 'لا توجد بيانات للتصدير',
+      disabledRateLimited: 'تم بلوغ حد التصدير ({{seconds}} ث)',
+    },
+    theme: {
+      light: 'التبديل إلى المظهر الفاتح',
+      dark: 'التبديل إلى المظهر الداكن',
+      system: 'استخدام مظهر النظام',
+      toggle: 'تبديل المظهر الفاتح/الداكن',
+    },
   },
 } as const
 

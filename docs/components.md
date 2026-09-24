@@ -36,12 +36,18 @@ App
         └── NotFound (page)
 
 Providers (wrapping App)
-├── PreferencesProvider   — IndexedDB-backed preferences + undo/redo
-├── PriceProvider         — WebSocket + REST price data
-├── AlertsProvider        — Alert state, threshold eval, notifications
-├── ToastProvider         — Toast queue
+├── PreferencesProvider      — IndexedDB-backed preferences + undo/redo
+├── PriceProvider            — WebSocket + REST price data
+├── AlertsProvider           — Alert state, threshold eval, notifications
+├── ToastProvider            — Toast queue
 ├── KeyboardShortcutsProvider
+├── CommandRegistryProvider  — command palette command registry
+├── CommandPaletteProvider   — palette open state + Ctrl/Cmd+K
 └── ErrorReporterProvider
+
+CommandPalette (portal, rendered by CommandPaletteProvider)
+└── commands sourced from the registry:
+    navigation · pricePairs · filters · alerts · exports · theme · savedViews
 ```
 
 ---
@@ -52,19 +58,19 @@ Providers (wrapping App)
 
 Displays a single aggregated price feed card.
 
-| Prop           | Type                                              | Default     | Description                                         |
-|----------------|---------------------------------------------------|-------------|-----------------------------------------------------|
-| `price`        | `PriceData`                                       | —           | Price data to display                               |
-| `onClick`      | `(assetPair: string) => void`                     | `undefined` | Called on card click / Enter / Space                |
-| `isLive`       | `boolean`                                         | `false`     | Reserved for flash animation                        |
-| `isStale`      | `boolean`                                         | `false`     | Renders at 60 % opacity when true                   |
-| `syncState`    | `PriceSyncState`                                  | `undefined` | Optimistic sync state indicator                     |
-| `flashVersion` | `number`                                          | `undefined` | Increment to trigger CSS price-update animation     |
-| `isValidating` | `boolean`                                         | `false`     | Shows spinner during background REST revalidation   |
-| `hasAlert`     | `boolean`                                         | `false`     | Shows alert button in amber (active) state          |
-| `onAlertClick` | `(e: React.MouseEvent, assetPair: string) => void`| `undefined` | Called when alert button is clicked                 |
-| `selectMode`   | `boolean`                                         | `false`     | Shows checkbox for multi-select                     |
-| `isSelected`   | `boolean`                                         | `false`     | Highlights card with cyan ring when selected        |
+| Prop           | Type                                               | Default     | Description                                       |
+| -------------- | -------------------------------------------------- | ----------- | ------------------------------------------------- |
+| `price`        | `PriceData`                                        | —           | Price data to display                             |
+| `onClick`      | `(assetPair: string) => void`                      | `undefined` | Called on card click / Enter / Space              |
+| `isLive`       | `boolean`                                          | `false`     | Reserved for flash animation                      |
+| `isStale`      | `boolean`                                          | `false`     | Renders at 60 % opacity when true                 |
+| `syncState`    | `PriceSyncState`                                   | `undefined` | Optimistic sync state indicator                   |
+| `flashVersion` | `number`                                           | `undefined` | Increment to trigger CSS price-update animation   |
+| `isValidating` | `boolean`                                          | `false`     | Shows spinner during background REST revalidation |
+| `hasAlert`     | `boolean`                                          | `false`     | Shows alert button in amber (active) state        |
+| `onAlertClick` | `(e: React.MouseEvent, assetPair: string) => void` | `undefined` | Called when alert button is clicked               |
+| `selectMode`   | `boolean`                                          | `false`     | Shows checkbox for multi-select                   |
+| `isSelected`   | `boolean`                                          | `false`     | Highlights card with cyan ring when selected      |
 
 **Memoization note**: pass `onClick` / `onAlertClick` as stable references; the
 component uses `useCallback` internally but re-creating the prop identity every
@@ -76,12 +82,12 @@ render defeats `memo()`. See `AGENTS.md` § Memoization Convention.
 
 WebSocket status pill with coloured dot.
 
-| Prop              | Type                   | Default     | Description                                      |
-|-------------------|------------------------|-------------|--------------------------------------------------|
-| `status`          | `ConnectionStatus`     | —           | One of: connected, connecting, reconnecting, waiting, dead, disconnected |
-| `rateLimitStatus` | `RateLimitStatus`      | `undefined` | When `'limited'`, overrides label + colour       |
-| `retryAfterMs`    | `number`               | `undefined` | Countdown shown with rate-limit label            |
-| `diagnostics`     | `ConnectionDiagnostics`| `undefined` | Adds retry count to label on reconnect states    |
+| Prop              | Type                    | Default     | Description                                                              |
+| ----------------- | ----------------------- | ----------- | ------------------------------------------------------------------------ |
+| `status`          | `ConnectionStatus`      | —           | One of: connected, connecting, reconnecting, waiting, dead, disconnected |
+| `rateLimitStatus` | `RateLimitStatus`       | `undefined` | When `'limited'`, overrides label + colour                               |
+| `retryAfterMs`    | `number`                | `undefined` | Countdown shown with rate-limit label                                    |
+| `diagnostics`     | `ConnectionDiagnostics` | `undefined` | Adds retry count to label on reconnect states                            |
 
 ---
 
@@ -89,9 +95,9 @@ WebSocket status pill with coloured dot.
 
 Row of oracle source pills derived from a list of source names.
 
-| Prop      | Type               | Default | Description                            |
-|-----------|--------------------|---------|----------------------------------------|
-| `sources` | `readonly string[]`| —       | Oracle keys: `chainlink`, `redstone`, `band`, `reflector` |
+| Prop      | Type                | Default | Description                                               |
+| --------- | ------------------- | ------- | --------------------------------------------------------- |
+| `sources` | `readonly string[]` | —       | Oracle keys: `chainlink`, `redstone`, `band`, `reflector` |
 
 Renders `"No sources"` muted text when the array is empty.
 
@@ -101,10 +107,10 @@ Renders `"No sources"` muted text when the array is empty.
 
 Accessible hover / focus tooltip.
 
-| Prop       | Type        | Default | Description                              |
-|------------|-------------|---------|------------------------------------------|
-| `content`  | `string`    | —       | Tooltip text                             |
-| `children` | `ReactNode` | —       | Trigger element                          |
+| Prop       | Type        | Default | Description     |
+| ---------- | ----------- | ------- | --------------- |
+| `content`  | `string`    | —       | Tooltip text    |
+| `children` | `ReactNode` | —       | Trigger element |
 
 ---
 
@@ -112,14 +118,14 @@ Accessible hover / focus tooltip.
 
 Class component that catches render-time errors.
 
-| Prop           | Type                              | Default       | Description                                      |
-|----------------|-----------------------------------|---------------|--------------------------------------------------|
-| `children`     | `ReactNode`                       | —             | Subtree to protect                               |
-| `fallback`     | `ReactNode`                       | built-in UI   | Custom fallback element                          |
-| `onError`      | `(error, info) => void`           | `undefined`   | Error reporting callback                         |
-| `boundaryId`   | `string`                          | `'unknown'`   | Identifier for error reports                     |
-| `showGoBack`   | `boolean`                         | `false`       | Shows "Go back" button in fallback               |
-| `featureLabel` | `string`                          | `'This section'` | Context label in fallback heading             |
+| Prop           | Type                    | Default          | Description                        |
+| -------------- | ----------------------- | ---------------- | ---------------------------------- |
+| `children`     | `ReactNode`             | —                | Subtree to protect                 |
+| `fallback`     | `ReactNode`             | built-in UI      | Custom fallback element            |
+| `onError`      | `(error, info) => void` | `undefined`      | Error reporting callback           |
+| `boundaryId`   | `string`                | `'unknown'`      | Identifier for error reports       |
+| `showGoBack`   | `boolean`               | `false`          | Shows "Go back" button in fallback |
+| `featureLabel` | `string`                | `'This section'` | Context label in fallback heading  |
 
 ---
 
@@ -127,11 +133,40 @@ Class component that catches render-time errors.
 
 Compact pill summarising active alert count and directionality.
 
-| Prop      | Type         | Default     | Description                                |
-|-----------|--------------|-------------|--------------------------------------------|
-| `count`   | `number`     | —           | Active alert count; renders null when 0    |
-| `alerts`  | `Alert[]`    | —           | Used to derive directional indicator       |
-| `onClick` | `() => void` | `undefined` | Opens alert panel                          |
+| Prop      | Type         | Default     | Description                             |
+| --------- | ------------ | ----------- | --------------------------------------- |
+| `count`   | `number`     | —           | Active alert count; renders null when 0 |
+| `alerts`  | `Alert[]`    | —           | Used to derive directional indicator    |
+| `onClick` | `() => void` | `undefined` | Opens alert panel                       |
+
+---
+
+### CommandPalette
+
+Fuzzy-searchable command palette (Ctrl/Cmd+K). Commands are _not_ hardcoded:
+features register them through `useRegisterCommands()` and the palette renders
+whatever is in the registry.
+
+| Prop      | Type         | Default | Description                       |
+| --------- | ------------ | ------- | --------------------------------- |
+| `isOpen`  | `boolean`    | —       | Controls visibility (portal)      |
+| `onClose` | `() => void` | —       | Called on Escape / backdrop click |
+
+Search runs against a `useDeferredValue`d query and is grouped by category
+(score-ordered within a group; groups ordered by best score while searching, and
+by `COMMAND_CATEGORY_ORDER` when the query is empty). Lists longer than 60 rows
+are windowed with `@tanstack/react-virtual`. Arrow/PageUp/PageDown/Home/End move
+the active option (tracked via `aria-activedescendant`), Enter runs it, and
+Tab is trapped inside the dialog. Disabled commands stay listed with their
+`disabledReason` and cannot be activated.
+
+Command sources:
+
+| Hook                   | Registers                                       |
+| ---------------------- | ----------------------------------------------- |
+| `useAppCommands`       | Navigation, theme, saved views (every page)     |
+| `useDashboardCommands` | Price pairs, filters/sort, export, create-alert |
+| `Layout`               | Alerts panel toggle                             |
 
 ---
 
@@ -147,16 +182,16 @@ Renders `null` when `isPanelOpen` is `false`.
 
 Modal for creating and editing alerts.
 
-| Prop               | Type                        | Default     | Description                                     |
-|--------------------|-----------------------------|-------------|-------------------------------------------------|
-| `isOpen`           | `boolean`                   | —           | Controls visibility                             |
-| `onClose`          | `() => void`                | —           | Dismiss callback                                |
-| `onSave`           | `(data: AlertFormData) => void` | —       | Save callback with validated data               |
-| `onDelete`         | `() => void`                | `undefined` | Delete callback for existing alerts             |
-| `onReEnable`       | `() => void`                | `undefined` | Re-enable callback for fired-once alerts        |
-| `alert`            | `Alert \| null`             | `null`      | Pre-fills form when editing                     |
-| `currentPrice`     | `number`                    | `undefined` | Shown as context next to threshold fields       |
-| `defaultAssetPair` | `string`                    | `undefined` | Pre-fills asset pair for new alerts             |
+| Prop               | Type                            | Default     | Description                               |
+| ------------------ | ------------------------------- | ----------- | ----------------------------------------- |
+| `isOpen`           | `boolean`                       | —           | Controls visibility                       |
+| `onClose`          | `() => void`                    | —           | Dismiss callback                          |
+| `onSave`           | `(data: AlertFormData) => void` | —           | Save callback with validated data         |
+| `onDelete`         | `() => void`                    | `undefined` | Delete callback for existing alerts       |
+| `onReEnable`       | `() => void`                    | `undefined` | Re-enable callback for fired-once alerts  |
+| `alert`            | `Alert \| null`                 | `null`      | Pre-fills form when editing               |
+| `currentPrice`     | `number`                        | `undefined` | Shown as context next to threshold fields |
+| `defaultAssetPair` | `string`                        | `undefined` | Pre-fills asset pair for new alerts       |
 
 ---
 
@@ -164,11 +199,11 @@ Modal for creating and editing alerts.
 
 Dropdown trigger for CSV / JSON / XLSX export.
 
-| Prop       | Type                           | Default | Description                                      |
-|------------|--------------------------------|---------|--------------------------------------------------|
-| `onExport` | `(format: ExportFormat) => void` | —     | Called with chosen format                        |
-| `exporting`| `boolean`                      | —       | Shows spinner and disables while true            |
-| `disabled` | `boolean`                      | `false` | Disables button (e.g. no data to export)         |
+| Prop        | Type                             | Default | Description                              |
+| ----------- | -------------------------------- | ------- | ---------------------------------------- |
+| `onExport`  | `(format: ExportFormat) => void` | —       | Called with chosen format                |
+| `exporting` | `boolean`                        | —       | Shows spinner and disables while true    |
+| `disabled`  | `boolean`                        | `false` | Disables button (e.g. no data to export) |
 
 ---
 
@@ -184,17 +219,17 @@ Must be rendered inside `<PreferencesProvider>`.
 
 Sortable table of all price pairs.
 
-| Prop             | Type                                          | Default     | Description                              |
-|------------------|-----------------------------------------------|-------------|------------------------------------------|
-| `items`          | `PriceData[]`                                 | —           | Rows to display                          |
-| `livePairs`      | `Set<string>`                                 | —           | Pairs with active WebSocket updates      |
-| `isStale`        | `boolean`                                     | `false`     | All rows at 60 % opacity                 |
-| `onRowClick`     | `(pair: string) => void`                      | —           | Row click / keyboard activation          |
-| `onAlertClick`   | `(e: React.MouseEvent, pair: string) => void` | —           | Alert button click                       |
-| `hasAlertFn`     | `(pair: string) => boolean`                   | —           | Returns true if pair has an alert        |
-| `selectMode`     | `boolean`                                     | `false`     | Enables checkbox column                  |
-| `selected`       | `Set<string>`                                 | `undefined` | Currently selected pairs                 |
-| `onToggleSelect` | `(pair: string) => void`                      | `undefined` | Toggle selection for a pair              |
+| Prop             | Type                                          | Default     | Description                         |
+| ---------------- | --------------------------------------------- | ----------- | ----------------------------------- |
+| `items`          | `PriceData[]`                                 | —           | Rows to display                     |
+| `livePairs`      | `Set<string>`                                 | —           | Pairs with active WebSocket updates |
+| `isStale`        | `boolean`                                     | `false`     | All rows at 60 % opacity            |
+| `onRowClick`     | `(pair: string) => void`                      | —           | Row click / keyboard activation     |
+| `onAlertClick`   | `(e: React.MouseEvent, pair: string) => void` | —           | Alert button click                  |
+| `hasAlertFn`     | `(pair: string) => boolean`                   | —           | Returns true if pair has an alert   |
+| `selectMode`     | `boolean`                                     | `false`     | Enables checkbox column             |
+| `selected`       | `Set<string>`                                 | `undefined` | Currently selected pairs            |
+| `onToggleSelect` | `(pair: string) => void`                      | `undefined` | Toggle selection for a pair         |
 
 ---
 
@@ -213,11 +248,11 @@ Sortable table of all price pairs.
 
 ## Loading / Empty / Error States
 
-| Component       | Loading                     | Empty                        | Error                          |
-|-----------------|-----------------------------|------------------------------|--------------------------------|
-| Dashboard       | `DashboardSkeleton`         | "No results" filter message  | `ErrorBoundary` wraps page     |
-| PriceDetail     | `PriceDetailSkeleton`       | —                            | `ErrorBoundary` wraps page     |
-| PriceChart      | Recharts renders empty axes | Empty area chart             | `ErrorBoundary featureLabel`   |
-| AlertPanel      | —                           | "Add your first alert" prompt| —                              |
-| PriceTableView  | —                           | Empty `<tbody>`              | —                              |
-| ConnectionBadge | `connecting` status         | —                            | `dead` / `disconnected` status |
+| Component       | Loading                     | Empty                         | Error                          |
+| --------------- | --------------------------- | ----------------------------- | ------------------------------ |
+| Dashboard       | `DashboardSkeleton`         | "No results" filter message   | `ErrorBoundary` wraps page     |
+| PriceDetail     | `PriceDetailSkeleton`       | —                             | `ErrorBoundary` wraps page     |
+| PriceChart      | Recharts renders empty axes | Empty area chart              | `ErrorBoundary featureLabel`   |
+| AlertPanel      | —                           | "Add your first alert" prompt | —                              |
+| PriceTableView  | —                           | Empty `<tbody>`               | —                              |
+| ConnectionBadge | `connecting` status         | —                             | `dead` / `disconnected` status |
