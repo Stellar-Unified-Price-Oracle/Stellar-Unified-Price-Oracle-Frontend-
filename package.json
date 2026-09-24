@@ -39,9 +39,9 @@
   },
   "size-limit": [
     {
-      "name": "Main JS (entry)",
+      "name": "Initial JS (entry chunk)",
       "path": "dist/assets/index-*.js",
-      "limit": "200 kB",
+      "limit": "12 kB",
       "brotli": true
     },
     {
@@ -51,9 +51,9 @@
       "brotli": true
     },
     {
-      "name": "CSS Bundle",
+      "name": "Initial CSS",
       "path": "dist/assets/index-*.css",
-      "limit": "50 kB",
+      "limit": "6 kB",
       "brotli": true
     }
   ],

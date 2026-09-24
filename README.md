@@ -136,7 +136,8 @@ See [Local HTTPS Setup Guide](./docs/https-setup.md) for more information.
 ```bash
 npm run build          # outputs to dist/
 npm run build:analyze  # build + generate bundle analysis report (reports/bundle-stats.html)
-npm run size-limit     # check bundle size against configured budgets
+npm run check:budgets  # structural bundle budget guard (run after build)
+npm run size-limit     # size-limit backstop over the initial-load set
 npm run preview        # preview production build locally
 ```
 
