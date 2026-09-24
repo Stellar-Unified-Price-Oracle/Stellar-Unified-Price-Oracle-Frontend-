@@ -81,6 +81,37 @@ exports[`snapshots > default 1`] = `
       <div
         class="flex items-center gap-2"
       >
+        <button
+          aria-label="Open command palette"
+          class="hidden sm:flex items-center gap-2 min-h-[44px] px-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+          title="Open command palette"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+          <span
+            class="hidden md:inline text-sm"
+          >
+            Search
+          </span>
+          <kbd
+            class="hidden lg:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-gray-400"
+          >
+            Ctrl K
+          </kbd>
+        </button>
         <div
           class="flex flex-col items-end gap-1"
         >

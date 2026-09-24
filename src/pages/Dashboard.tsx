@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { usePriceContext } from '../context/PriceContext'
 import { useAlerts } from '../hooks/useAlerts'
 import { useExport } from '../hooks/useExport'
+import { useDashboardCommands } from '../hooks/useDashboardCommands'
 import { useExportQueue } from '../hooks/useExportQueue'
 import { useColumnSelection } from '../hooks/useColumnSelection'
 import { useScheduledExports } from '../hooks/useScheduledExports'
@@ -136,6 +137,9 @@ export function Dashboard() {
   const legacySource = searchParams.get('source') || 'all'
 
   const merged = mergePrices(prices, livePrices)
+  // Stable, sorted pair list: the palette registers one command per pair, so
+  // the identity must not churn when live prices tick.
+  const pairNames = useMemo(() => [...new Set(prices.map((p) => p.assetPair))].sort(), [prices])
   const scheduledExports = useScheduledExports(merged)
   const [scheduledExportsOpen, setScheduledExportsOpen] = useState(false)
 

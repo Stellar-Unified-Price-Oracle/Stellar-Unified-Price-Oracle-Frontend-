@@ -9,6 +9,8 @@ import { PriceDetailSkeleton } from './components/PriceDetailSkeleton'
 import { ApiDocsSkeleton } from './components/Skeletons/ApiDocsSkeleton'
 import { NotFoundSkeleton } from './components/Skeletons/NotFoundSkeleton'
 import { PriceProvider } from './context/PriceContext'
+import { CommandRegistryProvider } from './context/CommandRegistryContext'
+import { CommandPaletteProvider } from './context/CommandPaletteContext'
 import { KeyboardShortcutsProvider } from './context/KeyboardShortcutsContext'
 import { AlertsProvider } from './hooks/useAlerts'
 import { ToastProvider } from './context/ToastContext'
@@ -186,8 +188,14 @@ export default function App(): ReactElement {
                 <WalletProvider>
                   <PriceProvider>
                     <KeyboardShortcutsProvider>
-                      <AppContent />
-                      {import.meta.env.DEV && <PerformanceOverlay />}
+                      {/* Registry first: the palette provider registers app-wide
+                          commands and renders the palette that reads them. */}
+                      <CommandRegistryProvider>
+                        <CommandPaletteProvider>
+                          <AppContent />
+                          {import.meta.env.DEV && <PerformanceOverlay />}
+                        </CommandPaletteProvider>
+                      </CommandRegistryProvider>
                     </KeyboardShortcutsProvider>
                   </PriceProvider>
                 </WalletProvider>

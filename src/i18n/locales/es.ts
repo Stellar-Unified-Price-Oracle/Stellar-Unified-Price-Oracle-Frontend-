@@ -634,6 +634,60 @@ const es = {
         'Conecta una billetera Stellar para usar funciones en cadena, como implementar y publicar en el contrato del oráculo.',
     },
   },
+
+  // ── Paleta de comandos ────────────────────────────────────────────────────
+  commandPalette: {
+    title: 'Paleta de comandos',
+    open: 'Abrir la paleta de comandos',
+    openShort: 'Buscar',
+    placeholder: 'Escribe un comando o busca…',
+    noResults: 'Ningún comando coincide con “{{query}}”',
+    noResultsHint: 'Prueba con otro término de búsqueda.',
+    resultCount_one: '{{count}} comando',
+    resultCount_other: '{{count}} comandos',
+    hintNavigate: 'Navegar',
+    hintExecute: 'Ejecutar',
+    hintClose: 'Cerrar',
+    categories: {
+      navigation: 'Navegación',
+      pricePairs: 'Pares de precios',
+      filters: 'Filtros y orden',
+      alerts: 'Alertas',
+      exports: 'Exportar',
+      theme: 'Tema',
+      savedViews: 'Vistas guardadas',
+    },
+    nav: {
+      webhooks: 'Webhooks',
+      security: 'Seguridad',
+    },
+    filters: {
+      clear: 'Borrar todos los filtros',
+      allSources: 'Mostrar todas las fuentes',
+      sourceOnly: 'Mostrar solo {{source}}',
+      updatedWithin: 'Actualizado en {{window}}',
+      sortBy: 'Ordenar por {{field}}',
+      toggleDirection: 'Invertir la dirección del orden',
+    },
+    alerts: {
+      create: 'Crear una alerta de precio…',
+      togglePanel: 'Alternar el panel de alertas',
+    },
+    exports: {
+      csv: 'Exportar como CSV',
+      json: 'Exportar como JSON',
+      xlsx: 'Exportar como XLSX',
+      columns: 'Seleccionar columnas de exportación…',
+      disabledNoData: 'No hay datos para exportar',
+      disabledRateLimited: 'Límite de exportación alcanzado ({{seconds}}s)',
+    },
+    theme: {
+      light: 'Cambiar al tema claro',
+      dark: 'Cambiar al tema oscuro',
+      system: 'Usar el tema del sistema',
+      toggle: 'Alternar tema claro/oscuro',
+    },
+  },
 } as const
 
 export default es

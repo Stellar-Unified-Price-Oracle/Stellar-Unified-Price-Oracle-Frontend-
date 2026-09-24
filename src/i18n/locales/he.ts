@@ -120,8 +120,7 @@ const he = {
     setAlert: 'הגדר התראה',
     ariaLabel: 'הצג פרטים עבור {{pair}}',
     alertAriaLabel: 'הגדר התראה עבור {{pair}}',
-    confidenceTooltip:
-      'הביטחון משקף עד כמה המחיר עקבי בין מקורות ה-Oracle. 100% אומר שכל המקורות מסכימים לחלוטין.',
+    confidenceTooltip: 'הביטחון משקף עד כמה המחיר עקבי בין מקורות ה-Oracle. 100% אומר שכל המקורות מסכימים לחלוטין.',
   },
 
   // ── PriceTableView ────────────────────────────────────────────────────────
@@ -233,7 +232,7 @@ const he = {
       channelLabel: 'ערוץ עבור שלב {{step}}',
       delayLabel: 'עיכוב בדקות עבור שלב {{step}}',
       removeStep: 'הסר שלב {{step}}',
-      minutesSuffix: 'דק\'',
+      minutesSuffix: "דק'",
       channel_inApp: 'בתוך האפליקציה',
       channel_email: 'אימייל',
       channel_webPush: 'התראת דחיפה',
@@ -511,7 +510,8 @@ const he = {
   // ── Source descriptions ───────────────────────────────────────────────────
   sources: {
     chainlink: 'Chainlink היא רשת Oracle מבוזרת המספקת נתוני מחיר עמידים בפני חבלה ממספקי נתונים פרמיום.',
-    redstone: 'RedStone הוא Oracle מודולרי שמזרים עדכוני מחיר חתומים לפי דרישה, ומפחית עלויות גז על ידי אחסון נתונים מחוץ לשרשרת.',
+    redstone:
+      'RedStone הוא Oracle מודולרי שמזרים עדכוני מחיר חתומים לפי דרישה, ומפחית עלויות גז על ידי אחסון נתונים מחוץ לשרשרת.',
     band: 'Band Protocol מצבר נתוני עולם אמיתי ממקורות מרובים ומאפשר אותם על-שרשרת דרך מאמתים מוסמכים.',
     reflector: 'Reflector הוא Oracle ילידי Stellar המפרסם מחירי נכסים ישירות על רשת Stellar.',
     defaultTooltip: '{{source}} תרם עדכון מחיר לערך המצטבר הזה.',
@@ -523,7 +523,8 @@ const he = {
       ariaLabel: 'חלק סקירה כללית של השוק',
       liveStatus: 'חי · כל ה-Oracles פעילים',
       title: 'Stellar Unified Price Oracle',
-      subtitle: 'מחירי נכסים מצטברים בזמן אמת מ-Chainlink, Redstone, Band ו-Reflector — מוזרמים ישירות לאפליקציה שלך דרך REST ו-WebSocket.',
+      subtitle:
+        'מחירי נכסים מצטברים בזמן אמת מ-Chainlink, Redstone, Band ו-Reflector — מוזרמים ישירות לאפליקציה שלך דרך REST ו-WebSocket.',
       cta: 'פתח לוח בקרה',
       ctaAriaLabel: 'פתח את לוח בקרת Oracle המחירים',
       apiDocs: 'תיעוד API',
@@ -554,6 +555,60 @@ const he = {
     dragHint: 'גרור לסידור מחדש',
     ariaLabel: 'גרור לסידור מחדש של כרטיסי מחיר',
     dropTarget: 'שחרר כאן',
+  },
+
+  // ── לוח פקודות ────────────────────────────────────────────────────────────
+  commandPalette: {
+    title: 'לוח פקודות',
+    open: 'פתח לוח פקודות',
+    openShort: 'חיפוש',
+    placeholder: 'הקלד פקודה או חפש…',
+    noResults: 'אין פקודות שתואמות “{{query}}”',
+    noResultsHint: 'נסה מונח חיפוש אחר.',
+    resultCount_one: 'פקודה {{count}}',
+    resultCount_other: '{{count}} פקודות',
+    hintNavigate: 'ניווט',
+    hintExecute: 'הפעלה',
+    hintClose: 'סגירה',
+    categories: {
+      navigation: 'ניווט',
+      pricePairs: 'זוגות מחירים',
+      filters: 'סינון ומיון',
+      alerts: 'התראות',
+      exports: 'ייצוא',
+      theme: 'ערכת נושא',
+      savedViews: 'תצוגות שמורות',
+    },
+    nav: {
+      webhooks: 'Webhooks',
+      security: 'אבטחה',
+    },
+    filters: {
+      clear: 'נקה את כל המסננים',
+      allSources: 'הצג את כל מקורות האורקל',
+      sourceOnly: 'הצג רק {{source}}',
+      updatedWithin: 'עודכן בתוך {{window}}',
+      sortBy: 'מיין לפי {{field}}',
+      toggleDirection: 'החלף כיוון מיון',
+    },
+    alerts: {
+      create: 'צור התראת מחיר…',
+      togglePanel: 'החלף לוח התראות',
+    },
+    exports: {
+      csv: 'ייצא כ‑CSV',
+      json: 'ייצא כ‑JSON',
+      xlsx: 'ייצא כ‑XLSX',
+      columns: 'בחר עמודות ייצוא…',
+      disabledNoData: 'אין נתונים לייצוא',
+      disabledRateLimited: 'הגעת למגבלת הייצוא ({{seconds}} שנ׳)',
+    },
+    theme: {
+      light: 'עבור לערכת נושא בהירה',
+      dark: 'עבור לערכת נושא כהה',
+      system: 'השתמש בערכת הנושא של המערכת',
+      toggle: 'החלף בין בהיר לכהה',
+    },
   },
 } as const
 

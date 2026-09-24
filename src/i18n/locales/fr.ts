@@ -637,6 +637,60 @@ const fr = {
         "Connectez un portefeuille Stellar pour utiliser les fonctions en chaîne comme le déploiement et la publication sur le contrat d'oracle.",
     },
   },
+
+  // ── Palette de commandes ──────────────────────────────────────────────────
+  commandPalette: {
+    title: 'Palette de commandes',
+    open: 'Ouvrir la palette de commandes',
+    openShort: 'Rechercher',
+    placeholder: 'Saisissez une commande ou recherchez…',
+    noResults: 'Aucune commande ne correspond à « {{query}} »',
+    noResultsHint: 'Essayez un autre terme de recherche.',
+    resultCount_one: '{{count}} commande',
+    resultCount_other: '{{count}} commandes',
+    hintNavigate: 'Naviguer',
+    hintExecute: 'Exécuter',
+    hintClose: 'Fermer',
+    categories: {
+      navigation: 'Navigation',
+      pricePairs: 'Paires de prix',
+      filters: 'Filtres et tri',
+      alerts: 'Alertes',
+      exports: 'Export',
+      theme: 'Thème',
+      savedViews: 'Vues enregistrées',
+    },
+    nav: {
+      webhooks: 'Webhooks',
+      security: 'Sécurité',
+    },
+    filters: {
+      clear: 'Effacer tous les filtres',
+      allSources: 'Afficher toutes les sources',
+      sourceOnly: 'Afficher uniquement {{source}}',
+      updatedWithin: 'Mis à jour depuis {{window}}',
+      sortBy: 'Trier par {{field}}',
+      toggleDirection: 'Inverser le sens du tri',
+    },
+    alerts: {
+      create: 'Créer une alerte de prix…',
+      togglePanel: "Afficher/masquer le panneau d'alertes",
+    },
+    exports: {
+      csv: 'Exporter en CSV',
+      json: 'Exporter en JSON',
+      xlsx: 'Exporter en XLSX',
+      columns: "Sélectionner les colonnes d'export…",
+      disabledNoData: 'Aucune donnée à exporter',
+      disabledRateLimited: "Limite d'export atteinte ({{seconds}}s)",
+    },
+    theme: {
+      light: 'Passer au thème clair',
+      dark: 'Passer au thème sombre',
+      system: 'Utiliser le thème du système',
+      toggle: 'Basculer clair/sombre',
+    },
+  },
 } as const
 
 export default fr

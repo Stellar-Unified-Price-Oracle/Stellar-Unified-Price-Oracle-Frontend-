@@ -631,6 +631,60 @@ const ja = {
         'オラクルコントラクトへのデプロイや公開などのオンチェーン機能を使用するには、Stellarウォレットを接続してください。',
     },
   },
+
+  // ── コマンドパレット ──────────────────────────────────────────────────────
+  commandPalette: {
+    title: 'コマンドパレット',
+    open: 'コマンドパレットを開く',
+    openShort: '検索',
+    placeholder: 'コマンドを入力するか検索…',
+    noResults: '「{{query}}」に一致するコマンドはありません',
+    noResultsHint: '別の検索語を試してください。',
+    resultCount_one: '{{count}} 件のコマンド',
+    resultCount_other: '{{count}} 件のコマンド',
+    hintNavigate: '移動',
+    hintExecute: '実行',
+    hintClose: '閉じる',
+    categories: {
+      navigation: 'ナビゲーション',
+      pricePairs: '価格ペア',
+      filters: 'フィルターと並び替え',
+      alerts: 'アラート',
+      exports: 'エクスポート',
+      theme: 'テーマ',
+      savedViews: '保存したビュー',
+    },
+    nav: {
+      webhooks: 'Webhooks',
+      security: 'セキュリティ',
+    },
+    filters: {
+      clear: 'すべてのフィルターを解除',
+      allSources: 'すべてのオラクルソースを表示',
+      sourceOnly: '{{source}} のみ表示',
+      updatedWithin: '{{window}} 以内に更新',
+      sortBy: '{{field}} で並び替え',
+      toggleDirection: '並び替えの方向を切り替え',
+    },
+    alerts: {
+      create: '価格アラートを作成…',
+      togglePanel: 'アラートパネルを切り替え',
+    },
+    exports: {
+      csv: 'CSV としてエクスポート',
+      json: 'JSON としてエクスポート',
+      xlsx: 'XLSX としてエクスポート',
+      columns: 'エクスポート列を選択…',
+      disabledNoData: 'エクスポートするデータがありません',
+      disabledRateLimited: 'エクスポートの上限に達しました ({{seconds}}秒)',
+    },
+    theme: {
+      light: 'ライトテーマに切り替え',
+      dark: 'ダークテーマに切り替え',
+      system: 'システムテーマを使用',
+      toggle: 'ライト/ダークを切り替え',
+    },
+  },
 } as const
 
 export default ja
