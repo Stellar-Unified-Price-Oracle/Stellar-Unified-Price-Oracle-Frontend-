@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, waitFor } from '@testing-library/react'
 import { useWebVitals } from './useWebVitals'
 
 let mockAnalyticsEndpoint = ''
@@ -81,9 +81,10 @@ afterEach(() => {
 })
 
 describe('useWebVitals', () => {
-  it('registers all web-vital observers on mount', () => {
+  it('registers all web-vital observers after the idle import resolves', async () => {
     render(<TestComponent />)
-    expect(mocks.onLCP).toHaveBeenCalledTimes(1)
+
+    await waitFor(() => expect(mocks.onLCP).toHaveBeenCalledTimes(1))
     expect(mocks.onFID).toHaveBeenCalledTimes(1)
     expect(mocks.onCLS).toHaveBeenCalledTimes(1)
     expect(mocks.onINP).toHaveBeenCalledTimes(1)
@@ -96,6 +97,7 @@ describe('useWebVitals', () => {
 
     render(<TestComponent />)
 
+    await waitFor(() => expect(mocks.onLCP).toHaveBeenCalledTimes(1))
     const callback = mocks.onLCP.mock.calls[0][0]
     callback(createMetric({ name: 'LCP', value: 2500, rating: 'needs-improvement' }))
 
@@ -111,9 +113,10 @@ describe('useWebVitals', () => {
     expect(body.connection).toBe('4g')
   })
 
-  it('does not call sendBeacon when analytics endpoint is empty', () => {
+  it('does not call sendBeacon when analytics endpoint is empty', async () => {
     render(<TestComponent />)
 
+    await waitFor(() => expect(mocks.onLCP).toHaveBeenCalledTimes(1))
     const callback = mocks.onLCP.mock.calls[0][0]
     callback(createMetric())
 
@@ -145,7 +148,7 @@ describe('useWebVitals', () => {
     expect(mocks.sendBeacon).not.toHaveBeenCalled()
   })
 
-  it('handles missing connection API gracefully', () => {
+  it('handles missing connection API gracefully', async () => {
     vi.stubGlobal('navigator', {
       doNotTrack: undefined,
       sendBeacon: mocks.sendBeacon,
@@ -154,20 +157,19 @@ describe('useWebVitals', () => {
 
     render(<TestComponent />)
 
+    await waitFor(() => expect(mocks.onLCP).toHaveBeenCalledTimes(1))
     const callback = mocks.onLCP.mock.calls[0][0]
     expect(() => callback(createMetric())).not.toThrow()
   })
 
-  it('falls back to setTimeout when requestIdleCallback is unavailable', () => {
+  it('falls back to setTimeout when requestIdleCallback is unavailable', async () => {
     vi.stubGlobal('requestIdleCallback', undefined)
     const setTimeoutSpy = vi.spyOn(window, 'setTimeout')
 
     render(<TestComponent />)
 
-    const callback = mocks.onLCP.mock.calls[0][0]
-    callback(createMetric())
-
-    expect(setTimeoutSpy).toHaveBeenCalled()
+    await waitFor(() => expect(setTimeoutSpy).toHaveBeenCalled())
+    await waitFor(() => expect(mocks.onLCP).toHaveBeenCalledTimes(1))
     setTimeoutSpy.mockRestore()
   })
 })

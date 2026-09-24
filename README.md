@@ -1,5 +1,5 @@
 [![CI](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml/badge.svg)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
-[![Bundle JS](https://img.shields.io/badge/JS-%3C200%20kB-44cc11?logo=javascript&labelColor=1a1a2e)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
+[![Bundle JS](https://img.shields.io/badge/JS-%3C100%20kB-44cc11?logo=javascript&labelColor=1a1a2e)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
 [![Bundle CSS](https://img.shields.io/badge/CSS-%3C50%20kB-44cc11?logo=css3&labelColor=1a1a2e)](https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/actions/workflows/ci.yml)
 
 # Stellar Unified Price Oracle — Frontend
@@ -59,10 +59,24 @@ npm run preview        # preview production build locally
 
 | Asset | Limit | Status |
 |---|---|---|
-| JavaScript | 200 kB | Enforced in CI |
-| CSS | 50 kB | Enforced in CI |
+| Startup entry (critical path) | 100 kB brotli | Enforced in CI |
+| Total JS (all chunks) | 600 kB brotli | Enforced in CI |
+| CSS | 50 kB brotli | Enforced in CI |
 
 The CI pipeline generates a [bundle-stats.html](./reports/bundle-stats.html) report using `rollup-plugin-visualizer` — an interactive treemap of the production bundle. This report is uploaded as a CI artifact on every build.
+
+### Startup Budget
+
+The dashboard boots in stages so the shell paints before optional subsystems compete for the main thread and the network. Each stage is measured from `markBoot()` (see `src/perf/startup.ts`) and checked against a budget: the entry chunk plus the first REST price is the critical path, and everything else waits for the first paint or an idle slot.
+
+| Stage | What completes | Budget (from boot) |
+|---|---|---|
+| `shell` | Nav + skeleton grid painted | 1500 ms |
+| `first-price` | First prices rendered from REST | 3000 ms |
+| `live` | WebSocket connected | 5000 ms |
+| `idle` | Deferred work (analytics) dispatched | 8000 ms |
+
+Deferred behind first paint or idle: the WebSocket connection, `web-vitals` registration, the settings panel, and the alert modal. `npm run size-limit` guards the entry chunk (the startup-critical asset) against regressions, and `src/perf/startupArchitecture.test.ts` fails if a deferred module is pulled back into the entry graph by a static import.
 
 ## API Endpoints Consumed
 

@@ -59,9 +59,20 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, alert, currentPr
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElement = useRef<HTMLElement | null>(null)
 
+  // Capture the trigger on mount and restore focus on unmount. Parents render
+  // the modal on demand, so unmount (not an isOpen flip) is the close signal.
+  useEffect(() => {
+    previousActiveElement.current = document.activeElement as HTMLElement
+    return () => {
+      previousActiveElement.current?.focus()
+    }
+  }, [])
+
   useEffect(() => {
     if (isOpen) {
-      previousActiveElement.current = document.activeElement as HTMLElement
+      if (!previousActiveElement.current) {
+        previousActiveElement.current = document.activeElement as HTMLElement
+      }
       if (alert) {
         setForm({
           assetPair: alert.assetPair,
@@ -77,8 +88,6 @@ export function AlertModal({ isOpen, onClose, onSave, onDelete, alert, currentPr
       requestAnimationFrame(() => {
         dialogRef.current?.focus()
       })
-    } else {
-      previousActiveElement.current?.focus()
     }
   }, [isOpen, alert, defaultAssetPair])
 

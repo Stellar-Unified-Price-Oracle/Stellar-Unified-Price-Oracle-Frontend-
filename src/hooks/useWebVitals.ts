@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { onLCP, onFID, onCLS, onINP, onFCP, onTTFB } from 'web-vitals'
 import type { Metric } from 'web-vitals'
 import { config } from '../config'
+import { markStage, runWhenIdle } from '../perf/startup'
 
 interface WebVitalReport {
   name: string
@@ -48,37 +48,53 @@ function sendToAnalytics(report: WebVitalReport) {
   }
 }
 
+function reportMetric(metric: Metric) {
+  const task = () => {
+    sendToAnalytics({
+      name: metric.name,
+      value: metric.value,
+      rating: metric.rating,
+      delta: metric.delta,
+      id: metric.id,
+      route: window.location.pathname,
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      connection: getConnectionType(),
+    })
+  }
+
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(task)
+  } else {
+    setTimeout(task, 0)
+  }
+}
+
 export function useWebVitals() {
   useEffect(() => {
     if (!shouldTrack()) return
+    let cancelled = false
 
-    const reportMetric = (metric: Metric) => {
-      const task = () => {
-        sendToAnalytics({
-          name: metric.name,
-          value: metric.value,
-          rating: metric.rating,
-          delta: metric.delta,
-          id: metric.id,
-          route: window.location.pathname,
-          viewport: `${window.innerWidth}x${window.innerHeight}`,
-          connection: getConnectionType(),
-        })
-      }
+    // Stage 4 (idle): analytics is never on the critical path. The dynamic
+    // import keeps web-vitals out of the entry chunk, and the idle gate keeps
+    // it off the first paint entirely.
+    runWhenIdle(() => {
+      if (cancelled) return
+      markStage('idle')
 
-      if (typeof requestIdleCallback === 'function') {
-        requestIdleCallback(task)
-      } else {
-        setTimeout(task, 0)
-      }
+      void import('web-vitals').then(({ onLCP, onFID, onCLS, onINP, onFCP, onTTFB }) => {
+        if (cancelled) return
+        onLCP(reportMetric)
+        onFID(reportMetric)
+        onCLS(reportMetric)
+        onINP(reportMetric)
+        onFCP(reportMetric)
+        onTTFB(reportMetric)
+      })
+    })
+
+    return () => {
+      cancelled = true
     }
-
-    onLCP(reportMetric)
-    onFID(reportMetric)
-    onCLS(reportMetric)
-    onINP(reportMetric)
-    onFCP(reportMetric)
-    onTTFB(reportMetric)
   }, [])
 }
 

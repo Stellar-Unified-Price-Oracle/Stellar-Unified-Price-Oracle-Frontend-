@@ -24,9 +24,9 @@
   },
   "size-limit": [
     {
-      "name": "Main JS (entry)",
+      "name": "Startup entry (critical path)",
       "path": "dist/assets/index-*.js",
-      "limit": "200 kB",
+      "limit": "100 kB",
       "brotli": true
     },
     {

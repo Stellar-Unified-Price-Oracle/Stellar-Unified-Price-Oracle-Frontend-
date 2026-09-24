@@ -5,11 +5,12 @@ import { FakeWebSocket } from '../test/fakeWebSocket'
 let ws: FakeWebSocket
 
 function stubWebSocket(): void {
-  const mock = vi.fn(() => ws)
-  mock.OPEN = FakeWebSocket.OPEN
-  mock.CONNECTING = FakeWebSocket.CONNECTING
-  mock.CLOSING = FakeWebSocket.CLOSING
-  mock.CLOSED = FakeWebSocket.CLOSED
+  const mock = Object.assign(vi.fn(() => ws), {
+    OPEN: FakeWebSocket.OPEN,
+    CONNECTING: FakeWebSocket.CONNECTING,
+    CLOSING: FakeWebSocket.CLOSING,
+    CLOSED: FakeWebSocket.CLOSED,
+  })
   vi.stubGlobal('WebSocket', mock)
 }
 

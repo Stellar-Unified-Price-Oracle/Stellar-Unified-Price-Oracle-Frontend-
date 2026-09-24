@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { usePriceContext } from '../context/PriceContext'
@@ -6,8 +6,13 @@ import { useAlerts } from '../hooks/useAlerts'
 import { useColumnCount } from '../hooks/useColumnCount'
 import { PriceCard } from '../components/PriceCard'
 import { PriceCardSkeleton } from '../components/PriceCardSkeleton'
-import { AlertModal } from '../components/AlertModal'
 import { AlertBadge } from '../components/AlertBadge'
+
+// Stage 4 (on demand): the alert editor is only needed after a user click.
+// Keeping it lazy removes the whole alerts form from the boot path.
+const AlertModal = lazy(() =>
+  import('../components/AlertModal').then((m) => ({ default: m.AlertModal })),
+)
 import { ConnectionBadge } from '../components/ConnectionBadge'
 import { NetworkStatusBanner } from '../components/NetworkStatusBanner'
 import type { AlertFormData } from '../types'
@@ -183,22 +188,26 @@ export function Dashboard() {
         </div>
       )}
 
-      <AlertModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSave={handleSave}
-        alert={alerts.find((a) => a.assetPair === modalPair) ?? null}
-        defaultAssetPair={modalPair}
-        onDelete={
-          alerts.find((a) => a.assetPair === modalPair)
-            ? () => {
-                const existing = alerts.find((a) => a.assetPair === modalPair)
-                if (existing) removeAlert(existing.id)
-                setModalOpen(false)
-              }
-            : undefined
-        }
-      />
+      {modalOpen && (
+        <Suspense fallback={null}>
+          <AlertModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onSave={handleSave}
+            alert={alerts.find((a) => a.assetPair === modalPair) ?? null}
+            defaultAssetPair={modalPair}
+            onDelete={
+              alerts.find((a) => a.assetPair === modalPair)
+                ? () => {
+                    const existing = alerts.find((a) => a.assetPair === modalPair)
+                    if (existing) removeAlert(existing.id)
+                    setModalOpen(false)
+                  }
+                : undefined
+            }
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useSwr } from '../hooks/useSwr'
 import { WebSocketClient, type ConnectionStatus } from '../api/websocket'
 import { fetchAllPrices } from '../api/rest'
+import { afterFirstPaint, markStage } from '../perf/startup'
 import { config } from '../config'
 import type { PriceData } from '../types'
 
@@ -34,7 +35,10 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     const client = new WebSocketClient()
     wsRef.current = client
 
-    const unsubStatus = client.onStatusChange(setWsStatus)
+    const unsubStatus = client.onStatusChange((status) => {
+      setWsStatus(status)
+      if (status === 'connected') markStage('live')
+    })
     const unsubMsg = client.onMessage((msg) => {
       if (msg.type === 'price_update') {
         setLivePrices((prev) => {
@@ -51,9 +55,15 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    client.connect()
+    // Stage 3 (live): the socket is off the critical path. Hold it until the
+    // shell has painted so it does not contend with the first price request.
+    let cancelled = false
+    afterFirstPaint(() => {
+      if (!cancelled) client.connect()
+    })
 
     return () => {
+      cancelled = true
       unsubStatus()
       unsubMsg()
       client.disconnect()
@@ -61,8 +71,14 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Stage 2 (first price): the REST payload has landed and can be rendered.
+  useEffect(() => {
+    if (prices.length > 0) markStage('first-price', { pairs: prices.length })
+  }, [prices.length])
+
   useEffect(() => {
     if (prices.length > 0 && wsRef.current) {
+      // Safe before connect(): the client replays subscriptions on open.
       wsRef.current.subscribe(prices.map((p) => p.assetPair))
     }
   }, [prices])

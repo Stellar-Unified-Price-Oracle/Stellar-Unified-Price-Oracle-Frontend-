@@ -149,7 +149,7 @@ describe('Dashboard', () => {
       </MemoryRouter>,
     )
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('New Price Alert')).toBeInTheDocument()
   })
 
@@ -173,7 +173,7 @@ describe('Dashboard', () => {
       </MemoryRouter>,
     )
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
-    fireEvent.change(screen.getByLabelText('Upper Threshold'), { target: { value: '60000' } })
+    fireEvent.change(await screen.findByLabelText('Upper Threshold'), { target: { value: '60000' } })
     await user.click(screen.getByText('Create Alert'))
     await waitFor(() => {
       expect(screen.getByText('Alert set')).toBeInTheDocument()
@@ -298,12 +298,12 @@ describe('Dashboard', () => {
     )
 
     await user.click(screen.getByLabelText('Set alert for BTC/USD'))
-    fireEvent.change(screen.getByLabelText('Upper Threshold'), { target: { value: '60000' } })
+    fireEvent.change(await screen.findByLabelText('Upper Threshold'), { target: { value: '60000' } })
     await user.click(screen.getByText('Create Alert'))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     await user.click(screen.getByLabelText('Set alert for ETH/USD'))
-    fireEvent.change(screen.getByLabelText('Upper Threshold'), { target: { value: '4000' } })
+    fireEvent.change(await screen.findByLabelText('Upper Threshold'), { target: { value: '4000' } })
     await user.click(screen.getByText('Create Alert'))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 

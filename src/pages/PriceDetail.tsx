@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState, useCallback } from 'react'
+import { lazy, Suspense, useEffect, useState, useCallback } from 'react'
 import { usePriceHistory } from '../hooks/usePriceHistory'
 import { usePriceContext } from '../context/PriceContext'
 import { useAlerts } from '../hooks/useAlerts'
@@ -7,8 +7,12 @@ import { PriceChart } from '../components/PriceChart'
 import { SourceHealthBadge } from '../components/SourceHealthBadge'
 import { ConnectionBadge } from '../components/ConnectionBadge'
 import { AlertBadge } from '../components/AlertBadge'
-import { AlertModal } from '../components/AlertModal'
 import { formatPrice, formatTimestamp } from '../utils/format'
+
+// Loaded on demand, so the alert editor never ships with the detail route chunk.
+const AlertModal = lazy(() =>
+  import('../components/AlertModal').then((m) => ({ default: m.AlertModal })),
+)
 import type { Alert, AlertFormData } from '../types'
 
 export function PriceDetail() {
@@ -161,17 +165,21 @@ export function PriceDetail() {
         loading={historyLoading}
       />
 
-      <AlertModal
-        isOpen={modalOpen}
-        onClose={() => {
-          setModalOpen(false)
-          setEditingAlert(null)
-        }}
-        onSave={handleSave}
-        onDelete={editingAlert ? handleDelete : undefined}
-        alert={editingAlert}
-        currentPrice={priceData?.price}
-      />
+      {modalOpen && (
+        <Suspense fallback={null}>
+          <AlertModal
+            isOpen={modalOpen}
+            onClose={() => {
+              setModalOpen(false)
+              setEditingAlert(null)
+            }}
+            onSave={handleSave}
+            onDelete={editingAlert ? handleDelete : undefined}
+            alert={editingAlert}
+            currentPrice={priceData?.price}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

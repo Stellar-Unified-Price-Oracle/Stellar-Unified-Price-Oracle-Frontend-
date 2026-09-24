@@ -1,7 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../hooks/useTheme'
-import { SettingsPanel } from './SettingsPanel'
+
+// Stage 4 (on demand): settings is opt-in UI. Deferring the chunk keeps it out
+// of the entry bundle and off the boot path until the panel is opened.
+const SettingsPanel = lazy(() =>
+  import('./SettingsPanel').then((m) => ({ default: m.SettingsPanel })),
+)
 
 const NAV_ITEMS = [{ path: '/', label: 'Dashboard' }]
 
@@ -131,7 +136,11 @@ export function Layout({ children }: { children: ReactNode }) {
         Stellar Unified Price Oracle &middot; Developer Portal &amp; Analytics Dashboard
       </footer>
 
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <Suspense fallback={null}>
+          <SettingsPanel onClose={() => setSettingsOpen(false)} />
+        </Suspense>
+      )}
     </div>
   )
 }
