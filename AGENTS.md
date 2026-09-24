@@ -8,16 +8,16 @@ WebSocket updates, configurable alerts, and export capabilities.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | React 19 + TypeScript |
-| Build | Vite 6 |
-| Styling | Tailwind CSS v4 |
-| Charts | Recharts |
-| Routing | react-router-dom v7 |
-| Testing | Vitest (unit) + Playwright (E2E) |
-| Linting | ESLint + Prettier |
-| Hooks | Husky (git hooks) |
+| Layer     | Technology                       |
+| --------- | -------------------------------- |
+| Framework | React 19 + TypeScript            |
+| Build     | Vite 6                           |
+| Styling   | Tailwind CSS v4                  |
+| Charts    | Recharts                         |
+| Routing   | react-router-dom v7              |
+| Testing   | Vitest (unit) + Playwright (E2E) |
+| Linting   | ESLint + Prettier                |
+| Hooks     | Husky (git hooks)                |
 
 ## Directory Layout
 
@@ -79,15 +79,15 @@ Triggers on push/PR to `main`. Two jobs run sequentially:
 
 ## What to Push / Not Push
 
-| Push | Never Push |
-|------|-----------|
-| Source files under `src/` | `node_modules/` (gitignored) |
-| Config files (tsconfig, vite.config, etc.) | `dist/` (gitignored) |
-| Tests (`.test.ts`, `.test.tsx`, `e2e/`) | `.env` / `.env.local` (gitignored) |
-| CI workflows (`.github/workflows/`) | `.kiro/` or any AI-agent directories |
-| Husky hooks (`.husky/`) | Local IDE config (`.vscode/`, `.idea/`) |
-| `AGENTS.md` updates | Snapshot files that don't change |
-| `package.json` / `package-lock.json` | Bundle analysis reports (`reports/`) |
+| Push                                       | Never Push                              |
+| ------------------------------------------ | --------------------------------------- |
+| Source files under `src/`                  | `node_modules/` (gitignored)            |
+| Config files (tsconfig, vite.config, etc.) | `dist/` (gitignored)                    |
+| Tests (`.test.ts`, `.test.tsx`, `e2e/`)    | `.env` / `.env.local` (gitignored)      |
+| CI workflows (`.github/workflows/`)        | `.kiro/` or any AI-agent directories    |
+| Husky hooks (`.husky/`)                    | Local IDE config (`.vscode/`, `.idea/`) |
+| `AGENTS.md` updates                        | Snapshot files that don't change        |
+| `package.json` / `package-lock.json`       | Bundle analysis reports (`reports/`)    |
 
 ## Known Issues
 
@@ -134,9 +134,9 @@ The trap this convention exists to prevent:
 
 ```tsx
 // Defeats PriceCard's memo() — a new closure per card, every render.
-{items.map((p) => (
-  <PriceCard key={p.assetPair} price={p} onClick={() => handleCardClick(p.assetPair)} />
-))}
+{
+  items.map((p) => <PriceCard key={p.assetPair} price={p} onClick={() => handleCardClick(p.assetPair)} />)
+}
 ```
 
 Give the child the identity instead and let it call back with it, so one stable handler
@@ -144,10 +144,42 @@ serves the whole list:
 
 ```tsx
 // PriceCard invokes onClick(price.assetPair) internally.
-{items.map((p) => (
-  <PriceCard key={p.assetPair} price={p} onClick={handleCardClick} />
-))}
+{
+  items.map((p) => <PriceCard key={p.assetPair} price={p} onClick={handleCardClick} />)
+}
 ```
+
+## Property-Based Testing Convention
+
+Pure modules carry a `.property.test.ts` sibling next to their example-based spec
+(see `src/utils/backtest.property.test.ts`, `divergence.property.test.ts`,
+`dataQualityScore.property.test.ts`, `format.property.test.ts`,
+`storage.property.test.ts`, `src/selectors/priceSelectors.property.test.ts`).
+They use [fast-check](https://fast-check.dev) (`import fc from 'fast-check'`), run in
+the normal Vitest pass, and assert **invariants** — things that must hold for _every_
+input, not the hand-picked cases an example suite covers.
+
+Rules of thumb, learned the hard way:
+
+- **Scope the domain honestly.** Constrain generators to the input range callers
+  actually produce (`fc.pre(...)`, tighter arbitraries), and note in a comment why.
+  A property that fails outside the real domain (e.g. `timeAgo` on future timestamps
+  yields `"-3s ago"`) is a documentation fix, not a code bug.
+- **Assert algebraic properties with a relative tolerance** (`|a−b| ≤ ε·scale`), never
+  `toBeCloseTo` with fixed decimals — prices legitimately span 1e-8 to 1e12+, and
+  fixed-digit tolerances are fp noise at those magnitudes. Reserve exact equality for
+  inputs small enough that every intermediate operation is exact (e.g. consensus
+  prices ≤ 1e13 with n ≤ 10 sources).
+- **Statelessness is part of the property.** `beforeEach` cleanup does not run between
+  generated iterations — if the code under test touches `localStorage` or any shared
+  sink, clear it inside the property body (see the key-isolation tests in
+  `storage.property.test.ts`).
+- **A shrunk counterexample that reveals a wrong property, not a wrong module, gets
+  fixed by deleting or rescoping the property** — with a comment explaining why the
+  property cannot hold (e.g. percentage divergence is not antisymmetric under price
+  swap; `(a−b)/b ≠ −(b−a)/a` unless `a = b`).
+- Keep default `numRuns` for most properties; raise to 300–800 only for cheap pure
+  functions where the extra coverage is nearly free.
 
 ## Client Storage Convention
 
@@ -160,7 +192,6 @@ app owns.
 plain text and readable by any script on the origin, so one XSS bug leaks all of it.
 Secrets stay in memory for the session (see the webhook secret in
 `NotificationChannelsModal`) or move behind an httpOnly cookie set by the backend.
-
 
 ## Security Practices
 
