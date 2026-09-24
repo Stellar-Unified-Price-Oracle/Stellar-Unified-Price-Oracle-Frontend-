@@ -5,6 +5,7 @@ import { RealtimeClient } from '../api/realtimeClient'
 import { WsLeaderElection } from '../api/wsLeaderElection'
 import { fetchAllPrices, fetchPricesBatched } from '../api/rest'
 import { rateLimitManager, type RateLimitStatus } from '../api/rateLimit'
+import { markStage } from '../perf/startup'
 import { useOutboundQueue } from '../hooks/useOutboundQueue'
 import { offlinePriceStore, type OfflineSnapshot } from '../services/offlinePriceStore'
 import { config } from '../config'
@@ -509,6 +510,8 @@ export function PriceProvider({ children }: { children: ReactNode }) {
       const unsubStatus = client.onStatusChange((status) => {
         setWsStatus(status)
         setDiagnostics(client.diagnostics)
+        // Stage 3 (live): the realtime connection is up.
+        if (status === 'connected') markStage('live')
       })
       const unsubMsg = client.onMessage((msg) => {
         if (msg.type === 'price_update') {
