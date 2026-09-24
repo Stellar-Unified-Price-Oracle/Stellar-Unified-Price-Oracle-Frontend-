@@ -4,11 +4,12 @@ Architecture Decision Records (ADRs) document important technical decisions, the
 
 ## Quick Reference
 
-| ADR | Title | Status | Topic |
-|-----|-------|--------|-------|
-| [ADR-001](./ADR-001-state-management.md) | State Management Approach | Accepted | React Context + Zustand hybrid, low-frequency vs. high-frequency updates |
-| [ADR-002](./ADR-002-data-fetching.md) | Data Fetching Strategy | Accepted | WebSocket + REST polling, optimistic updates, deduplication, rate limiting |
-| [ADR-003](./ADR-003-component-architecture.md) | Component Architecture | Accepted | Functional components, memoization conventions, composition layers |
+| ADR                                                | Title                        | Status   | Topic                                                                      |
+| -------------------------------------------------- | ---------------------------- | -------- | -------------------------------------------------------------------------- |
+| [ADR-001](./ADR-001-state-management.md)           | State Management Approach    | Accepted | React Context + Zustand hybrid, low-frequency vs. high-frequency updates   |
+| [ADR-002](./ADR-002-data-fetching.md)              | Data Fetching Strategy       | Accepted | WebSocket + REST polling, optimistic updates, deduplication, rate limiting |
+| [ADR-003](./ADR-003-component-architecture.md)     | Component Architecture       | Accepted | Functional components, memoization conventions, composition layers         |
+| [ADR-004](./ADR-004-render-backpressure-policy.md) | Renderer Backpressure Policy | Accepted | Latest-wins tick coalescing, paint-cadence flushes, bounded pending work   |
 
 ## How These Decisions Connect
 
@@ -21,6 +22,9 @@ Architecture Decision Records (ADRs) document important technical decisions, the
 │  ├─ WebSocket (real-time prices)  ──┐                           │
 │  ├─ REST API (fallback polling)     ├──→ PriceContext (ADR-001) │
 │  └─ IndexedDB (caching)            ──┘                          │
+│                                          ↓                      │
+│  Backpressure (ADR-004)                  │                      │
+│  └─ latest-wins coalescing ──────────────┤                      │
 │                                          ↓                      │
 │  State Management (ADR-001)              │                      │
 │  ├─ PriceContext ──────────────────────┘                        │
@@ -67,7 +71,10 @@ Architecture Decision Records (ADRs) document important technical decisions, the
 2. Check [ADR-002](./ADR-002-data-fetching.md): How do you get the data?
    - REST endpoint? WebSocket subscription? Cached from IndexedDB?
 
-3. Check [ADR-003](./ADR-003-component-architecture.md): How do you render it?
+3. Check [ADR-004](./ADR-004-render-backpressure-policy.md): Is it high-frequency?
+   - Does it need to survive a feed that outruns the paint rate?
+
+4. Check [ADR-003](./ADR-003-component-architecture.md): How do you render it?
    - Which composition layer? Memoize? Virtualize lists?
 
 ### Debugging performance?
@@ -97,24 +104,24 @@ Architecture Decision Records (ADRs) document important technical decisions, the
 
 ### What's the difference between Context and Zustand?
 
-| Aspect | Context | Zustand |
-|--------|---------|---------|
-| **Update frequency** | Low (every few seconds) | High (10+/sec) |
-| **Re-render scope** | All descendants | Only subscribers |
-| **Persistence** | Manual | Optional built-in |
-| **Debugging** | React DevTools | Zustand DevTools |
-| **Use cases** | REST data, preferences | WebSocket prices, connection status |
+| Aspect               | Context                 | Zustand                             |
+| -------------------- | ----------------------- | ----------------------------------- |
+| **Update frequency** | Low (every few seconds) | High (10+/sec)                      |
+| **Re-render scope**  | All descendants         | Only subscribers                    |
+| **Persistence**      | Manual                  | Optional built-in                   |
+| **Debugging**        | React DevTools          | Zustand DevTools                    |
+| **Use cases**        | REST data, preferences  | WebSocket prices, connection status |
 
 **Rule of thumb**: If data changes more than once per second, use Zustand. Otherwise, use Context.
 
 ### Should I use TanStack Query or useSwr?
 
-| Use Case | Tool |
-|----------|------|
+| Use Case                    | Tool                              |
+| --------------------------- | --------------------------------- |
 | REST endpoints with polling | TanStack Query (via PriceContext) |
-| Simple cache-first fetches | useSwr |
-| WebSocket updates | priceStore (Zustand) |
-| Complex sync logic | useIndexedDB |
+| Simple cache-first fetches  | useSwr                            |
+| WebSocket updates           | priceStore (Zustand)              |
+| Complex sync logic          | useIndexedDB                      |
 
 ### How do I avoid re-render loops?
 
@@ -126,10 +133,10 @@ See [ADR-003: Principle 2 Memoization Convention](./ADR-003-component-architectu
 
 From README.md:
 
-| Asset | Limit | Status |
-|-------|-------|--------|
+| Asset              | Limit  | Status         |
+| ------------------ | ------ | -------------- |
 | JavaScript (entry) | 200 kB | Enforced in CI |
-| CSS | 50 kB | Enforced in CI |
+| CSS                | 50 kB  | Enforced in CI |
 
 Check with `npm run size-limit`.
 
@@ -185,6 +192,7 @@ External links, papers, documentation.
 - **Confusion about state management?** → [ADR-001](./ADR-001-state-management.md)
 - **Network issues or data flow?** → [ADR-002](./ADR-002-data-fetching.md)
 - **Component or rendering problems?** → [ADR-003](./ADR-003-component-architecture.md)
+- **Feed faster than the renderer, jank, or growing memory?** → [ADR-004](./ADR-004-render-backpressure-policy.md)
 - **Still stuck?** → Check [CONTRIBUTING.md](../../CONTRIBUTING.md) or open an issue
 
 ---

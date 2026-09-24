@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useToast } from '../context/ToastContext'
 import {
   toCsv,
@@ -10,7 +10,9 @@ import {
   exportFilename,
 } from '../utils/export'
 import type { PriceData } from '../types'
+import { SERIES_IDS, timeSeries, useTimeSeriesQuery } from '../storage/timeseries'
 import { useIdbQuery, useIdbMutation } from './useIdbQuery'
+import { idbCache } from './useIndexedDB'
 import type { ExportFormat } from './useExport'
 
 export type ExportFrequency = 'daily' | 'weekly' | 'monthly'
@@ -38,7 +40,8 @@ export interface ScheduledExportHistoryEntry {
 }
 
 const SCHEDULES_KEY = 'scheduled-exports'
-const HISTORY_KEY = 'scheduled-exports-history'
+/** Legacy key for the pre-time-series run-history blob; read once, then deleted. */
+const LEGACY_HISTORY_KEY = 'scheduled-exports-history'
 const MAX_HISTORY = 50
 
 const FREQUENCY_MS: Record<ExportFrequency, number> = {
@@ -76,20 +79,54 @@ export interface UseScheduledExportsReturn {
  */
 export function useScheduledExports(allPrices: PriceData[]): UseScheduledExportsReturn {
   const { data: schedulesData, loading: schedulesLoading } = useIdbQuery<ExportSchedule[]>('preferences', SCHEDULES_KEY)
-  const { data: historyData, loading: historyLoading } = useIdbQuery<ScheduledExportHistoryEntry[]>('preferences', HISTORY_KEY)
   const { set } = useIdbMutation()
   const { addToast } = useToast()
 
   const [schedules, setSchedules] = useState<ExportSchedule[]>([])
-  const [history, setHistory] = useState<ScheduledExportHistoryEntry[]>([])
+
+  // Run history is append-only event data, so it lives in the time-series engine
+  // where it gets retention + rollups instead of growing as one settings blob.
+  // The query re-runs automatically on writes from this tab or another.
+  const { points: historyPoints, loading: historyLoading } = useTimeSeriesQuery(SERIES_IDS.exportRuns, {
+    from: 0,
+    to: Number.MAX_SAFE_INTEGER,
+    tier: 'raw',
+  })
+
+  const history = useMemo(
+    () =>
+      historyPoints
+        .map(
+          (point) =>
+            ({
+              ...((point.meta?.entry as ScheduledExportHistoryEntry | undefined) ?? {}),
+              ranAt: point.t,
+              pairCount: point.v,
+            }) as ScheduledExportHistoryEntry,
+        )
+        .slice(-MAX_HISTORY),
+    [historyPoints],
+  )
 
   useEffect(() => {
     if (!schedulesLoading) setSchedules(schedulesData ?? [])
   }, [schedulesData, schedulesLoading])
 
+  // Register descriptors / run retention once, and import any run history left
+  // in the pre-engine blob format.
   useEffect(() => {
-    if (!historyLoading) setHistory(historyData ?? [])
-  }, [historyData, historyLoading])
+    void (async () => {
+      await timeSeries.initialize()
+      const stats = await timeSeries.stats(SERIES_IDS.exportRuns)
+      const empty = !stats || stats.points.raw + stats.points.hourly + stats.points.daily === 0
+      if (!empty) return
+      const legacy = await idbCache.get<ScheduledExportHistoryEntry[]>('preferences', LEGACY_HISTORY_KEY, Infinity)
+      if (legacy && legacy.length > 0) {
+        await timeSeries.appendMany(SERIES_IDS.exportRuns, legacy)
+        void idbCache.delete('preferences', LEGACY_HISTORY_KEY)
+      }
+    })()
+  }, [])
 
   const persistSchedules = useCallback(
     (next: ExportSchedule[]) => {
@@ -99,21 +136,18 @@ export function useScheduledExports(allPrices: PriceData[]): UseScheduledExports
     [set],
   )
 
-  const persistHistory = useCallback(
-    (entry: ScheduledExportHistoryEntry) => {
-      setHistory((prev) => {
-        const next = [...prev, entry].slice(-MAX_HISTORY)
-        void set('preferences', HISTORY_KEY, next)
-        return next
-      })
-    },
-    [set],
-  )
+  const persistHistory = useCallback((entry: ScheduledExportHistoryEntry) => {
+    void timeSeries.append(SERIES_IDS.exportRuns, entry)
+  }, [])
 
   const downloadExport = useCallback((schedule: ExportSchedule, items: PriceData[]) => {
     const base = schedule.label.trim() || 'scheduled-export'
     if (schedule.format === 'json') {
-      downloadFile(JSON.stringify(priceDataToJsonRows(items), null, 2), exportFilename(base, 'json'), 'application/json')
+      downloadFile(
+        JSON.stringify(priceDataToJsonRows(items), null, 2),
+        exportFilename(base, 'json'),
+        'application/json',
+      )
     } else if (schedule.format === 'xlsx') {
       downloadBinaryFile(
         priceDataToXlsx(items),
@@ -143,7 +177,8 @@ export function useScheduledExports(allPrices: PriceData[]): UseScheduledExports
       })
       addToast({
         type: 'success',
-        message: trigger === 'scheduled' ? `Scheduled export ran: ${schedule.label}` : `Export ready: ${schedule.label}`,
+        message:
+          trigger === 'scheduled' ? `Scheduled export ran: ${schedule.label}` : `Export ready: ${schedule.label}`,
       })
     },
     [downloadExport, persistHistory, addToast],
@@ -161,9 +196,7 @@ export function useScheduledExports(allPrices: PriceData[]): UseScheduledExports
 
     persistSchedules(
       schedules.map((s) =>
-        due.some((d) => d.id === s.id)
-          ? { ...s, lastRunAt: now, nextRunAt: computeNextRun(s.frequency, now) }
-          : s,
+        due.some((d) => d.id === s.id) ? { ...s, lastRunAt: now, nextRunAt: computeNextRun(s.frequency, now) } : s,
       ),
     )
     // Only re-check when the schedule list or the underlying price snapshot changes.
