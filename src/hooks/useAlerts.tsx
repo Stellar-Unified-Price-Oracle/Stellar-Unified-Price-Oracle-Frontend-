@@ -22,6 +22,9 @@ import {
   buildTriggerHistoryEntry,
   buildEscalationHistoryEntry,
   appendHistoryEntries,
+  recordAlertEvents,
+  importAlertHistoryToEngine,
+  clearAlertEventSeries,
 } from '../services/alertHistory'
 import { loadBotSecrets, sendTelegramMessage, sendDiscordMessage } from '../services/botNotifications'
 import { loadNotifConfig, resolveAlertChannels, type NotifConfig } from '../services/notificationConfig'
@@ -265,6 +268,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   historyRef.current = history
   useEffect(() => registerMemoryProbe('alertHistory', () => historyRef.current.length), [])
 
+  // Backfill the existing localStorage log into the durable time-series the
+  // first time the provider mounts (idempotent — see importAlertHistoryToEngine).
+  useEffect(() => {
+    importAlertHistoryToEngine()
+  }, [])
+
   const { livePrices } = usePriceContext()
 
   // Rate limiter for alert creation (max 5 per minute)
@@ -464,6 +473,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     if (firedEntries.length > 0) {
       // Newest first, capped (#309)
       setHistory((prev) => appendHistoryEntries(prev, firedEntries))
+      // Mirror into the time-series engine for retention/rollups/range queries.
+      recordAlertEvents(firedEntries)
     }
   }, [livePrices, alerts])
 
@@ -632,7 +643,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /** Clears the fired-alert history log (#309) */
-  const clearAlertHistory = useCallback(() => setHistory([]), [])
+  const clearAlertHistory = useCallback(() => {
+    setHistory([])
+    clearAlertEventSeries()
+  }, [])
 
   const value: AlertsContextType = {
     alerts,

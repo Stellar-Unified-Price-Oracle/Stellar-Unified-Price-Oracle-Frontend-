@@ -2,11 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchPriceHistory } from '../api/rest'
 import { registerMemoryProbe } from '../utils/memoryProfiler'
 import type { PriceHistoryEntry, PriceHistoryResponse } from '../types'
+import { SERIES_IDS, timeSeries } from '../storage/timeseries'
 import { idbCache } from './useIndexedDB'
 
 // Cross-session cache TTL for the first page of history, per #321's endpoint
 // TTL tiers (history: 2 min). Pagination (loadMore) always hits the network.
 const HISTORY_CACHE_TTL_MS = 2 * 60 * 1000
+
+let legacyPriceHistoryImported = false
+
+/**
+ * One-time backfill: projects price-history response blobs cached by the older
+ * format into durable `price-history:<pair>` time-series. Idempotent (points are
+ * keyed by `(series, tier, timestamp)`), guarded to a single pass per session.
+ */
+async function importLegacyPriceHistory(): Promise<void> {
+  if (legacyPriceHistoryImported) return
+  legacyPriceHistoryImported = true
+  await timeSeries.initialize()
+  const cached = await idbCache.getAll<PriceHistoryResponse>('history')
+  for (const response of cached) {
+    if (!response?.pair || !Array.isArray(response.history) || response.history.length === 0) continue
+    await timeSeries.appendMany(SERIES_IDS.priceHistory(response.pair), response.history)
+  }
+}
 
 export interface PriceHistoryOptions {
   pageSize?: number
@@ -30,10 +49,7 @@ interface PriceHistoryState {
  * Includes a refresh interval to keep the latest data updated.
  * Defers fetching until the page is visible using the Page Visibility API.
  */
-export function usePriceHistory(
-  pair: string | null,
-  options: PriceHistoryOptions = {},
-): PriceHistoryState {
+export function usePriceHistory(pair: string | null, options: PriceHistoryOptions = {}): PriceHistoryState {
   const { pageSize = 100, refreshInterval = 30_000, onError } = options
 
   const [history, setHistory] = useState<PriceHistoryEntry[]>([])
@@ -51,9 +67,7 @@ export function usePriceHistory(
   const abortRef = useRef<AbortController | null>(null)
 
   // Track page visibility
-  const isVisibleRef = useRef(
-    typeof document !== 'undefined' ? !document.hidden : true,
-  )
+  const isVisibleRef = useRef(typeof document !== 'undefined' ? !document.hidden : true)
 
   // Fetch initial data
   const refetch = useCallback(async () => {
@@ -80,6 +94,9 @@ export function usePriceHistory(
         res = await fetchPriceHistory(pair, pageSize, 0, undefined, undefined, controller.signal)
         if (isMountedRef.current && !controller.signal.aborted) {
           void idbCache.set('history', cacheKey, res)
+          // Project onto the durable time-series so long-term history gets
+          // retention + rollups rather than living only in a 2-minute cache.
+          void timeSeries.appendMany(SERIES_IDS.priceHistory(pair), res.history)
         }
       }
 
@@ -124,6 +141,8 @@ export function usePriceHistory(
 
       if (!isMountedRef.current || controller.signal.aborted) return
 
+      void timeSeries.appendMany(SERIES_IDS.priceHistory(pair), res.history)
+
       if (res.history.length === 0) {
         hasMoreRef.current = false
         setHasMore(false)
@@ -147,6 +166,11 @@ export function usePriceHistory(
       }
     }
   }, [pair, pageSize, onError])
+
+  // Project previously-cached history blobs into the time-series once.
+  useEffect(() => {
+    void importLegacyPriceHistory()
+  }, [])
 
   // Initial fetch and refresh interval with visibility deferral
   useEffect(() => {

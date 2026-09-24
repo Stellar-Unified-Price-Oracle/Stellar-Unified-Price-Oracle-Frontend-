@@ -15,17 +15,20 @@ The Stellar Oracle frontend uses a **versioned migration system** for IndexedDB 
 ### Key Components
 
 **`idbMigrations.ts`** — Core migration framework
+
 - `MigrationRegistry`: Registers and manages versioned migrations
 - `MigrationRunner`: Executes migrations with transaction safety
 - `DataTransformer`: Utilities for safe schema transformations
 - `MigrationError`: Specific error type for debugging
 
 **`idbMigrationDefinitions.ts`** — App-specific migrations
-- `v1Migration`, `v2Migration`, `v3Migration`: Current migrations
+
+- `v1Migration`, `v2Migration`, `v3Migration`, `v4Migration`: Current migrations
 - `createAppMigrationRegistry()`: Factory to instantiate the app's migrations
-- `CURRENT_DB_VERSION`: The target version (currently 3)
+- `CURRENT_DB_VERSION`: The target version (currently 4)
 
 **`useIndexedDB.ts`** — Cache layer integration
+
 - Uses `CURRENT_DB_VERSION` from migration definitions
 - Automatically runs pending migrations when the database opens
 - All migrations versioned and tracked
@@ -34,11 +37,11 @@ The Stellar Oracle frontend uses a **versioned migration system** for IndexedDB 
 
 ### Version History
 
-| Version | Migration | Stores Affected | Purpose |
-|---------|-----------|-----------------|---------|
-| 1 | `initial-schema` | prices, history, preferences | Create core stores |
-| 2 | `add-pending-mutations` | pendingMutations | Add offline sync queue |
-| 3 | `add-query-indexes` | history, pendingMutations | Add indexes for queries |
+| Version | Migration               | Stores Affected              | Purpose                 |
+| ------- | ----------------------- | ---------------------------- | ----------------------- |
+| 1       | `initial-schema`        | prices, history, preferences | Create core stores      |
+| 2       | `add-pending-mutations` | pendingMutations             | Add offline sync queue  |
+| 3       | `add-query-indexes`     | history, pendingMutations    | Add indexes for queries |
 
 ### Version 3 Schema
 
@@ -76,7 +79,7 @@ Stores:
 When `useIndexedDB.ts` calls `indexedDB.open()`:
 
 ```typescript
-const req = indexedDB.open('stellar-oracle', 3) // 3 = CURRENT_DB_VERSION
+const req = indexedDB.open('stellar-oracle', 4) // 4 = CURRENT_DB_VERSION
 ```
 
 ### 2. onupgradeneeded Handler Triggers
@@ -148,7 +151,7 @@ export function createAppMigrationRegistry() {
   registry.register(1, v1Migration)
   registry.register(2, v2Migration)
   registry.register(3, v3Migration)
-  registry.register(4, v4Migration)  // Add here
+  registry.register(4, v4Migration) // Add here
   return registry
 }
 ```
@@ -297,9 +300,9 @@ Thrown when a migration fails. Contains:
 
 ```typescript
 class MigrationError extends Error {
-  version: number         // Which version failed
-  reason: string          // 'execute' | 'rollback' | 'validation' | 'metadata'
-  originalError?: Error   // The underlying error
+  version: number // Which version failed
+  reason: string // 'execute' | 'rollback' | 'validation' | 'metadata'
+  originalError?: Error // The underlying error
 }
 ```
 
@@ -331,7 +334,7 @@ console.log(`Database at version ${currentVersion}`)
 
 ```typescript
 const history = await runner.getMigrationHistory(db)
-history.forEach(m => {
+history.forEach((m) => {
   console.log(`v${m.version}: ${m.name} applied at ${new Date(m.appliedAt)}`)
 })
 ```
@@ -356,20 +359,20 @@ describe('v4 Migration', () => {
   it('creates alertThresholds store', async () => {
     const runner = new MigrationRunner(createRegistry([v4Migration]))
     await runner.run(db, 3, 4)
-    
+
     expect(db.objectStoreNames.contains('alertThresholds')).toBe(true)
   })
 
   it('tracks migration in metadata', async () => {
     const runner = new MigrationRunner(createRegistry([v4Migration]))
     await runner.run(db, 3, 4)
-    
+
     const history = await runner.getMigrationHistory(db)
     expect(history).toContainEqual(
       expect.objectContaining({
         version: 4,
         name: 'add-alerts-store',
-      })
+      }),
     )
   })
 })
@@ -392,7 +395,7 @@ describe('v4 Migration', () => {
 ✅ **Do:** Implement `down()` for destructive operations  
 ✅ **Do:** Test migrations with sample data  
 ✅ **Do:** Update `CURRENT_DB_VERSION` when adding migrations  
-✅ **Do:** Keep migrations idempotent (safe to re-run)  
+✅ **Do:** Keep migrations idempotent (safe to re-run)
 
 ### DON'T
 
@@ -400,7 +403,7 @@ describe('v4 Migration', () => {
 ❌ **Don't:** Modify existing migration code (create a new one)  
 ❌ **Don't:** Assume data structures remain unchanged  
 ❌ **Don't:** Use async/await without returning Promise  
-❌ **Don't:** Catch and silently ignore errors in migrations  
+❌ **Don't:** Catch and silently ignore errors in migrations
 
 ## Troubleshooting
 
