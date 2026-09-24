@@ -26,7 +26,7 @@ export const STARTUP_BUDGETS: Record<StartupStage, StageBudget> = {
   shell: { budgetMs: 1500, description: 'Nav + skeleton grid painted' },
   'first-price': { budgetMs: 3000, description: 'First prices rendered from REST' },
   live: { budgetMs: 5000, description: 'WebSocket connected' },
-  idle: { budgetMs: 8000, description: 'Deferred (idle) work dispatched' },
+  idle: { budgetMs: 8000, description: 'First idle window after boot (deferred work)' },
 }
 
 export const STARTUP_STAGES = Object.keys(STARTUP_BUDGETS) as StartupStage[]
@@ -114,10 +114,7 @@ export function markStage(stage: StartupStage, detail?: Record<string, unknown>)
   emitPerformanceMarks(stage)
 
   if (record.overBudget && import.meta.env.DEV) {
-    console.warn(
-      `[startup] stage "${stage}" took ${at}ms, budget ${budgetMs}ms`,
-      detail ?? '',
-    )
+    console.warn(`[startup] stage "${stage}" took ${at}ms, budget ${budgetMs}ms`, detail ?? '')
   }
 
   const report = getStartupReport()

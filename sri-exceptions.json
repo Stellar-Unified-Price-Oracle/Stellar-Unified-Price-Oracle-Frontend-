@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Documented exceptions to the Subresource Integrity (SRI) check run by scripts/check-sri.js and enforced in CI. Every external (non-same-origin) script or stylesheet must either carry an `integrity` attribute or have a reviewed entry here explaining why it cannot.",
+  "exceptions": [
+    {
+      "host": "fonts.googleapis.com",
+      "reason": "Google Fonts negotiates the stylesheet body by User-Agent (different browsers get different @font-face rules), so the response body is not stable and a static SRI hash would break font loading for a subset of browsers.",
+      "addedBy": "security/issue-496",
+      "reviewBy": "2027-02-28"
+    },
+    {
+      "host": "fonts.gstatic.com",
+      "reason": "Font binary URLs are only known after the negotiated stylesheet above is fetched, so they cannot be pinned ahead of time in index.html.",
+      "addedBy": "security/issue-496",
+      "reviewBy": "2027-02-28"
+    },
+    {
+      "host": "plausible.io",
+      "reason": "Analytics script (src/hooks/useAnalytics.ts) is injected only when a self-hosted analytics provider + id is configured via env vars, and the vendor rebuilds this file on their own release cadence, so a pinned hash would break tracking on every vendor deploy without our involvement. Loaded with defer and no DOM access before React mounts.",
+      "addedBy": "security/issue-496",
+      "reviewBy": "2027-02-28"
+    },
+    {
+      "host": "umami.example.com",
+      "reason": "Placeholder self-hosted Umami analytics endpoint (src/hooks/useAnalytics.ts); same rationale as plausible.io above. Replace host with the real deployment and re-review when analytics is actually enabled.",
+      "addedBy": "security/issue-496",
+      "reviewBy": "2027-02-28"
+    }
+  ]
+}

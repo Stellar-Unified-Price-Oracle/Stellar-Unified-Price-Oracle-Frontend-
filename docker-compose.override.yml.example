@@ -1,0 +1,31 @@
+# docker-compose.override.yml — Local developer overrides
+#
+# This file is gitignored. Copy it and modify as needed.
+# Docker Compose automatically merges it with docker-compose.yml.
+#
+# Examples:
+#   - Change the host port
+#   - Point at a real backend instead of localhost
+#   - Mount additional config files
+#   - Enable MSW mocks
+
+version: "3.9"
+
+services:
+  frontend:
+    # Uncomment to use a different host port:
+    # ports:
+    #   - "4000:5173"
+
+    environment:
+      # Point at a real aggregator API:
+      # VITE_API_URL: http://api.local:3000
+      # VITE_WS_URL: ws://api.local:3000
+
+      # Enable MSW request mocking (no backend required):
+      # VITE_USE_MOCK: "true"
+      {}
+
+    # Extra volume mounts — useful for mounting a custom .env file:
+    # volumes:
+    #   - ./.env.local:/app/.env:ro

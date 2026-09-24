@@ -1,0 +1,138 @@
+name: Security — Weekly Vulnerability Report
+
+on:
+  schedule:
+    # Every Monday at 08:00 UTC (after Dependabot has already run)
+    - cron: '0 8 * * 1'
+  workflow_dispatch: {}
+
+concurrency:
+  group: security-report
+  cancel-in-progress: true
+
+jobs:
+  vulnerability-report:
+    name: Generate vulnerability report
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to create an issue when vulnerabilities are found
+      issues: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      # ── npm audit (full JSON report) ─────────────────────────────────────────
+      - name: Run npm audit (JSON)
+        id: npm_audit
+        # exit 0 so subsequent steps always run; we act on the JSON output.
+        run: npm audit --json > npm-audit.json 2>&1 || true
+
+      - name: Upload npm audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-${{ github.run_id }}
+          path: npm-audit.json
+          retention-days: 90
+
+      # ── Determine severity ───────────────────────────────────────────────────
+      - name: Check for critical / high vulnerabilities
+        id: check_severity
+        run: |
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' npm-audit.json)
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' npm-audit.json)
+          MODERATE=$(jq '.metadata.vulnerabilities.moderate // 0' npm-audit.json)
+          LOW=$(jq '.metadata.vulnerabilities.low // 0' npm-audit.json)
+          TOTAL=$(jq '.metadata.vulnerabilities.total // 0' npm-audit.json)
+
+          echo "critical=$CRITICAL" >> "$GITHUB_OUTPUT"
+          echo "high=$HIGH"         >> "$GITHUB_OUTPUT"
+          echo "moderate=$MODERATE" >> "$GITHUB_OUTPUT"
+          echo "low=$LOW"           >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL"       >> "$GITHUB_OUTPUT"
+
+          echo "### npm audit summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Severity | Count |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Critical | $CRITICAL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| High     | $HIGH |"     >> "$GITHUB_STEP_SUMMARY"
+          echo "| Moderate | $MODERATE |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Low      | $LOW |"      >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Total**| **$TOTAL** |" >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Open a GitHub issue when critical or high vulns are found ────────────
+      - name: Create issue for critical/high vulnerabilities
+        if: steps.check_severity.outputs.critical > 0 || steps.check_severity.outputs.high > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const critical = '${{ steps.check_severity.outputs.critical }}'
+            const high     = '${{ steps.check_severity.outputs.high }}'
+            const moderate = '${{ steps.check_severity.outputs.moderate }}'
+            const low      = '${{ steps.check_severity.outputs.low }}'
+            const date     = new Date().toISOString().split('T')[0]
+
+            const title = `[Security] Dependency vulnerabilities found — ${date}`
+            const body = [
+              '## Dependency vulnerability report',
+              '',
+              `Automated \`npm audit\` run on ${date} found vulnerabilities that require attention.`,
+              '',
+              '### Counts',
+              '',
+              '| Severity | Count |',
+              '|----------|-------|',
+              `| 🔴 Critical | ${critical} |`,
+              `| 🟠 High     | ${high} |`,
+              `| 🟡 Moderate | ${moderate} |`,
+              `| 🔵 Low      | ${low} |`,
+              '',
+              '### Next steps',
+              '',
+              '1. Download the `npm-audit-${{ github.run_id }}` artifact for the full JSON report.',
+              '2. Run `npm audit` locally for human-readable output.',
+              '3. Run `npm audit fix` for automatic patch-level fixes.',
+              '4. For breaking-change upgrades, create a separate PR per package.',
+              '5. Refer to [SECURITY.md](../blob/main/SECURITY.md) for SLA guidelines.',
+              '',
+              `_Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}_`,
+            ].join('\n')
+
+            // Search for an existing open issue with the same base title to
+            // avoid flooding the issue tracker on consecutive failing weeks.
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              state: 'open',
+              labels: 'security,automated',
+            })
+
+            const alreadyOpen = existing.data.find((i) =>
+              i.title.startsWith('[Security] Dependency vulnerabilities found')
+            )
+
+            if (alreadyOpen) {
+              await github.rest.issues.createComment({
+                owner:      context.repo.owner,
+                repo:       context.repo.repo,
+                issue_number: alreadyOpen.number,
+                body: `## Updated report — ${date}\n\n` + body,
+              })
+              core.notice(`Updated existing issue #${alreadyOpen.number}`)
+            } else {
+              const created = await github.rest.issues.create({
+                owner:  context.repo.owner,
+                repo:   context.repo.repo,
+                title,
+                body,
+                labels: ['security', 'automated'],
+              })
+              core.notice(`Created issue #${created.data.number}`)
+            }

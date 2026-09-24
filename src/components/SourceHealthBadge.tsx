@@ -1,3 +1,37 @@
+/**
+ * @file SourceHealthBadge
+ *
+ * Renders a row of coloured pill badges indicating which oracle sources
+ * (Chainlink, Redstone, Band, Reflector) contributed to a price update.
+ *
+ * @example With multiple sources
+ * ```tsx
+ * <SourceHealthBadge sources={['chainlink', 'redstone', 'band']} />
+ * ```
+ *
+ * @example Empty — while aggregator is initialising
+ * ```tsx
+ * <SourceHealthBadge sources={[]} />
+ * // renders: "No sources"
+ * ```
+ *
+ * ## Props table
+ * | prop      | type               | required | description                           |
+ * |-----------|--------------------|----------|---------------------------------------|
+ * | `sources` | `readonly string[]`| yes      | Oracle identifiers for the price feed |
+ *
+ * ## Edge cases
+ * - **Empty array** — renders a muted "No sources" fallback span.
+ * - **Unknown source key** — sources not in `SOURCE_INFO` are silently skipped
+ *   (`null` returned from the map). Add new oracles to `SOURCE_INFO` to show them.
+ *
+ * ## Accessibility
+ * - Each pill is a plain `<span>` (non-interactive). Surrounding context (e.g. a
+ *   table cell or card) provides the accessible label for the row.
+ * - The coloured dot inside each pill is decorative; the source name text conveys
+ *   the same meaning to screen readers.
+ */
+import { memo, type ReactElement } from 'react'
 const SOURCE_INFO: Record<string, { label: string; color: string }> = {
   chainlink: { label: 'Chainlink', color: 'bg-blue-500' },
   redstone: { label: 'Redstone', color: 'bg-red-500' },
@@ -9,7 +43,7 @@ interface SourceHealthProps {
   sources: readonly string[]
 }
 
-export function SourceHealthBadge({ sources }: SourceHealthProps) {
+export const SourceHealthBadge = memo(function SourceHealthBadge({ sources }: SourceHealthProps): ReactElement {
   if (!sources.length) {
     return <span className="text-xs text-gray-400 dark:text-gray-500">No sources</span>
   }
@@ -31,4 +65,4 @@ export function SourceHealthBadge({ sources }: SourceHealthProps) {
       })}
     </div>
   )
-}
+})

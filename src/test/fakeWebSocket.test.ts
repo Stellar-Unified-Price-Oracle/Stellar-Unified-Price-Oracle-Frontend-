@@ -64,6 +64,71 @@ describe('FakeWebSocket', () => {
     })
   })
 
+  // ── #474 — chaos-testing extensions ─────────────────────────────────────
+
+  describe('simulateRawMessage', () => {
+    it('delivers the raw string as-is, without JSON.stringify-ing it', () => {
+      const onmessage = vi.fn()
+      ws.onmessage = onmessage
+      ws.simulateRawMessage('{"type":"price_upd')
+      expect(onmessage).toHaveBeenCalledTimes(1)
+      const event = onmessage.mock.calls[0][0] as MessageEvent
+      expect(event.data).toBe('{"type":"price_upd')
+    })
+
+    it('delivers non-JSON garbage untouched', () => {
+      const onmessage = vi.fn()
+      ws.onmessage = onmessage
+      ws.simulateRawMessage('not json at all')
+      expect((onmessage.mock.calls[0][0] as MessageEvent).data).toBe('not json at all')
+    })
+
+    it('respects messageLatency like simulateMessage', () => {
+      vi.useFakeTimers()
+      ws = new FakeWebSocket('ws://test.com', { messageLatency: 50 })
+      const onmessage = vi.fn()
+      ws.onmessage = onmessage
+      ws.simulateRawMessage('{bad')
+      expect(onmessage).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(50)
+      expect(onmessage).toHaveBeenCalledTimes(1)
+      vi.useRealTimers()
+    })
+  })
+
+  describe('simulateOutOfOrder', () => {
+    it('dispatches messages in the exact order given, not sorted', () => {
+      const onmessage = vi.fn()
+      ws.onmessage = onmessage
+      ws.simulateOutOfOrder([{ seq: 5 }, { seq: 2 }, { seq: 9 }])
+      expect(onmessage).toHaveBeenCalledTimes(3)
+      const seqs = onmessage.mock.calls.map(
+        (call) => (JSON.parse((call[0] as MessageEvent).data as string) as { seq: number }).seq,
+      )
+      expect(seqs).toEqual([5, 2, 9])
+    })
+  })
+
+  describe('simulateWithDrops', () => {
+    it('skips the messages at dropIndices, dispatching the rest in order', () => {
+      const onmessage = vi.fn()
+      ws.onmessage = onmessage
+      ws.simulateWithDrops([{ n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }], [1, 3])
+      expect(onmessage).toHaveBeenCalledTimes(2)
+      const ns = onmessage.mock.calls.map(
+        (call) => (JSON.parse((call[0] as MessageEvent).data as string) as { n: number }).n,
+      )
+      expect(ns).toEqual([1, 3])
+    })
+
+    it('dispatches everything when dropIndices is empty', () => {
+      const onmessage = vi.fn()
+      ws.onmessage = onmessage
+      ws.simulateWithDrops([{ n: 1 }, { n: 2 }], [])
+      expect(onmessage).toHaveBeenCalledTimes(2)
+    })
+  })
+
   describe('simulateClose', () => {
     it('triggers onclose and sets readyState to CLOSED', () => {
       const onclose = vi.fn()

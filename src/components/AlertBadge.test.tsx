@@ -1,22 +1,14 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AlertBadge } from './AlertBadge'
 import type { Alert } from '../types'
+import { checkAccessibility } from '../test/accessibility'
+import { makeAlert } from '../test/fixtures'
+import { AlertBadge } from './AlertBadge'
 
 afterEach(cleanup)
 
-const baseAlert = (overrides: Partial<Alert> = {}): Alert => ({
-  id: '1',
-  assetPair: 'BTC/USD',
-  upperThreshold: 60000,
-  lowerThreshold: null,
-  triggerOnce: false,
-  active: true,
-  createdAt: Date.now(),
-  lastTriggeredAt: null,
-  ...overrides,
-})
+const baseAlert = (overrides: Partial<Alert> = {}): Alert => ({ ...makeAlert({ id: '1' }), ...overrides })
 
 describe('AlertBadge', () => {
   it('renders nothing when count is 0', () => {
@@ -39,6 +31,10 @@ describe('AlertBadge', () => {
     expect(screen.getByRole('button')).toHaveAttribute('aria-label', '2 active alerts')
   })
 
+  it('should have no accessibility violations', async () => {
+    await checkAccessibility(<AlertBadge count={2} onClick={vi.fn()} alerts={[baseAlert(), baseAlert({ id: '2' })]} />)
+  })
+
   it('calls onClick when clicked', async () => {
     const onClick = vi.fn()
     const user = userEvent.setup()
@@ -48,32 +44,17 @@ describe('AlertBadge', () => {
   })
 
   it('shows up arrow for upper-only alert', () => {
-    render(
-      <AlertBadge
-        count={1}
-        alerts={[baseAlert({ lowerThreshold: null, upperThreshold: 60000 })]}
-      />,
-    )
+    render(<AlertBadge count={1} alerts={[baseAlert({ lowerThreshold: null, upperThreshold: 60000 })]} />)
     expect(screen.getByText('↑')).toBeInTheDocument()
   })
 
   it('shows down arrow for lower-only alert', () => {
-    render(
-      <AlertBadge
-        count={1}
-        alerts={[baseAlert({ upperThreshold: null, lowerThreshold: 30000 })]}
-      />,
-    )
+    render(<AlertBadge count={1} alerts={[baseAlert({ upperThreshold: null, lowerThreshold: 30000 })]} />)
     expect(screen.getByText('↓')).toBeInTheDocument()
   })
 
   it('shows up-down arrow for both thresholds', () => {
-    render(
-      <AlertBadge
-        count={1}
-        alerts={[baseAlert({ upperThreshold: 60000, lowerThreshold: 30000 })]}
-      />,
-    )
+    render(<AlertBadge count={1} alerts={[baseAlert({ upperThreshold: 60000, lowerThreshold: 30000 })]} />)
     expect(screen.getByText('↕')).toBeInTheDocument()
   })
 })

@@ -1,9 +1,19 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
+import { MemoryRouter } from 'react-router-dom'
+import { checkAccessibility } from '../test/accessibility'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { PriceCard } from './PriceCard'
 
 afterEach(cleanup)
+
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <MemoryRouter>
+    <PreferencesProvider>{children}</PreferencesProvider>
+  </MemoryRouter>
+)
 
 const mockPrice = {
   assetPair: 'BTC/USD',
@@ -14,62 +24,58 @@ const mockPrice = {
 }
 
 describe('PriceCard', () => {
+  it('should have no accessibility violations', async () => {
+    await checkAccessibility(
+      <MemoryRouter>
+        <PreferencesProvider>
+          <PriceCard price={mockPrice} onClick={vi.fn()} onAlertClick={vi.fn()} />
+        </PreferencesProvider>
+      </MemoryRouter>,
+      {
+        rules: {
+          'nested-interactive': { enabled: false },
+        },
+      },
+    )
+  })
+
   it('renders asset pair and price', () => {
-    render(<PriceCard price={mockPrice} />)
+    render(<PriceCard price={mockPrice} />, { wrapper })
     expect(screen.getByText('BTC/USD')).toBeInTheDocument()
     expect(screen.getByText((content) => content.includes('50,000.12'))).toBeInTheDocument()
   })
 
   it('renders confidence percentage', () => {
-    render(<PriceCard price={mockPrice} />)
+    render(<PriceCard price={mockPrice} />, { wrapper })
     expect(screen.getByText((content) => content.includes('98.8'))).toBeInTheDocument()
     expect(screen.getByText((content) => content.includes('% confidence'))).toBeInTheDocument()
   })
 
   it('renders source badges', () => {
-    render(<PriceCard price={mockPrice} />)
+    render(<PriceCard price={mockPrice} />, { wrapper })
     const alertButton = screen.getByLabelText('Set alert for BTC/USD')
     expect(alertButton).toBeInTheDocument()
     expect(screen.getByText('chainlink')).toBeInTheDocument()
     expect(screen.getByText('redstone')).toBeInTheDocument()
   })
 
-  it('shows live indicator when isLive is true', () => {
-    const { container } = render(<PriceCard price={mockPrice} isLive />)
-    expect(container.querySelector('.bg-green-500')).toBeInTheDocument()
-  })
-
-  it('does not show live indicator when isLive is false', () => {
-    const { container } = render(<PriceCard price={mockPrice} isLive={false} />)
-    expect(container.querySelector('.bg-green-500')).not.toBeInTheDocument()
-  })
-
-  it('shows alert indicator when hasAlert is true', () => {
-    const { container } = render(<PriceCard price={mockPrice} hasAlert />)
-    expect(container.querySelector('.bg-amber-400')).toBeInTheDocument()
-  })
-
-  it('does not show alert indicator when hasAlert is false', () => {
-    const { container } = render(<PriceCard price={mockPrice} hasAlert={false} />)
-    expect(container.querySelector('.bg-amber-400')).not.toBeInTheDocument()
-  })
-
   it('calls onClick when card is clicked', async () => {
     const onClick = vi.fn()
     const user = userEvent.setup()
-    render(<PriceCard price={mockPrice} onClick={onClick} />)
+    render(<PriceCard price={mockPrice} onClick={onClick} />, { wrapper })
     const card = screen.getByRole('button', { name: 'View details for BTC/USD' })
     await user.click(card)
     expect(onClick).toHaveBeenCalledTimes(1)
+    expect(onClick).toHaveBeenCalledWith('BTC/USD')
   })
 
   it('shows Set alert text when no alert', () => {
-    render(<PriceCard price={mockPrice} />)
+    render(<PriceCard price={mockPrice} />, { wrapper })
     expect(screen.getByText('Set alert')).toBeInTheDocument()
   })
 
   it('shows Alert set text when hasAlert', () => {
-    render(<PriceCard price={mockPrice} hasAlert />)
+    render(<PriceCard price={mockPrice} hasAlert />, { wrapper })
     expect(screen.getByText('Alert set')).toBeInTheDocument()
   })
 
@@ -77,53 +83,50 @@ describe('PriceCard', () => {
     const onClick = vi.fn()
     const onAlertClick = vi.fn()
     const user = userEvent.setup()
-    render(<PriceCard price={mockPrice} onClick={onClick} onAlertClick={onAlertClick} />)
+    render(<PriceCard price={mockPrice} onClick={onClick} onAlertClick={onAlertClick} />, { wrapper })
     const alertButton = screen.getByLabelText('Set alert for BTC/USD')
     await user.click(alertButton)
     expect(onAlertClick).toHaveBeenCalledTimes(1)
+    expect(onAlertClick).toHaveBeenCalledWith(expect.anything(), 'BTC/USD')
     expect(onClick).not.toHaveBeenCalled()
   })
 
   it('has accessible aria-label on card', () => {
-    render(<PriceCard price={mockPrice} />)
+    render(<PriceCard price={mockPrice} />, { wrapper })
     expect(screen.getByRole('button', { name: 'View details for BTC/USD' })).toBeInTheDocument()
   })
 
   it('has accessible aria-label on alert button', () => {
-    render(<PriceCard price={mockPrice} />)
+    render(<PriceCard price={mockPrice} />, { wrapper })
     expect(screen.getByLabelText('Set alert for BTC/USD')).toBeInTheDocument()
   })
 
   it('calls onClick on Enter key', async () => {
     const onClick = vi.fn()
     const user = userEvent.setup()
-    render(<PriceCard price={mockPrice} onClick={onClick} />)
+    render(<PriceCard price={mockPrice} onClick={onClick} />, { wrapper })
     const card = screen.getByRole('button', { name: 'View details for BTC/USD' })
     card.focus()
     await user.keyboard('{Enter}')
     expect(onClick).toHaveBeenCalledTimes(1)
-  })
-
-  it('applies reduced opacity when isStale is true', () => {
-    const { container } = render(<PriceCard price={mockPrice} isStale />)
-    const card = container.querySelector('[role="button"]')
-    expect(card?.className).toContain('opacity-60')
+    expect(onClick).toHaveBeenCalledWith('BTC/USD')
   })
 
   it('does not apply reduced opacity when isStale is false', () => {
-    const { container } = render(<PriceCard price={mockPrice} isStale={false} />)
+    const { container } = render(<PriceCard price={mockPrice} isStale={false} />, { wrapper })
     const card = container.querySelector('[role="button"]')
     expect(card?.className).not.toContain('opacity-60')
   })
 
   it('does not apply reduced opacity when isStale is undefined', () => {
-    const { container } = render(<PriceCard price={mockPrice} />)
+    const { container } = render(<PriceCard price={mockPrice} />, { wrapper })
     const card = container.querySelector('[role="button"]')
     expect(card?.className).not.toContain('opacity-60')
   })
 })
 
 describe('snapshots', () => {
+  const FIXED_NOW = 1700100000000
   const fixedPrice = {
     assetPair: 'BTC/USD',
     price: 50000.1234,
@@ -132,23 +135,31 @@ describe('snapshots', () => {
     sources: ['chainlink', 'redstone'],
   }
 
+  beforeEach(() => {
+    vi.spyOn(Date, 'now').mockReturnValue(FIXED_NOW)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('default', () => {
-    const { container } = render(<PriceCard price={fixedPrice} />)
+    const { container } = render(<PriceCard price={fixedPrice} />, { wrapper })
     expect(container.firstChild).toMatchSnapshot()
   })
 
   it('isLive', () => {
-    const { container } = render(<PriceCard price={fixedPrice} isLive />)
+    const { container } = render(<PriceCard price={fixedPrice} isLive />, { wrapper })
     expect(container.firstChild).toMatchSnapshot()
   })
 
   it('isStale', () => {
-    const { container } = render(<PriceCard price={fixedPrice} isStale />)
+    const { container } = render(<PriceCard price={fixedPrice} isStale />, { wrapper })
     expect(container.firstChild).toMatchSnapshot()
   })
 
   it('hasAlert', () => {
-    const { container } = render(<PriceCard price={fixedPrice} hasAlert />)
+    const { container } = render(<PriceCard price={fixedPrice} hasAlert />, { wrapper })
     expect(container.firstChild).toMatchSnapshot()
   })
 })

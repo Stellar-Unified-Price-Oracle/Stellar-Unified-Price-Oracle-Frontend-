@@ -1,25 +1,72 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { PriceProvider } from './context/PriceContext'
-import { afterFirstPaint, markBoot, markStage } from './perf/startup'
 import App from './App'
 import './index.css'
+import { afterFirstPaint, markBoot, markStage, runWhenIdle } from './perf/startup'
+import { getMissingRequiredEnvVars } from './config/validateEnv'
+import { installConsoleAggregator } from './utils/consoleAggregator'
+import { installCspReporting } from './utils/cspReporting'
+import { checkStorageSizeWarning } from './utils/storage'
 
-// Stage 0: boot clock starts before any React work so every stage is measured
+// Stage clock starts before any other boot work so every stage below is measured
 // against the real entry-point cost, not against first render.
 markBoot()
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <PriceProvider>
+installConsoleAggregator()
+installCspReporting()
+// Warn in dev if localStorage usage is approaching the quota limit
+checkStorageSizeWarning()
+
+async function prepare(): Promise<void> {
+  if (import.meta.env.VITE_USE_MOCK === 'true') {
+    try {
+      const { worker } = await import('./mocks/browser')
+      await worker.start({ onUnhandledRequest: 'bypass' })
+    } catch (err) {
+      console.warn('MSW worker failed to start, continuing without mocks:', err)
+    }
+  }
+}
+
+const root = document.getElementById('root')
+if (!root) throw new Error('Root element #root not found')
+
+const missingEnvVars = getMissingRequiredEnvVars(import.meta.env)
+
+if (missingEnvVars.length > 0) {
+  createRoot(root).render(
+    <StrictMode>
+      <main role="alert" className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-slate-100">
+        <section className="w-full max-w-xl rounded-lg border border-red-500/50 bg-slate-900 p-6 shadow-xl">
+          <h1 className="text-2xl font-semibold text-red-400">Configuration error</h1>
+          <p className="mt-3">The application cannot start because these required environment variables are missing:</p>
+          <ul className="mt-3 list-inside list-disc font-mono text-sm text-red-300">
+            {missingEnvVars.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
+          <p className="mt-4 text-sm text-slate-300">
+            Set them in your environment or copy <code>.env.example</code> to <code>.env</code>, then restart the
+            application.
+          </p>
+        </section>
+      </main>
+    </StrictMode>,
+  )
+} else {
+  prepare().then(() => {
+    createRoot(root).render(
+      <StrictMode>
         <App />
-      </PriceProvider>
-    </ErrorBoundary>
-  </StrictMode>,
-)
+      </StrictMode>,
+    )
+  })
+}
 
-// Stage 1 (shell): nav + skeletons are on screen after the first paint.
-afterFirstPaint(() => markStage('shell'))
-
+// Stage 1 (shell): the first frame has painted, so the skeleton UI is visible.
+// The idle window after it is when deferred work (preloading, analytics) is
+// allowed to run.
+afterFirstPaint(() => {
+  markStage('shell')
+  runWhenIdle(() => markStage('idle'))
+})

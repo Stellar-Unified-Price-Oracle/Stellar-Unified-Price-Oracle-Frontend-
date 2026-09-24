@@ -1,10 +1,15 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import { checkAccessibility } from '../test/accessibility'
 import { SourceHealthBadge } from './SourceHealthBadge'
 
 afterEach(cleanup)
 
 describe('SourceHealthBadge', () => {
+  it('should have no accessibility violations', async () => {
+    await checkAccessibility(<SourceHealthBadge sources={['chainlink', 'redstone']} />)
+  })
+
   it('renders known sources with labels', () => {
     render(<SourceHealthBadge sources={['chainlink', 'redstone']} />)
     expect(screen.getAllByText('Chainlink').length).toBeGreaterThanOrEqual(1)

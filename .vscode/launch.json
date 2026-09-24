@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "sourceMapPathOverride": {
+        "webpack:///src/*": "${webRoot}/src/*"
+      },
+      "runtimeArgs": [
+        "--disable-background-networking",
+        "--disable-client-side-phishing-detection",
+        "--disable-hang-monitor",
+        "--disable-popup-blocking",
+        "--disable-prompt-on-repost",
+        "--disable-sync",
+        "--enable-automation",
+        "--no-first-run",
+        "--password-store=basic"
+      ]
+    },
+    {
+      "name": "Firefox",
+      "type": "firefox",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "npm: dev"
+    },
+    {
+      "name": "Playwright Test",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/playwright",
+      "runtimeArgs": ["test", "--debug"],
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "compounds": []
+}

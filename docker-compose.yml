@@ -1,0 +1,69 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stellar Unified Price Oracle — Docker Compose
+#
+# Services:
+#   frontend  — Vite dev server with hot module replacement
+#   mock-api  — (optional) lightweight Node server standing in for the aggregator
+#
+# Usage:
+#   docker compose up              # start frontend (hot reload)
+#   docker compose up --build      # rebuild image before starting
+#   docker compose down            # stop and remove containers
+#
+# Override for local tweaks: create docker-compose.override.yml (gitignored).
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ---------------------------------------------------------------------------
+  # Frontend — Vite dev server
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development      # uses the "development" multi-stage target
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      # Bind-mount source so file changes trigger HMR without rebuilding
+      - ./src:/app/src:delegated
+      - ./public:/app/public:delegated
+      - ./index.html:/app/index.html:delegated
+      - ./vite.config.ts:/app/vite.config.ts:delegated
+      - ./tsconfig.json:/app/tsconfig.json:delegated
+      - ./tsconfig.app.json:/app/tsconfig.app.json:delegated
+      # Named volume keeps node_modules inside the container — the host
+      # node_modules directory (if any) is intentionally not mounted.
+      - node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
+      - VITE_WS_URL=${VITE_WS_URL:-ws://localhost:3000}
+      - VITE_USE_MOCK=${VITE_USE_MOCK:-false}
+    env_file:
+      - .env
+    # Restart on crash during development; remove for production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5173/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Resource limits — reasonable defaults for a dev machine
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+        reservations:
+          memory: 256M
+
+# ---------------------------------------------------------------------------
+# Named volumes
+# ---------------------------------------------------------------------------
+volumes:
+  # Keeps node_modules inside the container so host installs don't interfere
+  node_modules:

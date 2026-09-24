@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { cleanup, render, screen, act } from '@testing-library/react'
+import { checkAccessibility } from '../test/accessibility'
 import { NetworkStatusBanner } from './NetworkStatusBanner'
 
 afterEach(cleanup)
@@ -11,6 +12,11 @@ describe('NetworkStatusBanner', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  it('should have no accessibility violations when offline', async () => {
+    vi.stubGlobal('navigator', { onLine: false })
+    await checkAccessibility(<NetworkStatusBanner />)
   })
 
   it('does not render when online', () => {

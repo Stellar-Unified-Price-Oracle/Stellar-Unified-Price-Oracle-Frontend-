@@ -1,0 +1,21 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-vscode.vscode-typescript-next",
+    "dsznajder.es7-react-js-snippets",
+    "tomoki1207.re-indent",
+    "bradlc.vscode-tailwindcss",
+    "vitest.explorer",
+    "eamodio.gitlens",
+    "donjayamanne.githistory",
+    "sonarsource.sonarlint-vscode",
+    "deque-systems.web-accessibility-checker",
+    "bierner.markdown-preview-github-styles",
+    "redhat.vscode-yaml",
+    "mhutchie.git-graph",
+    "firefox-devtools.vscode-firefox-debug",
+    "ms-edgedevtools.vscode-edge-devtools",
+    "formulahendry.code-runner"
+  ]
+}

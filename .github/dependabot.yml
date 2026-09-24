@@ -1,0 +1,63 @@
+version: 2
+updates:
+  # ── npm dependencies ────────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '08:00'
+      timezone: UTC
+    # Open at most 10 PRs at once to avoid review overload.
+    open-pull-requests-limit: 10
+    # Group updates into a small number of PRs to reduce review overload and
+    # keep each diff reviewable (#511) — patch and minor bumps are low-risk
+    # and rarely worth a separate PR each; dev-only tooling is grouped
+    # separately from production dependencies since a bundle-size regression
+    # can only come from the latter.
+    groups:
+      production-updates:
+        dependency-type: production
+        update-types:
+          - patch
+          - minor
+      development-updates:
+        dependency-type: development
+        update-types:
+          - patch
+          - minor
+    # Labels applied to every Dependabot PR for easy filtering.
+    labels:
+      - dependencies
+      - automated
+    # Prefix commit messages so they are easy to identify in the git log.
+    commit-message:
+      prefix: chore(deps)
+      prefix-development: chore(dev-deps)
+      include: scope
+    # Allow Dependabot to rebase its own PRs when the base branch changes.
+    rebase-strategy: auto
+    # Only bump the version in package.json — do not update lockfile entries
+    # that are not required for the version bump.
+    versioning-strategy: increase-if-necessary
+    ignore:
+      # Ignore major version bumps — handle them manually.
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+
+  # ── GitHub Actions ──────────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '08:00'
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - automated
+      - github-actions
+    commit-message:
+      prefix: chore(ci)

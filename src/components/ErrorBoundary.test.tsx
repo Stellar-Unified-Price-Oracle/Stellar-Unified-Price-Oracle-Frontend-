@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import { checkAccessibility } from '../test/accessibility'
 import { ErrorBoundary } from './ErrorBoundary'
 
 afterEach(cleanup)
@@ -10,6 +11,14 @@ const Bomb = ({ shouldThrow }: { shouldThrow: boolean }) => {
 }
 
 describe('ErrorBoundary', () => {
+  it('should have no accessibility violations (children)', async () => {
+    await checkAccessibility(
+      <ErrorBoundary>
+        <div>Hello</div>
+      </ErrorBoundary>,
+    )
+  })
+
   it('renders children when no error', () => {
     render(
       <ErrorBoundary>
@@ -26,9 +35,9 @@ describe('ErrorBoundary', () => {
         <Bomb shouldThrow={true} />
       </ErrorBoundary>,
     )
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
-    expect(screen.getByText('💥')).toBeInTheDocument()
-    expect(screen.getByText('Reload page')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText(/encountered an error/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
     spy.mockRestore()
   })
 
@@ -74,7 +83,7 @@ describe('ErrorBoundary', () => {
         <Bomb shouldThrow={true} />
       </ErrorBoundary>,
     )
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
 
     rerender(
       <ErrorBoundary key="2">

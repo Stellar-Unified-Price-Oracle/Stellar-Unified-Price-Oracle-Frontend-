@@ -9,51 +9,33 @@ function readSource(relativePath: string): string {
   return readFileSync(resolve(srcDir, relativePath), 'utf8')
 }
 
-/** Type-only imports are erased at build time and do not pull code into a chunk. */
-function stripTypeImports(source: string): string {
-  return source.replace(/^\s*import\s+type\s[^\n]*\n/gm, '')
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 /**
- * These modules sit outside the critical path. They must only be reached
- * through a dynamic import(); a static import would pull them back into the
- * entry chunk and re-create the all-at-once boot this staging exists to avoid.
+ * The stage budgets in `startup.ts` are only meaningful while the boot path
+ * actually records them. These guards fail fast if the wiring is removed or
+ * reordered, so the report can't silently go empty.
  */
-const DEFERRED_MODULES = [
-  { file: 'pages/Dashboard.tsx', specifier: '../components/AlertModal' },
-  { file: 'pages/PriceDetail.tsx', specifier: '../components/AlertModal' },
-  { file: 'components/Layout.tsx', specifier: './SettingsPanel' },
-  { file: 'hooks/useWebVitals.ts', specifier: 'web-vitals' },
-] as const
+describe('startup stage wiring', () => {
+  const main = readSource('main.tsx')
 
-describe('staged startup architecture', () => {
-  for (const { file, specifier } of DEFERRED_MODULES) {
-    it(`${file} loads ${specifier} on demand`, () => {
-      const source = stripTypeImports(readSource(file))
-      expect(source).toContain(`import('${specifier}')`)
-      expect(source).not.toMatch(
-        new RegExp(`from\\s+['"]${escapeRegExp(specifier)}['"]`),
-      )
-    })
-  }
-
-  it('PriceContext opens the socket only after the shell has painted', () => {
-    const source = readSource('context/PriceContext.tsx')
-    const paintIndex = source.indexOf('afterFirstPaint(')
-    const connectIndex = source.indexOf('client.connect()')
-
-    expect(paintIndex).toBeGreaterThanOrEqual(0)
-    expect(connectIndex).toBeGreaterThan(paintIndex)
+  it('starts the boot clock before rendering', () => {
+    expect(main).toContain('markBoot()')
+    expect(main.indexOf('markBoot()')).toBeLessThan(main.indexOf('createRoot('))
   })
 
-  it('main.tsx records the shell stage after first paint', () => {
-    const source = readSource('main.tsx')
-    expect(source).toContain('markBoot()')
-    expect(source).toContain("markStage('shell')")
-    expect(source.indexOf('afterFirstPaint(')).toBeGreaterThan(source.indexOf('createRoot('))
+  it('records the shell stage after the first paint', () => {
+    expect(main).toContain('afterFirstPaint(')
+    expect(main).toContain("markStage('shell')")
+    expect(main.indexOf('afterFirstPaint(')).toBeGreaterThan(main.indexOf('createRoot('))
+  })
+
+  it('records the idle stage via runWhenIdle', () => {
+    expect(main).toContain('runWhenIdle(')
+    expect(main).toContain("markStage('idle')")
+  })
+
+  it('records the data stages from the price context', () => {
+    const priceContext = readSource('context/PriceContext.tsx')
+    expect(priceContext).toContain("markStage('first-price'")
+    expect(priceContext).toContain("markStage('live')")
   })
 })

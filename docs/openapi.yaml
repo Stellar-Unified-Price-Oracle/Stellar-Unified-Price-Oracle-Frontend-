@@ -1,0 +1,607 @@
+openapi: 3.0.0
+info:
+  title: Stellar Unified Price Oracle API
+  version: 1.0.0
+  description: Real-time and historical price data aggregated from multiple oracle sources
+  contact:
+    name: API Support
+    email: support@stellar-oracle.example.com
+    url: https://stellar-oracle.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.stellar-price-oracle.example.com
+    description: Production API
+  - url: http://localhost:3000
+    description: Development API
+
+tags:
+  - name: Prices
+    description: Current and historical price endpoints
+  - name: Health
+    description: Server health and status
+  - name: WebSocket
+    description: Real-time price updates via WebSocket
+
+paths:
+  /api/prices:
+    get:
+      tags:
+        - Prices
+      summary: Get latest prices for all tracked pairs
+      description: Returns the latest aggregated price for every tracked asset pair, or a filtered subset
+      operationId: getAllPrices
+      parameters:
+        - name: pairs
+          in: query
+          description: Comma-separated list of asset pairs to filter (e.g., BTC/USD,ETH/USD)
+          schema:
+            type: string
+          example: "BTC/USD,ETH/USD"
+        - name: Accept-Version
+          in: header
+          description: API version for compatibility negotiation
+          schema:
+            type: string
+            default: "1.0.0"
+          required: false
+      responses:
+        "200":
+          description: Successful response with price data
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+              description: Request limit per window
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              description: Requests remaining in window
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+              description: Unix timestamp when limit resets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PriceData"
+              example:
+                - assetPair: "BTC/USD"
+                  price: 43250.50
+                  timestamp: 1693489200000
+                  confidence: 0.98
+                  sources: ["chainlink", "redstone", "band"]
+                - assetPair: "ETH/USD"
+                  price: 2150.75
+                  timestamp: 1693489195000
+                  confidence: 0.95
+                  sources: ["chainlink", "redstone"]
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/prices/{pair}:
+    get:
+      tags:
+        - Prices
+      summary: Get latest price for a single pair
+      description: Returns the latest aggregated price for a specific asset pair
+      operationId: getPrice
+      parameters:
+        - name: pair
+          in: path
+          description: Asset pair (e.g., BTC/USD)
+          required: true
+          schema:
+            type: string
+          example: "BTC/USD"
+        - name: Accept-Version
+          in: header
+          description: API version
+          schema:
+            type: string
+            default: "1.0.0"
+      responses:
+        "200":
+          description: Price data for the requested pair
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceData"
+        "404":
+          description: Asset pair not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error:
+                  code: "NOT_FOUND"
+                  message: "Asset pair XYZ/USD not found"
+                  status: 404
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/prices/{pair}/history:
+    get:
+      tags:
+        - Prices
+      summary: Get price history for a single pair (paginated)
+      description: Returns paginated historical price data for a specific asset pair
+      operationId: getPriceHistory
+      parameters:
+        - name: pair
+          in: path
+          description: Asset pair (e.g., BTC/USD)
+          required: true
+          schema:
+            type: string
+          example: "BTC/USD"
+        - name: limit
+          in: query
+          description: Number of records to return (max 500)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: Accept-Version
+          in: header
+          description: API version
+          schema:
+            type: string
+            default: "1.0.0"
+      responses:
+        "200":
+          description: Historical price data
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceHistoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/prices/history/batch:
+    post:
+      tags:
+        - Prices
+      summary: Get price history for multiple pairs (batch)
+      description: Fetches price history for multiple asset pairs in a single request (more efficient than individual requests)
+      operationId: getPriceHistoryBatch
+      parameters:
+        - name: limit
+          in: query
+          description: Number of records per pair (max 500)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: Accept-Version
+          in: header
+          description: API version
+          schema:
+            type: string
+            default: "1.0.0"
+      requestBody:
+        required: true
+        description: List of asset pairs to fetch history for
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pairs:
+                  type: array
+                  items:
+                    type: string
+                  example: ["BTC/USD", "ETH/USD", "XLM/USD"]
+              required:
+                - pairs
+      responses:
+        "200":
+          description: Historical price data for all requested pairs
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PriceHistoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Check API health status
+      description: Returns server status and uptime information for monitoring
+      operationId: getHealth
+      responses:
+        "200":
+          description: Server is operational
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "healthy"
+                uptime: 123456
+        "503":
+          description: Server is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: "unhealthy"
+                uptime: 0
+
+  /ws:
+    get:
+      tags:
+        - WebSocket
+      summary: WebSocket connection for real-time price updates
+      description: Establishes WebSocket connection for receiving real-time price updates
+      operationId: connectWebSocket
+      parameters:
+        - name: Accept-Version
+          in: header
+          description: API version
+          schema:
+            type: string
+            default: "1.0.0"
+      responses:
+        "101":
+          description: WebSocket upgrade successful
+
+components:
+  schemas:
+    PriceData:
+      type: object
+      description: Aggregated price snapshot for a single asset pair
+      required:
+        - assetPair
+        - price
+        - timestamp
+        - confidence
+        - sources
+      properties:
+        assetPair:
+          type: string
+          description: Asset pair identifier (e.g., BTC/USD)
+          example: "BTC/USD"
+        price:
+          type: number
+          format: double
+          description: Aggregated price in the quote currency
+          example: 43250.50
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+          example: 1693489200000
+        confidence:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Confidence score (0.0 = no confidence, 1.0 = certain)
+          example: 0.98
+        sources:
+          type: array
+          items:
+            type: string
+            enum:
+              - chainlink
+              - redstone
+              - band
+              - reflector
+          description: Oracle sources that contributed to this price
+          example: ["chainlink", "redstone", "band"]
+
+    PriceHistoryEntry:
+      type: object
+      description: A single historical price data point
+      required:
+        - price
+        - timestamp
+        - confidence
+        - sources
+      properties:
+        price:
+          type: number
+          format: double
+          description: Price at this point in time
+          example: 42800.00
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+          example: 1693485600000
+        confidence:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Confidence score at this point
+          example: 0.97
+        sources:
+          type: array
+          items:
+            type: string
+          description: Sources active at this time
+          example: ["chainlink", "redstone"]
+
+    PriceHistoryResponse:
+      type: object
+      description: Paginated price history for a single asset pair
+      required:
+        - pair
+        - history
+      properties:
+        pair:
+          type: string
+          description: Asset pair identifier
+          example: "BTC/USD"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceHistoryEntry"
+          description: Ordered list of historical entries (oldest first)
+
+    HealthResponse:
+      type: object
+      description: Server health status
+      required:
+        - status
+        - uptime
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - unhealthy
+          description: Server health status
+          example: "healthy"
+        uptime:
+          type: integer
+          format: int64
+          description: Server uptime in seconds
+          example: 123456
+
+    Error:
+      type: object
+      description: Error response
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - BAD_REQUEST
+                - NOT_FOUND
+                - RATE_LIMITED
+                - API_VERSION_MISMATCH
+                - SERVER_ERROR
+                - UNKNOWN_ERROR
+              description: Error code
+            message:
+              type: string
+              description: Human-readable error message
+            status:
+              type: integer
+              description: HTTP status code
+          required:
+            - code
+            - message
+            - status
+
+    WsSubscribeMessage:
+      type: object
+      description: Subscribe to price updates via WebSocket
+      required:
+        - action
+        - assetPairs
+      properties:
+        action:
+          type: string
+          enum:
+              - subscribe
+          description: Message action
+        assetPairs:
+          type: array
+          items:
+            type: string
+          description: Asset pairs to subscribe to
+          example: ["BTC/USD", "ETH/USD"]
+
+    WsUnsubscribeMessage:
+      type: object
+      description: Unsubscribe from price updates via WebSocket
+      required:
+        - action
+        - assetPairs
+      properties:
+        action:
+          type: string
+          enum:
+              - unsubscribe
+          description: Message action
+        assetPairs:
+          type: array
+          items:
+            type: string
+          description: Asset pairs to unsubscribe from
+
+    WsPriceUpdate:
+      type: object
+      description: Real-time price update received via WebSocket
+      required:
+        - type
+        - assetPair
+        - price
+        - timestamp
+        - confidence
+        - sources
+      properties:
+        type:
+          type: string
+          enum:
+              - price_update
+          description: Message type
+        assetPair:
+          type: string
+          description: Asset pair that was updated
+          example: "BTC/USD"
+        price:
+          type: number
+          format: double
+          description: Updated price
+          example: 43250.50
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+          example: 1693489200000
+        confidence:
+          type: number
+          format: double
+          description: Confidence score
+          example: 0.98
+        sources:
+          type: array
+          items:
+            type: string
+          description: Sources for this update
+          example: ["chainlink", "redstone", "band"]
+        seq:
+          type: integer
+          format: int64
+          description: Optional monotonic sequence number for duplicate detection
+          example: 12345
+
+  responses:
+    BadRequest:
+      description: Bad request (invalid parameters)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: "BAD_REQUEST"
+              message: "Invalid query parameters"
+              status: 400
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: "NOT_FOUND"
+              message: "Asset pair not found"
+              status: 404
+
+    RateLimited:
+      description: Too many requests (rate limited)
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Requests remaining
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: "RATE_LIMITED"
+              message: "Rate limit exceeded. Reset at 1693489300"
+              status: 429
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: "SERVER_ERROR"
+              message: "Internal server error"
+              status: 500

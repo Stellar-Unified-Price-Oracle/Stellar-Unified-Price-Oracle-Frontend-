@@ -1,0 +1,109 @@
+name: Dependabot Bundle Size Comment
+
+# Dependabot-authored `pull_request` events get a read-only GITHUB_TOKEN (a
+# GitHub security restriction, regardless of repo permission settings), so
+# the `bundle-analysis` job in ci.yml cannot comment directly on those PRs —
+# its "Compare bundle size to base branch" step is skipped for them (#511).
+#
+# This workflow instead triggers on `workflow_run`, which runs with normal
+# repo permissions, and reads the `size-limit-result` artifact CI already
+# produced rather than re-building the PR (so it never checks out or
+# executes the dependency bump's own code with elevated permissions).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
+    steps:
+      - name: Download size-limit result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id,
+            })
+            const match = artifacts.artifacts.find((a) => a.name === 'size-limit-result')
+            if (!match) {
+              core.setFailed('size-limit-result artifact not found on the triggering CI run')
+              return
+            }
+            const download = await github.rest.actions.downloadArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: match.id,
+              archive_format: 'zip',
+            })
+            require('fs').writeFileSync('size-limit-result.zip', Buffer.from(download.data))
+
+      - run: unzip -o size-limit-result.zip -d size-limit-result
+
+      - name: Comment bundle size delta on the PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs')
+            const results = JSON.parse(fs.readFileSync('size-limit-result/size-limit.json', 'utf-8'))
+            const pr = context.payload.workflow_run.pull_requests[0]
+            if (!pr) {
+              core.warning('No associated pull request on this workflow_run event')
+              return
+            }
+
+            const fmt = (bytes) => `${(bytes / 1024).toFixed(2)} KB`
+            const rows = results.map((r) => {
+              const status = r.passed === false ? '❌' : '✅'
+              const limit = typeof r.sizeLimit === 'number' ? fmt(r.sizeLimit) : '—'
+              return `| ${status} | ${r.name} | ${fmt(r.size)} | ${limit} |`
+            })
+            const anyFailed = results.some((r) => r.passed === false)
+
+            const body = [
+              '### 📦 Bundle size report',
+              '',
+              anyFailed
+                ? '**A dependency in this PR pushed the bundle over its size budget.** The `bundle-analysis` check will fail until it is addressed or the budget is deliberately raised.'
+                : 'All budgets are within limit.',
+              '',
+              '| | Check | Size (gzip/brotli) | Budget |',
+              '|---|---|---|---|',
+              ...rows,
+              '',
+              `_Compared against the budgets in \`package.json\`'s \`size-limit\` config, for commit ${context.payload.workflow_run.head_sha.slice(0, 7)}._`,
+            ].join('\n')
+
+            const marker = '<!-- dependabot-bundle-size-comment -->'
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+            })
+            const existing = comments.find((c) => c.body.includes(marker))
+            const fullBody = `${marker}\n${body}`
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: fullBody,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: fullBody,
+              })
+            }
