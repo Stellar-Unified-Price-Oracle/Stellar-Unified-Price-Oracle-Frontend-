@@ -1,0 +1,30 @@
+name: Publish SDK
+
+on:
+  push:
+    tags: ['sdk-v*']
+
+permissions:
+  contents: read
+  id-token: write # npm provenance attestation
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - name: Set version from tag
+        run: npm --prefix src/sdk version "${GITHUB_REF_NAME#sdk-v}" --no-git-tag-version
+      - run: npm run sdk:build
+      - run: npm run sdk:smoke
+      - name: Publish with provenance
+        run: npm publish --provenance --access public
+        working-directory: src/sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
