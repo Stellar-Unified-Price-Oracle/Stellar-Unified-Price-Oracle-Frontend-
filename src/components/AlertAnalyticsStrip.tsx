@@ -21,6 +21,7 @@
 import { memo, type ReactElement } from 'react'
 import type { AlertStats, ThresholdHint } from '../utils/alertAnalytics'
 import { formatTimeDuration } from '../utils/alertAnalytics'
+import type { RuleTypeStats, TuningSuggestion } from '../analytics/alertOutcomes'
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -47,9 +48,13 @@ const HINT_ICONS: Record<ThresholdHint['type'], string> = {
 export interface AlertAnalyticsStripProps {
   alertId: string
   stats: AlertStats
+  /** Optional precision for this alert's rule type (#642). */
+  ruleStats?: RuleTypeStats
+  /** Optional tuning suggestions for this alert's rule type (#642). */
+  suggestions?: TuningSuggestion[]
 }
 
-function AlertAnalyticsStripBase({ stats }: AlertAnalyticsStripProps): ReactElement {
+function AlertAnalyticsStripBase({ stats, ruleStats, suggestions }: AlertAnalyticsStripProps): ReactElement {
   const hitRateDisplay = isNaN(stats.hitRate)
     ? '—'
     : stats.hitRate < 0.1
@@ -112,6 +117,17 @@ function AlertAnalyticsStripBase({ stats }: AlertAnalyticsStripProps): ReactElem
           {stats.thresholdHint.type === 'good_calibration' && 'Well-calibrated'}
         </span>
       )}
+      {ruleStats?.precision != null && (
+        <span title={Object.entries(ruleStats.falsePositiveReasons).map(([r, n]) => `${r}: ${n}`).join(', ')}>
+          <span className="sr-only">Rule type precision: </span>
+          {ruleStats.ruleType} precision {Math.round(ruleStats.precision * 100)}%
+        </span>
+      )}
+      {suggestions?.map((sg) => (
+        <span key={sg.kind + sg.ruleType} role="note" className="text-yellow-300">
+          Tip: {sg.message}
+        </span>
+      ))}
     </div>
   )
 }

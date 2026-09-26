@@ -30,6 +30,7 @@ import { ApiVersionBanner } from './components/ApiVersionBanner'
 import { InstallPrompt } from './components/InstallPrompt'
 import { PwaUpdateBanner } from './components/PwaUpdateBanner'
 import { Webhooks } from './pages/Webhooks'
+import { DeveloperInsights } from './components/DeveloperInsights'
 import {
   LazyApiDocs,
   LazyDashboard,
@@ -140,6 +141,7 @@ export function AppContent(): ReactElement {
               }
             />
             <Route path="/webhooks" element={<Webhooks />} />
+            <Route path="/developer-insights" element={<DeveloperInsights />} />
             <Route
               path="/security"
               element={
