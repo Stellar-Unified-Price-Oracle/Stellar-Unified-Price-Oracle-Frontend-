@@ -17,6 +17,7 @@ import type { SourceHealth, PriceHistoryEntry } from '../types'
 import { SOURCE_COLORS } from '../utils/sourceColors'
 import { computeSourceMetrics, exportLeaderboardCsv, exportLeaderboardJson } from '../utils/export'
 import type { SourceReliabilityMetric } from '../utils/export'
+import { ATTRIBUTION_DEFINITION } from '../analytics/sourceAttribution'
 import { SourceHistoryDrilldown } from './SourceHistoryDrilldown'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -181,6 +182,9 @@ export const ReliabilityLeaderboard = memo(function ReliabilityLeaderboard({
             <h2 className="text-base font-semibold text-gray-100">Reliability Leaderboard</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               Ranked by reliability score & uptime over the selected window
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5" data-testid="metric-definition">
+              Window: {WINDOW_LABELS[window]}. {ATTRIBUTION_DEFINITION}
             </p>
             {caption && <p className="text-xs text-gray-500 mt-0.5">{caption}</p>}
           </div>
