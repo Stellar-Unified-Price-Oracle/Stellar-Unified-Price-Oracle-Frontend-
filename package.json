@@ -4,6 +4,8 @@
   "version": "1.0.1",
   "type": "module",
   "scripts": {
+    "sdk:build": "tsup --config src/sdk/tsup.config.ts",
+    "sdk:smoke": "node scripts/sdk-smoke.mjs",
     "dev": "vite",
     "dev:https": "HTTPS=true vite",
     "setup-https": "node scripts/setup-https.js",
@@ -79,6 +81,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "tsup": "^8.3.0",
     "@axe-core/playwright": "^4.12.1",
     "@commitlint/cli": "19.8.1",
     "@commitlint/config-conventional": "19.8.1",

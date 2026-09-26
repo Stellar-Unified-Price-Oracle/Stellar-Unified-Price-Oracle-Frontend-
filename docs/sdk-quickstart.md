@@ -81,3 +81,7 @@ await client.createAlert({
 ```
 
 Use `percentageDirection: 'down'` for a fall, or `'either'` to alert in both directions. Keep the package version in this guide aligned with the published SDK release before publishing a new release.
+
+## Installing and versioning
+
+The SDK is published to npm as `@stellar-unified-price-oracle/sdk` and follows semantic versioning: breaking changes bump the major, features the minor, fixes the patch. Releases are cut by pushing an `sdk-vX.Y.Z` tag; the `Publish SDK` workflow builds ESM + CJS bundles with type declarations, runs a consumer-style smoke test on the packed tarball (`npm run sdk:smoke`), and publishes with npm provenance. Pin the version you tested against, for example `npm install @stellar-unified-price-oracle/sdk@1.0.0`, and check the package page for the latest release. Entry points: `.` (client, errors, streaming, observer) and `./react` (hooks, requires `react` >= 18).

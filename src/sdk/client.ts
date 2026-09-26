@@ -1,3 +1,5 @@
+import { OracleNetworkError, errorFromResponse } from './errors'
+import { computeDelay, newIdempotencyKey, DEFAULT_RETRY_POLICY } from './retry'
 import type { PriceData, PriceHistoryResponse } from '../types'
 
 export interface RateLimitState {
@@ -20,6 +22,10 @@ export interface OracleClientOptions {
   random?: () => number
   limiter?: TokenBucketOptions
   onRateLimitChange?: (state: RateLimitState) => void
+}
+export interface MutationOptions {
+  /** Reused across retries so the server can dedupe. Generated when omitted. */
+  idempotencyKey?: string
 }
 export interface AlertInput {
   assetPair: string
@@ -105,8 +111,12 @@ export class OracleClient {
       `/api/prices/${encodeURIComponent(pair)}/history?limit=${limit}&offset=${offset}`,
     )
   }
-  async createAlert(input: AlertInput): Promise<unknown> {
-    return this.request('/api/alerts', { method: 'POST', body: JSON.stringify(input) })
+  async createAlert(input: AlertInput, options: MutationOptions = {}): Promise<unknown> {
+    return this.request('/api/alerts', {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: { 'Idempotency-Key': options.idempotencyKey ?? newIdempotencyKey() },
+    })
   }
   subscribe(pairs: string[], onPrice: (price: PriceData) => void): () => void {
     const socket = new WebSocket(this.baseUrl.replace(/^http/, 'ws') + '/ws')
@@ -132,17 +142,25 @@ export class OracleClient {
     let attempt = 0
     while (true) {
       await this.limiter?.acquire()
-      const response = await this.fetcher(`${this.baseUrl}${path}`, {
-        ...init,
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...init?.headers },
-      })
+      let response: Response
+      try {
+        response = await this.fetcher(`${this.baseUrl}${path}`, {
+          ...init,
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...init?.headers },
+        })
+      } catch (cause) {
+        const err = new OracleNetworkError('Oracle API network failure', { cause })
+        if (attempt >= this.maxRetries) throw err
+        await this.sleep(computeDelay({ ...DEFAULT_RETRY_POLICY, jitterRatio: this.jitterRatio }, attempt, null, this.random))
+        attempt += 1
+        continue
+      }
       this.captureRateLimit(response)
       if (response.ok) return (await response.json()) as T
-      if ((response.status !== 429 && response.status !== 503) || attempt >= this.maxRetries)
-        throw new Error(`Oracle API request failed (${response.status} ${response.statusText})`)
-      const serverDelay = retryAfterMs(response.headers.get('retry-after'))
-      const exponential = 250 * 2 ** attempt
-      await this.sleep(Math.max(serverDelay, exponential + exponential * this.jitterRatio * this.random()))
+      const body: unknown = await response.json().catch(() => null)
+      const error = errorFromResponse(response.status, response.statusText, body, retryAfterMs(response.headers.get('retry-after')) || null)
+      if (!error.retryable || attempt >= this.maxRetries) throw error
+      await this.sleep(computeDelay({ ...DEFAULT_RETRY_POLICY, jitterRatio: this.jitterRatio }, attempt, error.retryAfterMs, this.random))
       attempt += 1
     }
   }
