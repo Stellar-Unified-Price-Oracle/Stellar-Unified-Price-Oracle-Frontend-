@@ -296,6 +296,77 @@ export const GovernanceProposalSchema = z.object({
 /** Response of `GET /api/governance/proposals`. */
 export const GovernanceProposalsSchema = z.array(GovernanceProposalSchema)
 
+// ── #698 Parameter registry schemas ──────────────────────────────────────────
+
+export const ParameterEntrySchema = z.object({
+  key: z.string().min(1),
+  value: z.string(),
+  description: z.string(),
+  owner: z.string().min(1),
+  updatedAt: z.number().int().min(0),
+  category: z.string().min(1),
+})
+
+export const ParameterRegistrySchema = z.array(ParameterEntrySchema)
+
+export const ParameterChangeLogEntrySchema = z.object({
+  key: z.string().min(1),
+  previousValue: z.string(),
+  nextValue: z.string(),
+  changedAt: z.number().int().min(0),
+  changedBy: z.string().min(1),
+  reason: z.string().nullable(),
+})
+
+export const ParameterChangeLogSchema = z.array(ParameterChangeLogEntrySchema)
+
+// ── #697 Source reputation schemas ───────────────────────────────────────────
+
+export const SourceReputationSchema = z.object({
+  sourceId: z.string().min(1),
+  score: z.number().min(0).max(1),
+  decayedScore: z.number().min(0).max(1),
+  sybilResistanceWeight: z.number().min(0).max(1),
+  lastDecayAt: z.number().int().min(0),
+  inactivePeriods: z.number().int().min(0),
+})
+
+export const SourceReputationsSchema = z.array(SourceReputationSchema)
+
+// ── #696 Treasury schemas ─────────────────────────────────────────────────────
+
+export const TreasuryEntrySchema = z.object({
+  sourceId: z.string().min(1),
+  accruedRewards: z.string().min(1),
+  claimedRewards: z.string().min(1),
+  pendingRewards: z.string().nullable(),
+  uptimeScore: z.number().min(0).max(1),
+  accuracyScore: z.number().min(0).max(1),
+  lastSettledAt: z.number().int().min(0).nullable(),
+})
+
+export const TreasurySchema = z.array(TreasuryEntrySchema)
+
+// ── #695 Dispute schemas ──────────────────────────────────────────────────────
+
+export const PriceDisputeSchema = z.object({
+  id: z.string().min(1),
+  assetPair: z.string().min(1),
+  disputedPrice: z.number().finite(),
+  priceTimestamp: z.number().int().min(0),
+  status: z.enum(['open', 'under_review', 'resolved', 'dismissed']),
+  challenger: z.string().min(1),
+  reason: z.string().min(1),
+  evidenceUrl: z.string().nullable(),
+  createdAt: z.number().int().min(0),
+  resolvedAt: z.number().int().min(0).nullable(),
+  outcome: z.enum(['upheld', 'rejected', 'inconclusive']).nullable(),
+  resolutionNotes: z.string().nullable(),
+  flaggedSources: z.array(z.string()),
+})
+
+export const PriceDisputesSchema = z.array(PriceDisputeSchema)
+
 // ── Type inference from schemas ──────────────────────────────────────────────
 
 export type PriceDataFromSchema = z.infer<typeof PriceDataSchema>

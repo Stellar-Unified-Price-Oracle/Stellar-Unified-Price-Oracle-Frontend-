@@ -115,3 +115,156 @@ export function orderProposals(proposals: readonly GovernanceProposal[]): Govern
 export function formatVotingPower(value: number): string {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)
 }
+
+// ---------------------------------------------------------------------------
+// #698 — Transparent parameter registry utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Groups a flat list of parameters by their category for display.
+ * The returned map preserves insertion order within each group.
+ */
+export function groupParametersByCategory(
+  entries: readonly import('../types').ParameterEntry[],
+): Map<string, import('../types').ParameterEntry[]> {
+  const groups = new Map<string, import('../types').ParameterEntry[]>()
+  for (const entry of entries) {
+    const bucket = groups.get(entry.category) ?? []
+    bucket.push(entry)
+    groups.set(entry.category, bucket)
+  }
+  return groups
+}
+
+/**
+ * Formats a parameter change-log entry for display.
+ * Returns an object with human-readable before/after strings.
+ */
+export function formatChangeLogEntry(entry: import('../types').ParameterChangeLogEntry): {
+  label: string
+  changedAtDisplay: string
+} {
+  const d = new Date(entry.changedAt)
+  const changedAtDisplay = new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(d)
+  const label = entry.reason
+    ? `${entry.changedBy} — "${entry.reason}"`
+    : entry.changedBy
+  return { label, changedAtDisplay }
+}
+
+// ---------------------------------------------------------------------------
+// #697 — Reputation decay & sybil resistance utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns a human-readable tier label for a reputation score.
+ * Tiers are: Elite (≥ 0.9), Strong (≥ 0.7), Adequate (≥ 0.5), Weak (< 0.5).
+ */
+export type ReputationTier = 'elite' | 'strong' | 'adequate' | 'weak'
+
+export function reputationTier(score: number): ReputationTier {
+  if (score >= 0.9) return 'elite'
+  if (score >= 0.7) return 'strong'
+  if (score >= 0.5) return 'adequate'
+  return 'weak'
+}
+
+/** Display labels for each reputation tier. */
+export const REPUTATION_TIER_LABELS: Record<ReputationTier, string> = {
+  elite: 'Elite',
+  strong: 'Strong',
+  adequate: 'Adequate',
+  weak: 'Weak',
+}
+
+/**
+ * Formats a reputation score as a percentage string, e.g. "87.4 %".
+ * Returns `null` for inputs outside [0, 1] rather than clamping silently.
+ */
+export function formatReputationScore(score: number): string | null {
+  if (score < 0 || score > 1) return null
+  return `${(score * 100).toFixed(1)} %`
+}
+
+// ---------------------------------------------------------------------------
+// #696 — Treasury & incentive accounting utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Computes the net unclaimed balance from a treasury entry
+ * (accrued − claimed), returned as a BigInt-safe string.
+ *
+ * Uses string-based arithmetic to avoid float drift on large amounts.
+ * Assumes both inputs are non-negative decimal strings.
+ *
+ * Returns `null` when either input cannot be parsed as a non-negative number.
+ */
+export function netUnclaimedRewards(entry: import('../types').TreasuryEntry): string | null {
+  const accrued = Number(entry.accruedRewards)
+  const claimed = Number(entry.claimedRewards)
+  if (!Number.isFinite(accrued) || !Number.isFinite(claimed)) return null
+  if (accrued < 0 || claimed < 0) return null
+  const net = accrued - claimed
+  if (net < 0) return null // claimed > accrued indicates a data anomaly; don't render it
+  return net.toFixed(7).replace(/\.?0+$/, '') // trim trailing zeros, keep at least one decimal
+}
+
+/**
+ * Formats a combined contribution score (average of uptime and accuracy)
+ * as a percentage string. Returns `null` when either score is out of [0, 1].
+ */
+export function contributionScore(entry: import('../types').TreasuryEntry): number | null {
+  if (entry.uptimeScore < 0 || entry.uptimeScore > 1) return null
+  if (entry.accuracyScore < 0 || entry.accuracyScore > 1) return null
+  return (entry.uptimeScore + entry.accuracyScore) / 2
+}
+
+// ---------------------------------------------------------------------------
+// #695 — Dispute & challenge process utilities
+// ---------------------------------------------------------------------------
+
+/** Display labels for each dispute status. */
+export const DISPUTE_STATUS_LABELS: Record<import('../types').DisputeStatus, string> = {
+  open: 'Open',
+  under_review: 'Under review',
+  resolved: 'Resolved',
+  dismissed: 'Dismissed',
+}
+
+/** Display labels for each dispute outcome. */
+export const DISPUTE_OUTCOME_LABELS: Record<NonNullable<import('../types').DisputeOutcome>, string> = {
+  upheld: 'Upheld',
+  rejected: 'Rejected',
+  inconclusive: 'Inconclusive',
+}
+
+/**
+ * Whether a dispute is still actionable (can receive evidence or review).
+ */
+export function isDisputeOpen(dispute: import('../types').PriceDispute): boolean {
+  return dispute.status === 'open' || dispute.status === 'under_review'
+}
+
+/**
+ * Orders disputes for display: open and under-review first (newest first
+ * within those), then resolved/dismissed (newest resolved first).
+ * Stable and deterministic.
+ */
+export function orderDisputes(
+  disputes: readonly import('../types').PriceDispute[],
+): import('../types').PriceDispute[] {
+  const rank = (d: import('../types').PriceDispute): number => {
+    if (d.status === 'open') return 0
+    if (d.status === 'under_review') return 1
+    return 2
+  }
+  return [...disputes].sort((a, b) => {
+    const byRank = rank(a) - rank(b)
+    if (byRank !== 0) return byRank
+    // Within the same rank, newest first
+    return b.createdAt - a.createdAt
+  })
+}

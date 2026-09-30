@@ -3,7 +3,14 @@ import { cleanup, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../test/render'
 import { checkAccessibility } from '../test/accessibility'
 import { clearSwrCache } from '../hooks/useSwr'
-import { fetchGovernanceProposals, fetchPriceHistory } from '../api/rest'
+import {
+  fetchGovernanceProposals,
+  fetchPriceHistory,
+  fetchSourceReputations,
+  fetchTreasury,
+  fetchDisputes,
+  fetchParameterRegistry,
+} from '../api/rest'
 import { GovernanceProposalCard } from '../components/GovernanceProposalCard'
 import type { GovernanceProposal } from '../types'
 import { Governance } from './Governance'
@@ -11,6 +18,10 @@ import { Governance } from './Governance'
 vi.mock('../api/rest', () => ({
   fetchGovernanceProposals: vi.fn(),
   fetchPriceHistory: vi.fn(),
+  fetchSourceReputations: vi.fn(),
+  fetchTreasury: vi.fn(),
+  fetchDisputes: vi.fn(),
+  fetchParameterRegistry: vi.fn(),
 }))
 
 vi.mock('../context/PriceContext', () => ({
@@ -40,6 +51,12 @@ beforeEach(() => {
   vi.clearAllMocks()
   clearSwrCache()
   vi.mocked(fetchPriceHistory).mockImplementation((pair: string) => Promise.resolve({ pair, history: [] }))
+  // New governance panel fetchers — resolve to empty arrays so panels render
+  // their "no data" states rather than failing and emitting unexpected alerts.
+  vi.mocked(fetchSourceReputations).mockResolvedValue([])
+  vi.mocked(fetchTreasury).mockResolvedValue([])
+  vi.mocked(fetchDisputes).mockResolvedValue([])
+  vi.mocked(fetchParameterRegistry).mockResolvedValue([])
 })
 
 afterEach(cleanup)
@@ -97,9 +114,11 @@ describe('Governance page', () => {
 
     renderWithProviders(<Governance />)
 
-    const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(/Could not load governance proposals/)
-    expect(alert).toHaveTextContent(/not a report that there are no decisions pending/)
+    // There may be multiple alerts if other panels also fail, so scope to the
+    // proposals section's error message specifically.
+    const alertText = await screen.findByText(/Could not load governance proposals/)
+    expect(alertText).toBeInTheDocument()
+    expect(alertText.closest('[role="alert"]')).toHaveTextContent(/not a report that there are no decisions pending/)
     expect(screen.queryByText(/returned no proposals/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
