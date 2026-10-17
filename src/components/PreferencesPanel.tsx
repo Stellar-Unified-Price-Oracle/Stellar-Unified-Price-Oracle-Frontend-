@@ -44,8 +44,18 @@
  * - Undo/Redo buttons have descriptive `aria-label` attributes and are `disabled`
  *   when the action is unavailable.
  */
-import { memo } from 'react'
+import { memo, useState, type ChangeEvent } from 'react'
 import { usePreferences } from '../preferences/PreferencesContext'
+import {
+  PORTABLE_KEYS,
+  exportPreferences,
+  importPreferences,
+  type PortablePreferences,
+} from '../preferences/portability'
+import { downloadFile } from '../utils/export'
+import { resetExplanationDismissals } from '../utils/explanationDismissals'
+import type { ExplanationReappearPolicy } from '../preferences/types'
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning'
 import {
   REFRESH_INTERVAL_OPTIONS,
   CHART_RANGE_OPTIONS,
@@ -54,6 +64,11 @@ import {
   DIVERGENCE_THRESHOLD_OPTIONS,
 } from '../preferences/constants'
 import type { Preferences } from '../preferences/types'
+
+/** Portable keys whose value in `draft` differs from the live preferences. Arrays compare by content. */
+function differingKeys(current: PortablePreferences, draft: PortablePreferences): (keyof PortablePreferences)[] {
+  return PORTABLE_KEYS.filter((key) => JSON.stringify(current[key]) !== JSON.stringify(draft[key]))
+}
 
 /**
  * PreferencesPanel
@@ -66,6 +81,39 @@ import type { Preferences } from '../preferences/types'
  */
 export const PreferencesPanel = memo(function PreferencesPanel() {
   const { preferences, updatePreference, undo, redo, canUndo, canRedo } = usePreferences()
+  // An imported file is staged here and only written to preferences once the user applies it.
+  const [draft, setDraft] = useState<PortablePreferences | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [dismissalsReset, setDismissalsReset] = useState(false)
+  useUnsavedChangesWarning(draft !== null)
+
+  const handleExport = () => {
+    downloadFile(exportPreferences(preferences), 'supo-preferences.json', 'application/json')
+  }
+
+  const handleImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const result = importPreferences(await file.text())
+    if (result.ok) {
+      setDraft(result.preferences)
+      setImportError(null)
+    } else {
+      setDraft(null)
+      setImportError(result.error)
+    }
+  }
+
+  const applyValue = <K extends keyof PortablePreferences>(key: K, value: PortablePreferences[K]) => {
+    updatePreference(key, value)
+  }
+
+  const applyDraft = () => {
+    if (!draft) return
+    for (const key of differingKeys(preferences, draft)) applyValue(key, draft[key])
+    setDraft(null)
+  }
 
   return (
     <section aria-label="Preferences" className="flex flex-col gap-4 p-4">
@@ -99,9 +147,7 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
           id="chart-range"
           className="rounded bg-slate-800 px-3 py-2 text-sm text-gray-100"
           value={preferences.chartTimeRange}
-          onChange={(e) =>
-            updatePreference('chartTimeRange', e.target.value as Preferences['chartTimeRange'])
-          }
+          onChange={(e) => updatePreference('chartTimeRange', e.target.value as Preferences['chartTimeRange'])}
         >
           {CHART_RANGE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -141,9 +187,7 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
           id="stale-threshold"
           className="rounded bg-slate-800 px-3 py-2 text-sm text-gray-100"
           value={preferences.staleThresholdMinutes}
-          onChange={(e) =>
-            updatePreference('staleThresholdMinutes', Number(e.target.value))
-          }
+          onChange={(e) => updatePreference('staleThresholdMinutes', Number(e.target.value))}
         >
           {STALE_THRESHOLD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -162,9 +206,7 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
           id="divergence-threshold"
           className="rounded bg-slate-800 px-3 py-2 text-sm text-gray-100"
           value={preferences.onChainDivergenceThresholdPercent}
-          onChange={(e) =>
-            updatePreference('onChainDivergenceThresholdPercent', Number(e.target.value))
-          }
+          onChange={(e) => updatePreference('onChainDivergenceThresholdPercent', Number(e.target.value))}
         >
           {DIVERGENCE_THRESHOLD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -239,6 +281,91 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
         >
           Redo
         </button>
+      </div>
+
+      {/* Dismissed inline explanations */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="explanation-reappear" className="text-sm font-medium text-gray-200">
+          Show dismissed explanations again
+        </label>
+        <select
+          id="explanation-reappear"
+          className="rounded bg-slate-800 px-3 py-2 text-sm text-gray-100"
+          value={preferences.explanationReappearPolicy}
+          onChange={(e) => updatePreference('explanationReappearPolicy', e.target.value as ExplanationReappearPolicy)}
+        >
+          <option value="never">Never</option>
+          <option value="weekly">After 7 days</option>
+          <option value="always">Always</option>
+        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              resetExplanationDismissals()
+              setDismissalsReset(true)
+            }}
+            className="rounded bg-slate-700 px-3 py-1.5 text-sm text-gray-200"
+          >
+            Reset dismissed explanations
+          </button>
+          {dismissalsReset && (
+            <span role="status" className="text-xs text-gray-400">
+              Dismissed explanations reset.
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Export / import */}
+      <div className="flex flex-col gap-2 border-t border-slate-700 pt-4">
+        <h3 className="text-sm font-medium text-gray-200">Backup</h3>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            className="rounded bg-slate-700 px-3 py-1.5 text-sm text-gray-200"
+          >
+            Export preferences
+          </button>
+          <label className="cursor-pointer rounded bg-slate-700 px-3 py-1.5 text-sm text-gray-200 focus-within:ring-2 focus-within:ring-cyan-500">
+            Import preferences
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              aria-label="Import preferences file"
+              onChange={handleImportFile}
+            />
+          </label>
+        </div>
+
+        {importError && (
+          <p role="alert" className="text-sm text-red-400">
+            {importError}
+          </p>
+        )}
+
+        {draft && (
+          <div role="region" aria-label="Imported preferences review" className="flex flex-col gap-2">
+            <p className="text-sm text-gray-300">
+              {differingKeys(preferences, draft).length} setting(s) differ from the imported file. Nothing changes until
+              you apply.
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={applyDraft} className="rounded bg-cyan-600 px-3 py-1.5 text-sm text-white">
+                Apply imported preferences
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft(null)}
+                className="rounded bg-slate-700 px-3 py-1.5 text-sm text-gray-200"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )

@@ -5,6 +5,12 @@ export type RefreshInterval = 5000 | 10000 | 30000 | 60000 | 300000
 export type ChartHistoryPageSize = 50 | 100 | 250
 export type DashboardView = 'card' | 'table'
 export type ChartTimezone = 'UTC' | 'Local' | 'America/New_York' | 'Europe/London' | 'Asia/Tokyo'
+/**
+ * When a dismissed inline explanation may show again (#822).
+ * `never` keeps it hidden for good, `weekly` brings it back after seven days, and
+ * `always` ignores dismissals.
+ */
+export type ExplanationReappearPolicy = 'never' | 'weekly' | 'always'
 export type LocaleCode = 'auto' | 'en-US' | 'de-DE' | 'fr-FR' | 'ja-JP' | 'es-ES' | 'ar-SA' | 'he' | 'pt-BR'
 
 /** How often and over what window price data is fetched and judged stale. */
@@ -26,6 +32,7 @@ export interface DataPreferences {
 export interface LayoutPreferences {
   dashboardView: DashboardView
   cardOrder: string[]
+  explanationReappearPolicy: ExplanationReappearPolicy
 }
 
 /** Presentation overrides for users with accessibility needs. */

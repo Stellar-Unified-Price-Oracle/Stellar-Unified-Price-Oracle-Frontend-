@@ -58,6 +58,7 @@ export const DEFAULT_DATA_PREFERENCES: DataPreferences = {
 export const DEFAULT_LAYOUT_PREFERENCES: LayoutPreferences = {
   dashboardView: 'card',
   cardOrder: [],
+  explanationReappearPolicy: 'weekly',
 }
 
 export const DEFAULT_ACCESSIBILITY_PREFERENCES: AccessibilityPreferences = {

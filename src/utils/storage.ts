@@ -64,6 +64,8 @@ export const STORAGE_KEYS = {
   pwaInstallDismissed: 'pwa-install-dismissed-until',
   /** Timestamp until which the PWA update banner is snoozed. No PII. */
   pwaUpdateDismissed: 'pwa-update-dismissed-until',
+  /** Map of inline-explanation id to the time it was dismissed (#822). No PII. */
+  dismissedExplanations: 'dismissed-explanations',
   /** Alert sound preferences (#308): enabled flag + 0–1 volume. No PII. */
   soundPreferences: 'sound-preferences',
   /** Recently-used UI language codes, newest first (#373). No PII. */
@@ -316,6 +318,7 @@ function formatBytes(bytes: number): string {
  * | alert-health-dismissed | Ids of dismissed alert health flags (#493). No PII.                |
  * | pwa-install-dismissed-until | PWA install prompt snooze timestamp. No PII.                  |
  * | pwa-update-dismissed-until | PWA update banner snooze timestamp. No PII.                     |
+ * | dismissed-explanations | Map of dismissed inline-explanation ids to dismissal times (#822). No PII. |
  * | sound-preferences      | Alert sound enabled flag + 0–1 volume (#308). No PII.             |
  *
  * ## IndexedDB stores (stellar-oracle DB)
@@ -372,6 +375,10 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       key: STORAGE_KEYS.pwaUpdateDismissed,
       description: 'Timestamp until which the PWA update banner is snoozed. No PII.',
+    },
+    {
+      key: STORAGE_KEYS.dismissedExplanations,
+      description: 'Map of dismissed inline-explanation ids to dismissal times. No PII.',
     },
     {
       key: STORAGE_KEYS.soundPreferences,
