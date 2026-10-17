@@ -78,6 +78,8 @@ export const STORAGE_KEYS = {
   transparencyArchive: 'transparency-archive',
   /** User-entered local-only portfolio positions; no account sync or PII. */
   portfolioHoldings: 'portfolio-holdings',
+  /** Dashboard filter query, stored only after the user opts in on this device (#812). No PII. */
+  dashboardFilters: 'supo:dashboard-filters',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
@@ -376,6 +378,10 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       key: STORAGE_KEYS.soundPreferences,
       description: 'Alert sound enabled flag + 0–1 volume. No PII.',
+    },
+    {
+      key: STORAGE_KEYS.dashboardFilters,
+      description: 'Dashboard filter query, only when the user opts in. No PII.',
     },
   ],
   indexedDB: [

@@ -30,6 +30,10 @@ import { OfflineSnapshotBanner } from '../components/OfflineSnapshotBanner'
 import type { AlertFormData, LivePriceEntry, PriceData, SourceHealth } from '../types'
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
+import { useRestoreRememberedFilters } from '../hooks/useRememberedDashboardFilters'
+import { TableColumnsDialog } from '../components/TableColumnsDialog'
+import { sanitizeHiddenTableColumns } from '../utils/tableColumns'
+import type { ToggleableTableColumn } from '../preferences/types'
 import { buildConditionGroupFromFormData } from '../utils/alertEvaluator'
 import { localDateToTimestamp } from '../utils/alertLifecycle'
 import { deriveSourceHealths } from '../utils/sourceHealth'
@@ -91,11 +95,25 @@ export function Dashboard() {
   const { preferences, updatePreference } = usePreferences()
   const { addToast } = useToast()
   const [searchParams] = useSearchParams()
+  useRestoreRememberedFilters()
 
   const [columnModalOpen, setColumnModalOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPair, setModalPair] = useState('')
   const [dashboardView, setDashboardView] = useState<'card' | 'table'>('card')
+  const [columnsDialogOpen, setColumnsDialogOpen] = useState(false)
+  const hiddenTableColumns = useMemo(
+    () => sanitizeHiddenTableColumns(preferences.hiddenTableColumns),
+    [preferences.hiddenTableColumns],
+  )
+  const closeColumnsDialog = useCallback(() => setColumnsDialogOpen(false), [])
+  const applyHiddenColumns = useCallback(
+    (next: ToggleableTableColumn[]) => {
+      updatePreference('hiddenTableColumns', next)
+      setColumnsDialogOpen(false)
+    },
+    [updatePreference],
+  )
   const [notifModalOpen, setNotifModalOpen] = useState(false)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -552,6 +570,18 @@ export function Dashboard() {
               </button>
             </div>
           )}
+          {dashboardView === 'table' && !pricesLoading && prices.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setColumnsDialogOpen(true)}
+              className="min-h-[44px] rounded-lg border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:text-white"
+            >
+              Columns
+            </button>
+          )}
+          {columnsDialogOpen && (
+            <TableColumnsDialog hidden={hiddenTableColumns} onApply={applyHiddenColumns} onClose={closeColumnsDialog} />
+          )}
           <AlertBadge count={activeCount} alerts={alerts} />
           <button
             type="button"
@@ -747,6 +777,8 @@ export function Dashboard() {
               onToggleSelect={onToggleSelect}
               subscriptionStatus={wsStatus}
               isOfflineSnapshot={isOfflineSnapshot}
+              pricePrecision={preferences.pricePrecision}
+              hiddenColumns={hiddenTableColumns}
             />
           </Suspense>
         </ErrorBoundary>

@@ -41,6 +41,25 @@ export function formatPrice(price: number, locale: string | undefined = 'en-US')
   return price.toLocaleString(locale, { minimumFractionDigits: 6, maximumFractionDigits: 6 })
 }
 
+/**
+ * Formats a price at a user-chosen precision. `'auto'` defers to {@link formatPrice}
+ * so the default display is unchanged; a number pins both min and max fraction digits.
+ *
+ * @example
+ * ```
+ * formatPriceWithPrecision(1.23456789, 4) // "1.2346"
+ * formatPriceWithPrecision(1.5, 2)        // "1.50"
+ * ```
+ */
+export function formatPriceWithPrecision(
+  price: number,
+  precision: 'auto' | number,
+  locale: string | undefined = 'en-US',
+): string {
+  if (precision === 'auto') return formatPrice(price, locale)
+  return price.toLocaleString(locale, { minimumFractionDigits: precision, maximumFractionDigits: precision })
+}
+
 /** Formats a value as a currency using the locale's currency placement and digits. */
 export function formatCurrency(amount: number, currency: string, locale: string | undefined = 'en-US'): string {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount)

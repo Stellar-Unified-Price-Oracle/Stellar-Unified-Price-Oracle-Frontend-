@@ -52,6 +52,7 @@ import {
   CHART_HISTORY_PAGE_SIZE_OPTIONS,
   STALE_THRESHOLD_OPTIONS,
   DIVERGENCE_THRESHOLD_OPTIONS,
+  PRICE_PRECISION_OPTIONS,
 } from '../preferences/constants'
 import type { Preferences } from '../preferences/types'
 
@@ -84,6 +85,30 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
         >
           {REFRESH_INTERVAL_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Price display precision */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="price-precision" className="text-sm font-medium text-gray-200">
+          Price decimals
+        </label>
+        <select
+          id="price-precision"
+          className="rounded bg-slate-800 px-3 py-2 text-sm text-gray-100"
+          value={String(preferences.pricePrecision)}
+          onChange={(e) =>
+            updatePreference(
+              'pricePrecision',
+              e.target.value === 'auto' ? 'auto' : (Number(e.target.value) as Preferences['pricePrecision']),
+            )
+          }
+        >
+          {PRICE_PRECISION_OPTIONS.map((opt) => (
+            <option key={opt.value} value={String(opt.value)}>
               {opt.label}
             </option>
           ))}

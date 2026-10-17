@@ -1,6 +1,7 @@
-import { useCallback, type ReactElement } from 'react'
+import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { FILTER_PARAM_KEYS, forgetFilters, isRememberingFilters, rememberFilters } from '../utils/dashboardFilterMemory'
 
 export const KNOWN_SOURCES = ['chainlink', 'redstone', 'band', 'reflector'] as const
 
@@ -76,7 +77,7 @@ export function FilterPanel({ availableSources = KNOWN_SOURCES }: Props): ReactE
 
   const clearAll = useCallback(() => {
     const params = new URLSearchParams(searchParams)
-    for (const key of ['sources', 'minConf', 'maxConf', 'minPrice', 'maxPrice', 'updatedWithin', 'sort', 'sortDir']) {
+    for (const key of FILTER_PARAM_KEYS) {
       params.delete(key)
     }
     navigate({ search: params.toString() }, { replace: true })
@@ -96,6 +97,19 @@ export function FilterPanel({ availableSources = KNOWN_SOURCES }: Props): ReactE
   const isSourceChecked = (src: string) => f.sources.length === 0 || f.sources.includes(src)
 
   const activeCount = countActiveFilters(f)
+
+  // Opt-in, device-local memory (#812). Filters are only written to localStorage
+  // while the user has explicitly ticked the box.
+  const [remembering, setRemembering] = useState(isRememberingFilters)
+
+  useEffect(() => {
+    if (remembering) rememberFilters(searchParams)
+  }, [remembering, searchParams])
+
+  const toggleRemembering = useCallback((next: boolean) => {
+    setRemembering(next)
+    if (!next) forgetFilters()
+  }, [])
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
@@ -271,6 +285,16 @@ export function FilterPanel({ availableSources = KNOWN_SOURCES }: Props): ReactE
           </button>
         </div>
       </div>
+
+      <label className="mt-4 flex items-start gap-2 text-xs text-gray-400 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={remembering}
+          onChange={(e) => toggleRemembering(e.target.checked)}
+          className="mt-0.5 w-3.5 h-3.5 rounded border-gray-600 bg-gray-800 text-cyan-500 focus:ring-cyan-500/50 focus:ring-offset-0"
+        />
+        <span>Remember these filters on this device only. Stored in this browser, never sent to the server.</span>
+      </label>
     </div>
   )
 }

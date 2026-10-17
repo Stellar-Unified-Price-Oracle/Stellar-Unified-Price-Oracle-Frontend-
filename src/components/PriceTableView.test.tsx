@@ -10,7 +10,7 @@ afterEach(cleanup)
 const mockItems: PriceData[] = [
   { assetPair: 'BTC/USD', price: 50000, timestamp: Date.now() - 60000, confidence: 0.99, sources: ['chainlink'] },
   { assetPair: 'ETH/USD', price: 3000, timestamp: Date.now() - 30000, confidence: 0.85, sources: ['redstone', 'band'] },
-  { assetPair: 'XLM/USD', price: 0.1, timestamp: Date.now(), confidence: 0.70, sources: ['reflector'] },
+  { assetPair: 'XLM/USD', price: 0.1, timestamp: Date.now(), confidence: 0.7, sources: ['reflector'] },
 ]
 
 function setup(overrides: Partial<Parameters<typeof PriceTableView>[0]> = {}) {
@@ -94,7 +94,9 @@ describe('PriceTableView', () => {
     setup()
     const user = userEvent.setup()
     await user.click(screen.getByText('Price'))
-    const rows = screen.getAllByRole('button').filter((btn) => btn.getAttribute('aria-label')?.startsWith('View details'))
+    const rows = screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.startsWith('View details'))
     // XLM (0.1) should come first
     expect(rows[0]).toHaveAttribute('aria-label', 'View details for XLM/USD')
   })
@@ -104,14 +106,18 @@ describe('PriceTableView', () => {
     const user = userEvent.setup()
     await user.click(screen.getByText('Price'))
     await user.click(screen.getByText('Price'))
-    const rows = screen.getAllByRole('button').filter((btn) => btn.getAttribute('aria-label')?.startsWith('View details'))
+    const rows = screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.startsWith('View details'))
     // BTC (50000) should come first
     expect(rows[0]).toHaveAttribute('aria-label', 'View details for BTC/USD')
   })
 
   it('applies reduced opacity when isStale is true', () => {
     setup({ isStale: true })
-    const rows = screen.getAllByRole('button').filter((btn) => btn.getAttribute('aria-label')?.startsWith('View details'))
+    const rows = screen
+      .getAllByRole('button')
+      .filter((btn) => btn.getAttribute('aria-label')?.startsWith('View details'))
     rows.forEach((row) => expect(row.className).toContain('opacity-60'))
   })
 
@@ -128,5 +134,34 @@ describe('PriceTableView', () => {
   it('renders with aria-label for table', () => {
     setup()
     expect(screen.getByRole('table', { name: 'Price feeds table' })).toBeInTheDocument()
+  })
+
+  it('omits hidden optional columns from the header and rows', () => {
+    setup({ hiddenColumns: ['sources', 'timestamp'] })
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent)
+    expect(headers.some((h) => h?.includes('Sources'))).toBe(false)
+    expect(headers.some((h) => h?.includes('Updated'))).toBe(false)
+    expect(screen.queryByText('chainlink')).not.toBeInTheDocument()
+    expect(screen.getByText('BTC/USD')).toBeInTheDocument()
+  })
+
+  it('falls back to pair order when the active sort column is hidden', async () => {
+    const user = userEvent.setup()
+    const { rerender } = setup()
+    await user.click(screen.getByRole('columnheader', { name: /sources/i }))
+    expect(screen.getByRole('columnheader', { name: /sources/i })).toHaveAttribute('aria-sort', 'ascending')
+
+    rerender(
+      <PriceTableView
+        items={mockItems}
+        livePairs={new Set(['BTC/USD'])}
+        isStale={false}
+        onRowClick={vi.fn()}
+        onAlertClick={vi.fn()}
+        hasAlertFn={() => false}
+        hiddenColumns={['sources']}
+      />,
+    )
+    expect(screen.getByRole('columnheader', { name: /pair/i })).toHaveAttribute('aria-sort', 'ascending')
   })
 })

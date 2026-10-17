@@ -56,7 +56,7 @@ export const DATA_PREFERENCE_KEYS = [
   'onChainDivergenceThresholdPercent',
   'backtestPresets',
 ] as const
-export const LAYOUT_PREFERENCE_KEYS = ['dashboardView', 'cardOrder'] as const
+export const LAYOUT_PREFERENCE_KEYS = ['dashboardView', 'cardOrder', 'pricePrecision', 'hiddenTableColumns'] as const
 export const ACCESSIBILITY_PREFERENCE_KEYS = ['reducedMotion', 'highContrast', 'largeText', 'rtlEnabled'] as const
 export const PRIVACY_PREFERENCE_KEYS = [
   'analyticsOptOut',
