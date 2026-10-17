@@ -4,6 +4,8 @@ export type ChartTimeRange = '24h' | '7d' | '30d'
 export type RefreshInterval = 5000 | 10000 | 30000 | 60000 | 300000
 export type ChartHistoryPageSize = 50 | 100 | 250
 export type DashboardView = 'card' | 'table'
+/** Spacing between dashboard tiles: tighter to show more pairs, looser to read each one. */
+export type DashboardDensity = 'compact' | 'comfortable' | 'spacious'
 export type ChartTimezone = 'UTC' | 'Local' | 'America/New_York' | 'Europe/London' | 'Asia/Tokyo'
 export type LocaleCode = 'auto' | 'en-US' | 'de-DE' | 'fr-FR' | 'ja-JP' | 'es-ES' | 'ar-SA' | 'he' | 'pt-BR'
 
@@ -25,6 +27,7 @@ export interface DataPreferences {
 /** How the dashboard arranges what it shows. */
 export interface LayoutPreferences {
   dashboardView: DashboardView
+  density: DashboardDensity
   cardOrder: string[]
 }
 

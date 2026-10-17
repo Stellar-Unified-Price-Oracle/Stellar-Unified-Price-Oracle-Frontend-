@@ -57,6 +57,7 @@ export const DEFAULT_DATA_PREFERENCES: DataPreferences = {
 
 export const DEFAULT_LAYOUT_PREFERENCES: LayoutPreferences = {
   dashboardView: 'card',
+  density: 'comfortable',
   cardOrder: [],
 }
 

@@ -72,6 +72,8 @@ export const STORAGE_KEYS = {
   activeNetwork: 'active-network',
   /** Onboarding tour progress (#701): last step reached + completed/dismissed flag. No PII. */
   onboardingTour: 'onboarding-tour',
+  /** First-comparison guide checkpoints (#816): which steps are done and whether it was dismissed. No PII. */
+  firstComparisonGuide: 'first-comparison-guide',
   /** Community moderation reports + decisions (#699). Reporter identity is never stored. */
   moderationReports: 'moderation-reports',
   /** Dated transparency report snapshots (#700), keyed by period. Aggregates only. */

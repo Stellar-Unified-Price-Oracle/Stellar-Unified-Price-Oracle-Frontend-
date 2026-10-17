@@ -54,6 +54,7 @@ import {
   DIVERGENCE_THRESHOLD_OPTIONS,
 } from '../preferences/constants'
 import type { Preferences } from '../preferences/types'
+import { DENSITY_OPTIONS, toDashboardDensity } from '../utils/density'
 
 /**
  * PreferencesPanel
@@ -83,6 +84,25 @@ export const PreferencesPanel = memo(function PreferencesPanel() {
           }
         >
           {REFRESH_INTERVAL_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Dashboard density */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="dashboard-density" className="text-sm font-medium text-gray-200">
+          Dashboard density
+        </label>
+        <select
+          id="dashboard-density"
+          className="rounded bg-slate-800 px-3 py-2 text-sm text-gray-100"
+          value={preferences.density}
+          onChange={(e) => updatePreference('density', toDashboardDensity(e.target.value))}
+        >
+          {DENSITY_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>

@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useMemo, useRef, useState, useTransition, useOptimistic } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useTransition, useOptimistic } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePriceContext } from '../context/PriceContext'
@@ -35,6 +35,9 @@ import { localDateToTimestamp } from '../utils/alertLifecycle'
 import { deriveSourceHealths } from '../utils/sourceHealth'
 import { WORKSPACE_PARAM, type Workspace } from '../utils/workspaceShare'
 import { OnboardingTour, resetTour } from '../components/OnboardingTour'
+import { FirstComparisonGuide } from '../components/FirstComparisonGuide'
+import { SampleDataPreview } from '../components/SampleDataPreview'
+import { readComparisonGuide, saveComparisonGuide, type ComparisonGuideProgress } from '../utils/firstComparisonGuide'
 import { WorkspaceShareDialog } from '../components/WorkspaceShareDialog'
 import { ConfidenceRegimePanel } from '../components/ConfidenceRegimePanel'
 import { getObservedSourceRange } from '../utils/uncertaintyBand'
@@ -119,6 +122,17 @@ export function Dashboard() {
 
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [comparisonGuide, setComparisonGuide] = useState<ComparisonGuideProgress>(readComparisonGuide)
+
+  useEffect(() => {
+    saveComparisonGuide(comparisonGuide)
+  }, [comparisonGuide])
+
+  useEffect(() => {
+    if (selected.size >= 2) {
+      setComparisonGuide((p) => (p.comparedPairs ? p : { ...p, comparedPairs: true }))
+    }
+  }, [selected])
 
   // Optimistic alerts: show immediately, revert if needed
   const [optimisticAlerts, addOptimisticAlert] = useOptimistic(
@@ -263,6 +277,7 @@ export function Dashboard() {
           return next
         })
       } else {
+        setComparisonGuide((p) => (p.viewedPair ? p : { ...p, viewedPair: true }))
         navigate(`/prices/${encodeURIComponent(pair)}`)
       }
     },
@@ -715,6 +730,11 @@ export function Dashboard() {
         />
       )}
 
+      <FirstComparisonGuide
+        progress={comparisonGuide}
+        onDismiss={() => setComparisonGuide((p) => ({ ...p, dismissed: true }))}
+      />
+
       {pricesLoading && prices.length === 0 ? (
         <section
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
@@ -725,7 +745,13 @@ export function Dashboard() {
           ))}
         </section>
       ) : dashboardView === 'table' ? (
-        <ErrorBoundary boundaryId="price-table-view" featureLabel="Price Table">
+        <ErrorBoundary
+          boundaryId="price-table-view"
+          featureLabel="Price Table"
+          recoveryActions={[
+            { label: 'Switch to card view', onAction: () => updatePreference('dashboardView', 'card') },
+          ]}
+        >
           <Suspense
             fallback={
               <div
@@ -751,7 +777,14 @@ export function Dashboard() {
           </Suspense>
         </ErrorBoundary>
       ) : (
-        <ErrorBoundary boundaryId="price-card-grid" featureLabel="Price Cards">
+        <ErrorBoundary
+          boundaryId="price-card-grid"
+          featureLabel="Price Cards"
+          recoveryActions={[
+            { label: 'Reset card order', onAction: () => updatePreference('cardOrder', []) },
+            { label: 'Switch to table view', onAction: () => updatePreference('dashboardView', 'table') },
+          ]}
+        >
           <DraggablePriceGrid
             items={filtered}
             observedSourceRanges={observedSourceRanges}
@@ -763,6 +796,7 @@ export function Dashboard() {
             selectMode={selectMode}
             selected={selected}
             onReorder={(orderedPairs) => updatePreference('cardOrder', orderedPairs)}
+            density={preferences.density}
             subscriptionStatus={wsStatus}
             isOfflineSnapshot={isOfflineSnapshot}
           />
@@ -788,6 +822,7 @@ export function Dashboard() {
               Take the tour
             </button>
           </div>
+          <SampleDataPreview />
         </div>
       )}
 
@@ -815,7 +850,11 @@ export function Dashboard() {
       <ConfidenceRegimePanel histories={attributionHistory} />
 
       <div className="mt-8">
-        <ErrorBoundary boundaryId="reliability-leaderboard" featureLabel="Reliability Leaderboard">
+        <ErrorBoundary
+          boundaryId="reliability-leaderboard"
+          featureLabel="Reliability Leaderboard"
+          recoveryActions={[{ label: 'Reload prices', onAction: () => refetchPrices() }]}
+        >
           <ReliabilityLeaderboard sourceHealths={sourceHealths} />
         </ErrorBoundary>
       </div>

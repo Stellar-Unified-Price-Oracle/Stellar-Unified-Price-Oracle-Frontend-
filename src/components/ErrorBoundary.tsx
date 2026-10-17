@@ -40,6 +40,9 @@
  * ## Recovery actions
  * - **Retry** — resets boundary state so the subtree is re-mounted from scratch.
  * - **Go back** — calls `history.back()`. Only shown when `showGoBack` is `true`.
+ * - **Context actions** — caller-supplied `recoveryActions` (e.g. "Switch to card
+ *   view"). Each runs its callback and then retries the subtree, so the fix takes
+ *   effect immediately (#818).
  * - **Show details** — toggles the raw error message. Visible in development
  *   (`import.meta.env.DEV`) and hidden in production builds.
  *
@@ -82,12 +85,25 @@ export interface ErrorBoundaryProps {
    * Defaults to `"This section"`.
    */
   featureLabel?: string
+  /**
+   * Panel-specific fixes shown after Retry, so the user can clear the likely
+   * cause (e.g. a bad saved layout) instead of retrying blindly (#818).
+   */
+  recoveryActions?: ReadonlyArray<ErrorRecoveryAction>
 }
 
 interface ErrorBoundaryState {
   hasError: boolean
   error: Error | null
   showDetails: boolean
+}
+
+/** A panel-specific recovery step offered alongside Retry (#818). */
+export interface ErrorRecoveryAction {
+  /** Visible button text, e.g. "Switch to card view". */
+  label: string
+  /** Applies the fix. The boundary retries the subtree right after it runs. */
+  onAction: () => void
 }
 
 /**
@@ -132,7 +148,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     // Honour a fully custom fallback prop as before
     if (this.props.fallback) return this.props.fallback
 
-    const { featureLabel = 'This section', showGoBack = false, boundaryId = 'unknown' } = this.props
+    const {
+      featureLabel = 'This section',
+      showGoBack = false,
+      boundaryId = 'unknown',
+      recoveryActions = [],
+    } = this.props
     const { error, showDetails } = this.state
     const isDev = import.meta.env.DEV
 
@@ -177,6 +198,21 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           >
             Retry
           </button>
+
+          {recoveryActions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              onClick={() => {
+                action.onAction()
+                this.handleRetry()
+              }}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-colors cursor-pointer"
+              aria-label={`${action.label} for ${featureLabel}`}
+            >
+              {action.label}
+            </button>
+          ))}
 
           {showGoBack && (
             <button
