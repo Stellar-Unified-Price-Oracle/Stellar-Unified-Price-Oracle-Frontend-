@@ -17,6 +17,7 @@ import {
   preloadSettingsPanel,
 } from '../utils/chunks'
 import { subscribeToInbox, unreadInboxCount } from '../services/inbox'
+import { SessionExpiredBanner } from '../auth/SessionExpiredBanner'
 import { QueuedRequestsBadge } from './QueuedRequestsBadge'
 import { WalletButton } from './WalletButton'
 
@@ -247,6 +248,8 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
           </div>
         </div>
       </nav>
+
+      <SessionExpiredBanner />
 
       {/* ── Page content ───────────────────────────────────────────── */}
       <div className="flex flex-1">

@@ -33,18 +33,23 @@ async function authFetch(path: string, init?: RequestInit): Promise<Response> {
   })
 }
 
-/** Returns the current session's user, or `null` if there is no valid session. */
-export async function fetchSession(): Promise<AuthUser | null> {
+/** Outcome of a session check. `expired` means the server rejected the session (401). */
+export type SessionCheck = { state: 'authenticated'; user: AuthUser } | { state: 'expired' } | { state: 'unavailable' }
+
+/**
+ * Checks the current session. It distinguishes a session the server rejected
+ * from a check that could not complete (network failure, 5xx), so a flaky
+ * connection is not mistaken for an expired login (#844).
+ */
+export async function checkSession(): Promise<SessionCheck> {
   try {
     const res = await authFetch('/session')
-    if (res.status === 401) return null
-    if (!res.ok) throw new Error(`session check failed: ${res.status}`)
+    if (res.status === 401) return { state: 'expired' }
+    if (!res.ok) return { state: 'unavailable' }
     const data = (await res.json()) as { user: AuthUser }
-    return data.user
+    return { state: 'authenticated', user: data.user }
   } catch {
-    // Network failure / backend unavailable: treat as signed-out rather than
-    // throwing, so a dev-portal page can still render for anonymous users.
-    return null
+    return { state: 'unavailable' }
   }
 }
 

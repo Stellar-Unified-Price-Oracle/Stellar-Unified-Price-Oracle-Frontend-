@@ -466,7 +466,8 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
         role="img"
         aria-label={`Multi-pair overlay chart for ${pairs.join(', ')}${normalizedMode ? ' in normalized % change mode' : ''}`}
       >
-        <ResponsiveContainer width="100%" height="100%">
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
             <XAxis
@@ -489,29 +490,6 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
             <Tooltip
               content={<MultiTooltip pairs={pairs} normalizedMode={normalizedMode} benchmarkPair={benchmarkPair} />}
             />
-            {/* Zero reference line in normalized mode */}
-            {normalizedMode && (
-              <ReferenceLine
-                y={0}
-                stroke="#4b5563"
-                strokeDasharray="4 2"
-                label={{
-                  value: '0%',
-                  position: 'insideTopRight',
-                  fill: '#6b7280',
-                  fontSize: 10,
-                }}
-              />
-              <YAxis
-                tick={{ fill: tickFill, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={yTickFormatter}
-                width={80}
-              />
-              <Tooltip
-                content={<MultiTooltip pairs={pairs} normalizedMode={normalizedMode} benchmarkPair={benchmarkPair} />}
-              />
               {regimeBands
                 .filter((regime) => regime.regime !== 'normal')
                 .map((regime, index) => (

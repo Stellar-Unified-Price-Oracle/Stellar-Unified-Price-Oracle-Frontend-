@@ -16,6 +16,8 @@
  * ```
  */
 
+import { scrubBreadcrumb } from './breadcrumbScrubber'
+
 export interface SentryConfig {
   enabled: boolean
   dsn: string
@@ -81,6 +83,9 @@ export async function initSentry(): Promise<boolean> {
       tracesSampleRate: config.tracesSampleRate,
       attachStacktrace: config.attachStacktrace,
       maxBreadcrumbs: config.maxBreadcrumbs,
+
+      // Every breadcrumb, including the SDK's automatic ones, passes through here (#846).
+      beforeBreadcrumb: (breadcrumb) => scrubBreadcrumb(breadcrumb),
 
       // Ignore specific errors that are not actionable
       ignoreErrors: [
