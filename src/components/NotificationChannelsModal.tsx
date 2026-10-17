@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { readJson, writeJson, STORAGE_KEYS } from '../utils/storage'
+import { maskSecret } from '../utils/maskSecret'
 import { loadBotSecrets, saveBotSecrets, sendTelegramMessage, sendDiscordMessage } from '../services/botNotifications'
 import {
   buildVerifySample,
@@ -753,6 +754,11 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
               <p id="notif-discord-webhook-help" className="mt-1.5 text-xs text-gray-500">
                 Anyone with this URL can post as the bot. Not saved to this browser — re-enter it after a reload.
               </p>
+              {botSecrets.discordWebhookUrl && (
+                <p className="mt-1 text-xs text-gray-400">
+                  Current webhook: <code className="font-mono">{maskSecret(botSecrets.discordWebhookUrl)}</code>
+                </p>
+              )}
             </div>
             <div>
               <label htmlFor="notif-discord-channelid" className="block text-sm text-gray-400 mb-1.5">

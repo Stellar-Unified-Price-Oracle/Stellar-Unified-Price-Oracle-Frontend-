@@ -3,6 +3,7 @@ import { config } from '../config'
 import { createPkceParams } from './pkce'
 import { OAUTH_PROVIDERS, buildAuthorizeUrl, redirectUri, type OAuthProviderId } from './oauthProviders'
 import { fetchSession, exchangeCode, signOut as apiSignOut, signOutEverywhere as apiSignOutEverywhere, type AuthUser } from './authApi'
+import { isSessionExpiry } from './sessionExpiry'
 
 /** Session-storage keys for the in-flight PKCE attempt. Single-use, non-credential nonces only. */
 const PKCE_VERIFIER_KEY = 'stellar-oracle:auth-pkce-verifier'
@@ -66,6 +67,13 @@ interface AuthContextValue {
   status: AuthStatus
   user: AuthUser | null
   error: string | null
+  /**
+   * True when the server ended the session while the user was signed in, so
+   * the UI can warn before in-progress work is discarded. Cleared on sign-in
+   * or by {@link dismissSessionExpired}. Explicit sign-out never sets it.
+   */
+  sessionExpired: boolean
+  dismissSessionExpired: () => void
   /** Starts the redirect-based OAuth2/OIDC + PKCE sign-in flow. */
   signIn: (provider: OAuthProviderId, returnTo?: string) => Promise<void>
   /** Completes the flow after the provider redirects back to /auth/callback. */
@@ -82,13 +90,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [user, setUser] = useState<AuthUser | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sessionExpired, setSessionExpired] = useState(false)
+  // Last status a session check or sign-in observed. Read synchronously so an
+  // async refresh compares against the true previous state, not a stale render.
+  const statusRef = useRef<AuthStatus>('loading')
   const mountedRef = useRef(true)
 
   const refresh = useCallback(async () => {
     const session = await fetchSession()
     if (!mountedRef.current) return
+    const next: AuthStatus = session ? 'authenticated' : 'unauthenticated'
+    // fetchSession also maps network failures to null, so a brief outage can
+    // read as an expiry. Accepted: the warning is dismissible and non-destructive.
+    if (isSessionExpiry(statusRef.current, next)) setSessionExpired(true)
+    if (session) setSessionExpired(false)
+    statusRef.current = next
     setUser(session)
-    setStatus(session ? 'authenticated' : 'unauthenticated')
+    setStatus(next)
   }, [])
 
   useEffect(() => {
@@ -140,10 +158,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const signedInUser = await exchangeCode(providerId, code, verifier, redirectUri())
       setUser(signedInUser)
       setStatus('authenticated')
+      statusRef.current = 'authenticated'
+      setSessionExpired(false)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
       setStatus('unauthenticated')
+      statusRef.current = 'unauthenticated'
       throw e
     }
     return { returnTo }
@@ -153,18 +174,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiSignOut()
     setUser(null)
     setStatus('unauthenticated')
+    statusRef.current = 'unauthenticated'
   }, [])
 
   const signOutEverywhere = useCallback(async () => {
     await apiSignOutEverywhere()
     setUser(null)
     setStatus('unauthenticated')
+    statusRef.current = 'unauthenticated'
   }, [])
+
+  const dismissSessionExpired = useCallback(() => setSessionExpired(false), [])
 
   const checkAuthorized = useCallback((route: string) => isAuthorized(user, route), [user])
 
   return (
-    <AuthContext.Provider value={{ status, user, error, signIn, completeSignIn, signOut, signOutEverywhere, isAuthorized: checkAuthorized }}>
+    <AuthContext.Provider
+      value={{
+        status,
+        user,
+        error,
+        sessionExpired,
+        dismissSessionExpired,
+        signIn,
+        completeSignIn,
+        signOut,
+        signOutEverywhere,
+        isAuthorized: checkAuthorized,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
