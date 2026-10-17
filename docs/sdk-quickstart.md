@@ -155,3 +155,18 @@ idempotency support is required to deduplicate the requests.
 ## Installing and versioning
 
 The SDK is published to npm as `@stellar-unified-price-oracle/sdk` and follows semantic versioning: breaking changes bump the major, features the minor, fixes the patch. Releases are cut by pushing an `sdk-vX.Y.Z` tag; the `Publish SDK` workflow builds ESM + CJS bundles with type declarations, runs a consumer-style smoke test on the packed tarball (`npm run sdk:smoke`), and publishes with npm provenance. Pin the version you tested against, for example `npm install @stellar-unified-price-oracle/sdk@1.0.0`, and check the package page for the latest release. Entry points: `.` (client, errors, streaming, observer) and `./react` (hooks, requires `react` >= 18).
+
+## Integration checklist
+
+The API docs page (`/api-docs`) ends its SDK section with an executable integration checklist (#808). Each step sends the same requests the examples above make and reports what it observed:
+
+1. **Configure an absolute base URL** — `baseUrl` must be an `http` or `https` origin.
+2. **Confirm the health endpoint** — `GET /health` must return `200`.
+3. **Parse the price list** — `GET /api/prices` must return a non-empty array whose entries carry `assetPair`, `price` and `timestamp`.
+4. **Look up one pair** — `GET /api/prices/XLM-USD` must return that pair.
+
+Run one check or all of them. A failed step shows its reason, and a failed request does not stop the remaining checks. The checks live in `src/utils/sdkChecklist.ts`, so they can be reused in CI or a smoke test.
+
+## Migrating between SDK majors
+
+Migration examples live on the API docs page under **SDK migration guide** (#809). Each supported major has a disclosure that lists its breaking changes and shows the code being replaced beside its replacement. The source is `src/data/sdkMigrations.ts`. Its tests fail if a major in `SUPPORTED_SDK_MAJORS` has no migration, so a new major must be documented before it is listed as supported. The repo has shipped only v1 so far, so its entry covers the move from hand-written REST calls to the typed client.

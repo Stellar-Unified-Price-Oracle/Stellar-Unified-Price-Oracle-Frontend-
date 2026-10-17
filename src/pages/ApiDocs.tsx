@@ -1,6 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { config } from '../config'
+import { getAcceptVersionHeader } from '../api/version'
+import { useApiVersion } from '../hooks/useApiVersion'
+import { METRIC_HELP_TOPICS, type MetricHelpTopic } from '../data/metricHelp'
+import { isOracleNetwork, type OracleNetwork } from '../lib/contractRegistry'
+import { getSelectedNetwork, onNetworkChange } from '../lib/networkRegistry'
+import { SdkIntegrationChecklist } from '../components/SdkIntegrationChecklist'
+import { SdkMigrationGuide } from '../components/SdkMigrationGuide'
 import { OracleClient } from '../sdk/client'
 import { createClientTraceId, reportNetworkError } from '../utils/errorReporting'
 
@@ -10,6 +17,19 @@ const COPY_FEEDBACK_RESET_MS = 1500
 type Method = 'GET' | 'POST' | 'WS'
 type SnippetLang = 'curl' | 'javascript' | 'python' | 'sdk'
 type SdkMethod = 'getPrices' | 'getPrice' | 'getHistory'
+
+/**
+ * The network and API version copied snippets should target (#807). Built from
+ * the developer-selected network (falling back to the build's oracle network)
+ * and the server version negotiated by `/api/version`.
+ */
+interface SnippetContext {
+  network: OracleNetwork
+  /** Server API version, or null while detection is still pending. */
+  apiVersion: string | null
+  /** Accept header value matching the negotiated API version. */
+  acceptHeader: string
+}
 
 interface Endpoint {
   method: Method
@@ -63,7 +83,45 @@ const ENDPOINTS: Endpoint[] = [
   },
 ]
 
-function buildSnippet(lang: SnippetLang, endpoint: Endpoint, baseUrl: string, livePath: string): string {
+/** Resolves the developer-selected network, falling back to the build's configured network. */
+function resolveNetwork(): OracleNetwork {
+  const selected = getSelectedNetwork()
+  if (selected) return selected
+  return isOracleNetwork(config.oracleNetwork) ? config.oracleNetwork : 'testnet'
+}
+
+function buildSnippetContext(network: OracleNetwork, serverVersion: string | null): SnippetContext {
+  return {
+    network,
+    apiVersion: serverVersion,
+    acceptHeader: getAcceptVersionHeader(serverVersion),
+  }
+}
+
+/** Leading comment that records which network and API version the snippet targets. */
+function snippetPreamble(lang: SnippetLang, ctx: SnippetContext): string {
+  const marker = lang === 'curl' || lang === 'python' ? '#' : '//'
+  const version = ctx.apiVersion ?? 'detecting…'
+  return `${marker} Network: ${ctx.network} · API version: ${version}\n`
+}
+
+function buildSnippet(
+  lang: SnippetLang,
+  endpoint: Endpoint,
+  baseUrl: string,
+  livePath: string,
+  ctx: SnippetContext,
+): string {
+  return snippetPreamble(lang, ctx) + buildSnippetBody(lang, endpoint, baseUrl, livePath, ctx)
+}
+
+function buildSnippetBody(
+  lang: SnippetLang,
+  endpoint: Endpoint,
+  baseUrl: string,
+  livePath: string,
+  ctx: SnippetContext,
+): string {
   const fullPath = livePath
   const url = `${baseUrl}${fullPath}`
 
@@ -97,20 +155,22 @@ console.log(price)`
     if (endpoint.method === 'POST') {
       return `curl -X POST ${baseUrl}/api/prices/history/batch \\
   -H "Content-Type: application/json" \\
+  -H "Accept: ${ctx.acceptHeader}" \\
   -d '{"pairs":["XLM-USD","BTC-USD"]}'`
     }
     if (endpoint.method === 'WS') {
       return `# Connect with wscat (npm install -g wscat)
 wscat -c ${baseUrl.replace(/^https?/, 'ws')}/ws`
     }
-    return `curl ${url}`
+    return `curl ${url} \\
+  -H "Accept: ${ctx.acceptHeader}"`
   }
 
   if (lang === 'javascript') {
     if (endpoint.method === 'POST') {
       return `const res = await fetch('${baseUrl}/api/prices/history/batch', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json', Accept: '${ctx.acceptHeader}' },
   body: JSON.stringify({ pairs: ['XLM-USD', 'BTC-USD'] }),
 })
 const data = await res.json()
@@ -123,7 +183,9 @@ ws.onmessage = (event) => {
   console.log(msg)
 }`
     }
-    return `const res = await fetch('${url}')
+    return `const res = await fetch('${url}', {
+  headers: { Accept: '${ctx.acceptHeader}' },
+})
 const data = await res.json()
 console.log(data)`
   }
@@ -135,6 +197,7 @@ console.log(data)`
 resp = requests.post(
     '${baseUrl}/api/prices/history/batch',
     json={'pairs': ['XLM-USD', 'BTC-USD']},
+    headers={'Accept': '${ctx.acceptHeader}'},
 )
 print(resp.json())`
     }
@@ -149,7 +212,7 @@ ws.run_forever()`
     }
     return `import requests
 
-resp = requests.get('${url}')
+resp = requests.get('${url}', headers={'Accept': '${ctx.acceptHeader}'})
 print(resp.json())`
   }
 
@@ -392,14 +455,14 @@ function TryItOut({ endpoint, path, setPath }: { endpoint: Endpoint; path: strin
   )
 }
 
-function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
+function EndpointCard({ endpoint, context }: { endpoint: Endpoint; context: SnippetContext }) {
   const [lang, setLang] = useState<SnippetLang>('curl')
   const [copied, setCopied] = useState(false)
   const [path, setPath] = useState<string>(() => endpoint.tryPath ?? '')
   const { t } = useTranslation()
 
   const baseUrl = config.apiUrl.replace(/\/api$/, '')
-  const snippet = buildSnippet(lang, endpoint, baseUrl, path)
+  const snippet = buildSnippet(lang, endpoint, baseUrl, path, context)
   const snippetId = `snippet-${endpoint.method}-${endpoint.path.replace(/[^a-zA-Z0-9_-]/g, '-')}`
 
   const handleCopy = () => {
@@ -493,6 +556,12 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
 
 export function ApiDocs() {
   const { t } = useTranslation()
+  const apiInfo = useApiVersion()
+  const [network, setNetwork] = useState<OracleNetwork>(resolveNetwork)
+  useEffect(() => onNetworkChange(setNetwork), [])
+  const context = buildSnippetContext(network, apiInfo?.serverVersion || null)
+  // Mock mode uses same-origin requests (empty apiUrl), so the checklist falls back to the page origin.
+  const checklistBaseUrl = config.apiUrl.replace(/\/api$/, '') || window.location.origin
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-8">
@@ -550,13 +619,24 @@ export function ApiDocs() {
         <span>
           {t('apiDocs.ws')} <code className="font-mono text-gray-800 dark:text-gray-300">{config.wsUrl}</code>
         </span>
+        <span>
+          Network: <code className="font-mono text-gray-800 dark:text-gray-300">{context.network}</code>
+        </span>
+        <span>
+          API version:{' '}
+          <code className="font-mono text-gray-800 dark:text-gray-300">{context.apiVersion ?? 'detecting…'}</code>
+        </span>
       </div>
+
+      <SdkIntegrationChecklist baseUrl={checklistBaseUrl} />
 
       <div className="space-y-4">
         {ENDPOINTS.map((ep) => (
-          <EndpointCard key={`${ep.method}-${ep.path}`} endpoint={ep} />
+          <EndpointCard key={`${ep.method}-${ep.path}`} endpoint={ep} context={context} />
         ))}
       </div>
+
+      <SdkMigrationGuide />
 
       <section id="metric-help" aria-labelledby="metric-help-heading" className="mt-10 border-t border-gray-800 pt-6">
         <h2 id="metric-help-heading" className="text-lg font-semibold text-gray-900 dark:text-white">

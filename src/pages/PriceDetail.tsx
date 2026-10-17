@@ -1,9 +1,8 @@
-import { Suspense, useState, useEffect, useMemo } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSwr } from '../hooks/useSwr'
 import { usePriceHistory } from '../hooks/usePriceHistory'
-import { useReferenceDeviation } from '../hooks/useReferenceDeviation'
 import { fetchPrice } from '../api/rest'
 import { PriceDetailSkeleton } from '../components/PriceDetailSkeleton'
 import { CsvImportZone } from '../components/CsvImportZone'
@@ -19,6 +18,7 @@ import { PriceQualityDisclosure } from '../components/PriceQualityDisclosure'
 import { AnomalyBanner } from '../components/AnomalyBanner'
 import { ConfidenceDeviationChart } from '../components/ConfidenceDeviationChart'
 import { PairMetadataPanel } from '../components/PairMetadataPanel'
+import { PairInversionPreview } from '../components/PairInversionPreview'
 import { FeedSymbolDiagnostics } from '../components/FeedSymbolDiagnostics'
 import { ProviderPrecisionComparison } from '../components/ProviderPrecisionComparison'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
@@ -200,6 +200,12 @@ export function PriceDetail() {
               {t('priceDetail.live')}
             </span>
           </div>
+
+          <PairInversionPreview
+            pair={price.assetPair}
+            price={price.price}
+            onSwitch={(inverted) => navigate(`/price/${encodeURIComponent(inverted)}`)}
+          />
 
           <PairMetadataPanel pair={price.assetPair} metadata={price.pairMetadata} />
           <FeedSymbolDiagnostics pair={price.assetPair} feedSymbols={price.pairMetadata?.feedSymbols} />
