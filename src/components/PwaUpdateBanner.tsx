@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAppVersion } from '../api/version'
 import { applyServiceWorkerUpdate, registerServiceWorker } from '../utils/registerServiceWorker'
+import { broadcastSwUpdate, subscribeToSwUpdates } from '../utils/swUpdateChannel'
 import { readRaw, STORAGE_KEYS, writeRaw } from '../utils/storage'
 
 const UPDATE_DISMISSAL_MS = 6 * 60 * 60 * 1000
@@ -20,6 +21,20 @@ export const PwaUpdateBanner = memo(function PwaUpdateBanner() {
   const [error, setError] = useState(false)
   const [errorDismissed, setErrorDismissed] = useState(false)
   const [applying, setApplying] = useState(false)
+  // Another tab has started applying this update, so this tab must not race it (#832)
+  const [peerApplying, setPeerApplying] = useState(false)
+
+  useEffect(
+    () =>
+      subscribeToSwUpdates((message) => {
+        if (message.type === 'applying') {
+          setPeerApplying(true)
+        } else {
+          setUpdateDismissedUntil(message.until)
+        }
+      }),
+    [],
+  )
 
   useEffect(
     () =>
@@ -44,9 +59,10 @@ export const PwaUpdateBanner = memo(function PwaUpdateBanner() {
   )
 
   async function handleUpdate() {
-    if (!registration || applying) return
+    if (!registration || applying || peerApplying) return
     setApplying(true)
     setError(false)
+    broadcastSwUpdate({ type: 'applying' })
     try {
       await applyServiceWorkerUpdate(registration)
     } catch {
@@ -59,6 +75,7 @@ export const PwaUpdateBanner = memo(function PwaUpdateBanner() {
   function dismissUpdate() {
     const until = Date.now() + UPDATE_DISMISSAL_MS
     writeRaw(STORAGE_KEYS.pwaUpdateDismissed, String(until))
+    broadcastSwUpdate({ type: 'dismissed', until })
     setUpdateDismissedUntil(until)
   }
 
@@ -107,10 +124,10 @@ export const PwaUpdateBanner = memo(function PwaUpdateBanner() {
             <button
               type="button"
               onClick={() => void handleUpdate()}
-              disabled={applying}
+              disabled={applying || peerApplying}
               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-700 hover:bg-cyan-600 text-white transition-colors disabled:opacity-60"
             >
-              {applying ? t('pwa.updating') : t('pwa.updateAction')}
+              {applying || peerApplying ? t('pwa.updating') : t('pwa.updateAction')}
             </button>
             <button
               type="button"

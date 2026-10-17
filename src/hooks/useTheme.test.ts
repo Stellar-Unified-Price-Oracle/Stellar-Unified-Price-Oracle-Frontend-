@@ -67,7 +67,7 @@ describe('useTheme', () => {
 
   it('respects stored dark preference', async () => {
     // Must set localStorage before importing the module
-    localStorage.setItem('theme-preference', 'dark')
+    localStorage.setItem('stellar-oracle-theme', 'dark')
     await importModule()
     vi.stubGlobal('matchMedia', mockMatchMedia(false))
 
@@ -78,7 +78,7 @@ describe('useTheme', () => {
   })
 
   it('respects stored light preference', async () => {
-    localStorage.setItem('theme-preference', 'light')
+    localStorage.setItem('stellar-oracle-theme', 'light')
     await importModule()
     vi.stubGlobal('matchMedia', mockMatchMedia(false))
 
@@ -98,7 +98,7 @@ describe('useTheme', () => {
 
     expect(result.current.mode).toBe('dark')
     expect(result.current.theme).toBe('dark')
-    expect(localStorage.getItem('theme-preference')).toBe('dark')
+    expect(localStorage.getItem('stellar-oracle-theme')).toBe('dark')
   })
 
   it('setMode to system follows system preference', () => {
@@ -159,13 +159,39 @@ describe('useTheme', () => {
   })
 
   it('handles invalid stored value gracefully', async () => {
-    localStorage.setItem('theme-preference', 'not-a-theme')
+    localStorage.setItem('stellar-oracle-theme', 'not-a-theme')
     await importModule()
     vi.stubGlobal('matchMedia', mockMatchMedia(false))
 
     const { result } = renderHook(() => useTheme())
 
     expect(result.current.mode).toBe('system')
+  })
+
+  it('reads a preference saved under the pre-#834 key and writes it to the shared key', async () => {
+    localStorage.setItem('theme-preference', 'dark')
+    await importModule()
+    vi.stubGlobal('matchMedia', mockMatchMedia(false))
+
+    const { result } = renderHook(() => useTheme())
+
+    expect(result.current.mode).toBe('dark')
+    act(() => {
+      result.current.setMode('light')
+    })
+    expect(localStorage.getItem('stellar-oracle-theme')).toBe('light')
+  })
+
+  it('prefers the shared key over the legacy key when both are present', async () => {
+    localStorage.setItem('theme-preference', 'dark')
+    localStorage.setItem('stellar-oracle-theme', 'light')
+    await importModule()
+    vi.stubGlobal('matchMedia', mockMatchMedia(true))
+
+    const { result } = renderHook(() => useTheme())
+
+    expect(result.current.mode).toBe('light')
+    expect(result.current.theme).toBe('light')
   })
 
   it('handles localStorage read errors gracefully', async () => {

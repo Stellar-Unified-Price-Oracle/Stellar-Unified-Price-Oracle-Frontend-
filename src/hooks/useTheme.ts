@@ -1,9 +1,8 @@
 import { useEffect, useCallback, useSyncExternalStore } from 'react'
+import { readRaw, STORAGE_KEYS, writeRaw } from '../utils/storage'
 
 export type Theme = 'light' | 'dark'
 export type ThemeMode = Theme | 'system'
-
-const THEME_STORAGE_KEY = 'theme-preference'
 
 function getSystemTheme(): Theme {
   if (typeof window === 'undefined') return 'light'
@@ -20,22 +19,24 @@ function resolveTheme(mode: ThemeMode): Theme {
   return mode === 'system' ? getSystemTheme() : mode
 }
 
+function isThemeMode(value: string | null): value is ThemeMode {
+  return value === 'light' || value === 'dark' || value === 'system'
+}
+
+/**
+ * Reads the saved mode. The key is shared with the pre-paint script in
+ * `public/theme-init.js`, so a worker-update reload applies the same theme that
+ * React will show. Users who saved under the pre-#834 key keep their choice.
+ */
 function readStoredMode(): ThemeMode {
-  try {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY)
-    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
-  } catch {
-    // localStorage unavailable
-  }
-  return 'system'
+  const stored = readRaw(STORAGE_KEYS.theme)
+  if (isThemeMode(stored)) return stored
+  const legacy = readRaw(STORAGE_KEYS.themeLegacy)
+  return isThemeMode(legacy) ? legacy : 'system'
 }
 
 function writeStoredMode(mode: ThemeMode): void {
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, mode)
-  } catch {
-    // localStorage unavailable
-  }
+  writeRaw(STORAGE_KEYS.theme, mode)
 }
 
 export interface UseThemeResult {

@@ -1,9 +1,28 @@
-import { memo, useMemo, useCallback } from 'react'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts'
+import { memo, useMemo, useCallback, useState, useEffect, useId } from 'react'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  ReferenceLine,
+  ReferenceArea,
+} from 'recharts'
 import type { PriceHistoryEntry } from '../types'
+import { useIsRtl } from '../hooks/useIsRtl'
 import { SOURCE_COLORS } from '../utils/sourceColors'
 import { formatPriceShort } from '../utils/format'
-import { useIsRtl } from '../hooks/useIsRtl'
+import {
+  alignPriceHistories,
+  calculatePeriodPerformance,
+  calculateReturns,
+  calculateReturnCorrelation,
+  calculateRollingBeta,
+  calculateVolatilityRegimes,
+  groupVolatilityRegimes,
+} from '../utils/comparisonAnalytics'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -231,8 +250,74 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
   normalizedMode = false,
   onExport,
 }: MultiPairOverlayChartProps) {
+  const analyticsHeadingId = useId()
   const isRtl = useIsRtl()
-  const chartData = useMemo(() => buildChartData(pairs, history, normalizedMode), [pairs, history, normalizedMode])
+  const [periodStart, setPeriodStart] = useState('')
+  const [periodEnd, setPeriodEnd] = useState('')
+  const [rollingWindow, setRollingWindow] = useState(10)
+
+  const targetPair = pairs.find((pair) => pair !== benchmarkPair) ?? pairs[0]
+  const hasBenchmark = Boolean(benchmarkPair && pairs.includes(benchmarkPair) && targetPair !== benchmarkPair)
+
+  useEffect(() => {
+    setPeriodStart('')
+    setPeriodEnd('')
+  }, [targetPair, benchmarkPair])
+  const availableInterval = useMemo(
+    () =>
+      hasBenchmark && targetPair && benchmarkPair
+        ? alignPriceHistories(history[targetPair] ?? [], history[benchmarkPair] ?? [])
+        : [],
+    [hasBenchmark, targetPair, benchmarkPair, history],
+  )
+  const defaultStart = availableInterval[0]?.timestamp
+  const defaultEnd = availableInterval[availableInterval.length - 1]?.timestamp
+  const hasIntervalBounds = defaultStart !== undefined && defaultEnd !== undefined
+  const startValue = periodStart || (defaultStart !== undefined ? formatDateTimeInput(defaultStart) : '')
+  const endValue = periodEnd || (defaultEnd !== undefined ? formatDateTimeInput(defaultEnd) : '')
+  const startTimestamp = periodStart ? parseDateTimeInput(periodStart) : defaultStart
+  const endTimestamp = periodEnd ? parseDateTimeInput(periodEnd) : defaultEnd
+  const validPeriod =
+    hasIntervalBounds && startTimestamp !== null && endTimestamp !== null && startTimestamp <= endTimestamp
+
+  const selectedInterval = useMemo(() => {
+    if (!hasBenchmark || !targetPair || !benchmarkPair || !validPeriod) return []
+    return alignPriceHistories(
+      history[targetPair] ?? [],
+      history[benchmarkPair] ?? [],
+      startTimestamp ?? undefined,
+      endTimestamp ?? undefined,
+    )
+  }, [hasBenchmark, targetPair, benchmarkPair, history, validPeriod, startTimestamp, endTimestamp])
+  const returns = useMemo(() => calculateReturns(selectedInterval), [selectedInterval])
+  const performance = useMemo(() => calculatePeriodPerformance(selectedInterval), [selectedInterval])
+  const correlation = useMemo(() => calculateReturnCorrelation(returns), [returns])
+  const rollingBeta = useMemo(() => calculateRollingBeta(returns, rollingWindow), [returns, rollingWindow])
+  const betaValue = rollingBeta[rollingBeta.length - 1]?.beta
+  const volatilityRegimes = useMemo(
+    () =>
+      hasBenchmark && targetPair && validPeriod
+        ? calculateVolatilityRegimes(
+            history[targetPair] ?? [],
+            startTimestamp ?? -Infinity,
+            endTimestamp ?? Infinity,
+            rollingWindow,
+          )
+        : [],
+    [hasBenchmark, targetPair, validPeriod, history, startTimestamp, endTimestamp, rollingWindow],
+  )
+  const regimeBands = useMemo(() => groupVolatilityRegimes(volatilityRegimes), [volatilityRegimes])
+
+  const chartData = useMemo(() => {
+    if (!hasBenchmark || !validPeriod) return buildChartData(pairs, history, normalizedMode)
+    const scopedHistory: Record<string, PriceHistoryEntry[]> = {}
+    for (const pair of pairs) {
+      scopedHistory[pair] = (history[pair] ?? []).filter(
+        (entry) => entry.timestamp >= (startTimestamp ?? -Infinity) && entry.timestamp <= (endTimestamp ?? Infinity),
+      )
+    }
+    return buildChartData(pairs, scopedHistory, normalizedMode)
+  }, [pairs, history, normalizedMode, hasBenchmark, validPeriod, startTimestamp, endTimestamp])
 
   const handleExport = useCallback(() => {
     if (!onExport) return
@@ -466,43 +551,24 @@ export const MultiPairOverlayChart = memo(function MultiPairOverlayChart({
         role="img"
         aria-label={`Multi-pair overlay chart for ${pairs.join(', ')}${normalizedMode ? ' in normalized % change mode' : ''}`}
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-            <XAxis
-              reversed={isRtl}
-              dataKey="timestamp"
-              tickFormatter={formatTs}
-              tick={{ fill: tickFill, fontSize: 11 }}
-              axisLine={{ stroke: gridStroke }}
-              tickLine={false}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              orientation={isRtl ? 'right' : 'left'}
-              tick={{ fill: tickFill, fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={yTickFormatter}
-              width={80}
-            />
-            <Tooltip
-              content={<MultiTooltip pairs={pairs} normalizedMode={normalizedMode} benchmarkPair={benchmarkPair} />}
-            />
-            {/* Zero reference line in normalized mode */}
-            {normalizedMode && (
-              <ReferenceLine
-                y={0}
-                stroke="#4b5563"
-                strokeDasharray="4 2"
-                label={{
-                  value: '0%',
-                  position: 'insideTopRight',
-                  fill: '#6b7280',
-                  fontSize: 10,
-                }}
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis
+                reversed={isRtl}
+                type="number"
+                scale="time"
+                dataKey="timestamp"
+                domain={['dataMin', 'dataMax']}
+                tickFormatter={formatTs}
+                tick={{ fill: tickFill, fontSize: 11 }}
+                axisLine={{ stroke: gridStroke }}
+                tickLine={false}
+                interval="preserveStartEnd"
               />
               <YAxis
+                orientation={isRtl ? 'right' : 'left'}
                 tick={{ fill: tickFill, fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}

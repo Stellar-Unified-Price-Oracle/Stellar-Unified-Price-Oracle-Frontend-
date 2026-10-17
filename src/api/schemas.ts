@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { isSecureProvenanceUrl } from '../utils/provenance'
 
 /**
  * Strict Zod schema for {@link import('../types/price').PriceData}.
@@ -393,23 +392,6 @@ export const TreasurySchema = z.array(TreasuryEntrySchema)
 
 // ── #695 Dispute schemas ──────────────────────────────────────────────────────
 
-export const PriceDisputeSchema = z.object({
-  id: z.string().min(1),
-  assetPair: z.string().min(1),
-  disputedPrice: z.number().finite(),
-  priceTimestamp: z.number().int().min(0),
-  status: z.enum(['open', 'under_review', 'resolved', 'dismissed']),
-  challenger: z.string().min(1),
-  reason: z.string().min(1),
-  evidenceUrl: z.string().nullable(),
-  createdAt: z.number().int().min(0),
-  resolvedAt: z.number().int().min(0).nullable(),
-  outcome: z.enum(['upheld', 'rejected', 'inconclusive']).nullable(),
-  resolutionNotes: z.string().nullable(),
-  flaggedSources: z.array(z.string()),
-})
-
-export const PriceDisputesSchema = z.array(PriceDisputeSchema)
 
 // ── Type inference from schemas ──────────────────────────────────────────────
 
@@ -513,3 +495,5 @@ export const PriceDisputeSchema = z.object({
   comments: z.array(DisputeCommentSchema),
   resolutionNote: z.string().nullable(),
 })
+
+export const PriceDisputesSchema = z.array(PriceDisputeSchema)
