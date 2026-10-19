@@ -16,10 +16,14 @@
  * - Engagement: interactions with core UI elements
  */
 
-import { trackEvent as sendToProvider, shouldCollect } from '../hooks/useAnalytics'
+import { trackEvent as sendToProvider } from '../hooks/useAnalytics'
 import { config } from '../config'
+import {
+  isCategoryAllowed,
+  type AnalyticsCategory,
+} from './analyticsConsent'
 
-export type AnalyticsEventCategory = 'navigation' | 'feature' | 'performance' | 'engagement'
+export type AnalyticsEventCategory = AnalyticsCategory
 
 interface EventProperties {
   [key: string]: string | number | boolean | undefined
@@ -35,13 +39,14 @@ interface AnalyticsEvent {
 /**
  * Track an analytics event.
  * Sends to provider (Plausible/Umami) and custom endpoint if configured.
+ * Respects granular opt-in/opt-out per category (#847).
  *
  * @example
  * trackAnalytics('feature', 'export', { format: 'csv', rows: 1000 })
  * trackAnalytics('feature', 'alert_triggered', { source: 'chainlink', threshold: 'upper' })
  */
 export function trackAnalytics(category: AnalyticsEventCategory, name: string, props?: EventProperties): void {
-  if (!shouldCollect()) return
+  if (!isCategoryAllowed(category)) return
 
   // Format event name with category prefix for provider
   const eventName = `${category}:${name}`
@@ -134,3 +139,21 @@ export function trackApiDocView(section?: string): void {
 }
 
 export type { AnalyticsEvent, EventProperties }
+
+export {
+  isCategoryAllowed,
+  getAnalyticsConsent,
+  saveAnalyticsConsent,
+  updateCategoryConsent,
+  setMasterAnalyticsConsent,
+  acceptAllAnalyticsConsent,
+  declineAllAnalyticsConsent,
+  resetAnalyticsConsent,
+  useAnalyticsConsent,
+  isDoNotTrackActive,
+  ANALYTICS_CATEGORIES,
+  DEFAULT_ANALYTICS_CONSENT,
+  type AnalyticsCategory,
+  type AnalyticsConsent,
+  type AnalyticsCategoryInfo,
+} from './analyticsConsent'

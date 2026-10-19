@@ -111,3 +111,42 @@ const originalGetComputedStyle = window.getComputedStyle.bind(window)
 window.getComputedStyle = ((elt: Element, _pseudoElt?: string | null) => {
   return originalGetComputedStyle(elt)
 }) as typeof window.getComputedStyle
+
+if (typeof globalThis.localStorage === 'undefined' || typeof globalThis.localStorage.clear !== 'function') {
+  const store = new Map<string, string>()
+  Storage.prototype.getItem = function (key: string) {
+    return store.get(key) ?? null
+  }
+  Storage.prototype.setItem = function (key: string, value: string) {
+    store.set(key, String(value))
+  }
+  Storage.prototype.removeItem = function (key: string) {
+    store.delete(key)
+  }
+  Storage.prototype.clear = function () {
+    store.clear()
+  }
+  Storage.prototype.key = function (index: number) {
+    return Array.from(store.keys())[index] ?? null
+  }
+  Object.defineProperty(Storage.prototype, 'length', {
+    get() {
+      return store.size
+    },
+    configurable: true,
+  })
+  const storageMock = Object.create(Storage.prototype)
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: storageMock,
+    writable: true,
+    configurable: true,
+  })
+  if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'localStorage', {
+      value: storageMock,
+      writable: true,
+      configurable: true,
+    })
+  }
+}
+

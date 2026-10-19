@@ -1,4 +1,5 @@
 import type { BacktestPreset } from '../utils/backtest'
+import type { AnalyticsConsent } from '../utils/analyticsConsent'
 
 export type ChartTimeRange = '24h' | '7d' | '30d'
 export type RefreshInterval = 5000 | 10000 | 30000 | 60000 | 300000
@@ -40,6 +41,8 @@ export interface AccessibilityPreferences {
 /** User choices about data collection. */
 export interface PrivacyPreferences {
   analyticsOptOut?: boolean
+  /** Granular opt-in/opt-out preferences for product analytics (#847) */
+  analyticsConsent?: AnalyticsConsent
   chartTimezone: ChartTimezone
   formatLocale: LocaleCode
   /** #461 – Whether to render excluded-outlier source ticks on the price chart. */

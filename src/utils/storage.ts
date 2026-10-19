@@ -54,6 +54,8 @@ export const STORAGE_KEYS = {
   developerWebhooks: 'developer-webhooks',
   /** `'1'` when the user has opted out of analytics. */
   analyticsOptOut: 'analyticsOptOut',
+  /** Granular product analytics consent preferences (#847). No PII. */
+  analyticsConsent: 'analytics-consent',
   /** `'dark'` / `'light'`. Also read by the pre-paint script in `index.html`. */
   theme: 'stellar-oracle-theme',
   /** Random per-browser bucket id used for sticky percentage-rollout feature flags (#359). No PII. */
@@ -352,6 +354,10 @@ export const STORAGE_INVENTORY = Object.freeze({
     {
       key: STORAGE_KEYS.analyticsOptOut,
       description: "Opt-out flag ('1' = opted out). No PII.",
+    },
+    {
+      key: STORAGE_KEYS.analyticsConsent,
+      description: 'Granular product analytics opt-in/opt-out consent preferences (#847). No PII.',
     },
     {
       key: STORAGE_KEYS.theme,
