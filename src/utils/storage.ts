@@ -363,6 +363,10 @@ export const STORAGE_INVENTORY = Object.freeze({
       description: "Opt-out flag ('1' = opted out). No PII.",
     },
     {
+      key: STORAGE_KEYS.analyticsConsent,
+      description: 'Granular product analytics opt-in/opt-out consent preferences (#847). No PII.',
+    },
+    {
       key: STORAGE_KEYS.theme,
       description: "UI theme choice ('dark'/'light'/'system'). No PII.",
     },

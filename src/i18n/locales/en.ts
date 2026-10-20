@@ -713,8 +713,16 @@ const en = {
       largeTextDesc: 'Increases base font size across the dashboard',
     },
     privacy: {
-      enableAnalytics: 'Enable Analytics',
-      enableAnalyticsDesc: 'Allow privacy-focused analytics for feature usage (can be opted out).',
+      enableAnalytics: 'Product Analytics',
+      enableAnalyticsDesc: 'Allow privacy-focused telemetry across the platform without recording IP addresses or cookies.',
+      granularHeading: 'Granular Data Categories',
+      granularSubheading: 'Choose which non-identifying telemetry categories are permitted.',
+      optInAll: 'All',
+      optOutAll: 'None',
+      resetDefaults: 'Reset categories to defaults',
+      savedLocally: 'Saved locally',
+      dntDetected: 'Do Not Track (DNT) header detected',
+      dntDetectedDesc: 'Your browser requested not to be tracked. All product analytics collection is automatically disabled.',
     },
     language: {
       label: 'Interface Language',

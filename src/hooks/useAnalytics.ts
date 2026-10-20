@@ -1,18 +1,14 @@
-import { STORAGE_KEYS, readRaw } from '../utils/storage'
+import { isCategoryAllowed, type AnalyticsCategory } from '../utils/analyticsConsent'
 
 type Provider = 'plausible' | 'umami' | undefined
 
 const provider = (import.meta.env.VITE_ANALYTICS_PROVIDER as Provider) || undefined
 const id = (import.meta.env.VITE_ANALYTICS_ID as string) || undefined
 
-export function shouldCollect(): boolean {
-  try {
-    if (typeof navigator !== 'undefined' && (navigator as Navigator & { doNotTrack?: string }).doNotTrack === '1') return false
-  } catch { /* ignore */ }
+export function shouldCollect(category?: AnalyticsCategory | string): boolean {
   if (typeof window === 'undefined') return false
   if (!provider || !id) return false
-  if (readRaw(STORAGE_KEYS.analyticsOptOut) === '1') return false
-  return true
+  return isCategoryAllowed(category)
 }
 
 export function initAnalytics(): void {
@@ -40,8 +36,9 @@ type WindowWithAnalytics = Window & {
   umami?: { trackEvent?: (name: string, props?: Record<string, unknown>) => void; trackView?: (path?: string) => void }
 }
 
-export function trackEvent(name: string, props?: Record<string, unknown>): void {
-  if (!shouldCollect()) return
+export function trackEvent(name: string, props?: Record<string, unknown>, category?: AnalyticsCategory | string): void {
+  const cat = category || (name.includes(':') ? name.split(':')[0] : undefined)
+  if (!shouldCollect(cat)) return
   try {
     const w = window as WindowWithAnalytics
     if (w.plausible) {
@@ -53,7 +50,7 @@ export function trackEvent(name: string, props?: Record<string, unknown>): void 
 }
 
 export function trackPageview(path?: string): void {
-  if (!shouldCollect()) return
+  if (!shouldCollect('navigation')) return
   try {
     const w = window as WindowWithAnalytics
     if (w.plausible) {

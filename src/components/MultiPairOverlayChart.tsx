@@ -139,7 +139,7 @@ function formatBoundary(timestamp: number): string {
   return new Date(timestamp).toLocaleString()
 }
 
-function parseDateTimeInput(value: string): number | null {
+function _parseDateTimeInput(value: string): number | null {
   if (!value) return null
   const timestamp = new Date(value).getTime()
   return Number.isFinite(timestamp) ? timestamp : null

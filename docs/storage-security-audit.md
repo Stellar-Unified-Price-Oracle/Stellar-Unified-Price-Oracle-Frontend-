@@ -15,7 +15,8 @@ forbidden — see `AGENTS.md § Client Storage Convention`.
 | `price-alerts` | JSON `Alert[]` | Asset pair + threshold values + enabled flag | ✗ | ✗ |
 | `alert-history` | JSON `AlertHistoryEntry[]` | Pair, price at trigger time, timestamp | ✗ | ✗ |
 | `notification-channels` | JSON `NotificationChannels` | Email address, webhook URL, Telegram chat ID. **Signing secret is NOT included** — it lives in memory only. | email¹ | ✗ |
-| `analyticsOptOut` | `'1'` or `'0'` | Analytics opt-out flag | ✗ | ✗ |
+| `analyticsOptOut` | `'1'` or `'0'` | Analytics opt-out flag (legacy sync) | ✗ | ✗ |
+| `analytics-consent` | JSON `AnalyticsConsent` | Granular product analytics consent preferences (#847) | ✗ | ✗ |
 | `stellar-oracle-theme` | `'dark'` or `'light'` | UI theme choice | ✗ | ✗ |
 | `feature-flag-bucket` | string | Random per-browser bucket id used for sticky percentage-rollout feature flags (#359) | ✗ | ✗ |
 

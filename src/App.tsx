@@ -36,6 +36,7 @@ import { PerformanceOverlay } from './components/PerformanceOverlay'
 import { ApiVersionBanner } from './components/ApiVersionBanner'
 import { InstallPrompt } from './components/InstallPrompt'
 import { PwaUpdateBanner } from './components/PwaUpdateBanner'
+import { AnalyticsConsentBanner } from './components/AnalyticsConsentBanner'
 import { LiveRegionContainer } from './components/LiveRegionContainer'
 import { usePriceContext } from './context/PriceContext'
 import { usePriceAnnouncer } from './hooks/usePriceAnnouncer'
@@ -126,6 +127,7 @@ export function AppContent(): ReactElement {
       <AppAnnouncements />
       <InstallPrompt />
       <PwaUpdateBanner />
+      <AnalyticsConsentBanner />
       <ErrorBoundary key={location.key}>
         <ApiVersionBanner />
         <Layout>

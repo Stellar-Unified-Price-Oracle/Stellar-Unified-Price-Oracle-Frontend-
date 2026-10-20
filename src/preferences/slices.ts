@@ -60,6 +60,7 @@ export const LAYOUT_PREFERENCE_KEYS = ['dashboardView', 'cardOrder', 'pricePreci
 export const ACCESSIBILITY_PREFERENCE_KEYS = ['reducedMotion', 'highContrast', 'largeText', 'rtlEnabled'] as const
 export const PRIVACY_PREFERENCE_KEYS = [
   'analyticsOptOut',
+  'analyticsConsent',
   'chartTimezone',
   'formatLocale',
   'showExcludedSources',

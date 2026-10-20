@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   trackExport,
   trackAlertCreate,
@@ -94,6 +94,48 @@ describe('Analytics Utilities', () => {
     it('trackPanelToggle accepts panel type and action', () => {
       expect(() => trackPanelToggle('alerts', 'open')).not.toThrow()
       expect(() => trackPanelToggle('settings', 'close')).not.toThrow()
+    })
+  })
+
+  describe('granular category consent enforcement', () => {
+    it('does not send events when category is opted out', async () => {
+      const { updateCategoryConsent, trackAnalytics } = await import('./analytics')
+      const beaconMock = vi.fn().mockReturnValue(true)
+      Object.defineProperty(navigator, 'sendBeacon', {
+        value: beaconMock,
+        writable: true,
+        configurable: true,
+      })
+
+      // Opt out of feature category
+      updateCategoryConsent('feature', false)
+
+      trackAnalytics('feature', 'export', { format: 'csv' })
+      expect(beaconMock).not.toHaveBeenCalled()
+    })
+
+    it('sends events when category is opted in and endpoint configured', async () => {
+      const { updateCategoryConsent, trackAnalytics } = await import('./analytics')
+      const { config } = await import('../config')
+      ;(config as unknown as { analyticsEndpoint: string }).analyticsEndpoint = 'https://analytics.example.com/api'
+
+      const beaconMock = vi.fn().mockReturnValue(true)
+      Object.defineProperty(navigator, 'sendBeacon', {
+        value: beaconMock,
+        writable: true,
+        configurable: true,
+      })
+
+      // Opt into navigation category
+      updateCategoryConsent('navigation', true)
+
+      trackAnalytics('navigation', 'pageview', { path: '/dashboard' })
+      expect(beaconMock).toHaveBeenCalledWith(
+        'https://analytics.example.com/api',
+        expect.any(Blob)
+      )
+
+      ;(config as unknown as { analyticsEndpoint: string }).analyticsEndpoint = ''
     })
   })
 })

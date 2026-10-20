@@ -11,10 +11,15 @@ import {
   FORMAT_LOCALE_OPTIONS,
 } from '../preferences/constants'
 import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, type SupportedLanguage } from '../i18n'
-import { clearAllData, getLocalStorageSize, writeRaw, STORAGE_KEYS } from '../utils/storage'
+import { clearAllData, getLocalStorageSize } from '../utils/storage'
 import { loadSoundPreferences, saveSoundPreferences } from '../utils/soundPreferences'
 import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { useIsRtl } from '../hooks/useIsRtl'
+import {
+  useAnalyticsConsent,
+  ANALYTICS_CATEGORIES,
+  type AnalyticsCategory,
+} from '../utils/analyticsConsent'
 
 interface SettingsPanelProps {
   onClose: () => void
@@ -25,25 +30,34 @@ function AccessibilityToggle({
   description,
   checked,
   onChange,
+  disabled = false,
 }: {
   label: string
   description: string
   checked: boolean
   onChange: (val: boolean) => void
+  disabled?: boolean
 }) {
   const isRtl = useIsRtl()
   return (
-    <label className="flex items-start gap-3 cursor-pointer group">
+    <label
+      className={`flex items-start gap-3 group ${
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+      }`}
+    >
       <div className="relative mt-0.5 flex-shrink-0">
         <input
           type="checkbox"
           className="sr-only"
           checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
+          disabled={disabled}
+          onChange={(e) => !disabled && onChange(e.target.checked)}
           aria-label={label}
         />
         <div
-          className={`w-10 h-5 rounded-full transition-colors duration-200 ${checked ? 'bg-cyan-500' : 'bg-gray-700'}`}
+          className={`w-10 h-5 rounded-full transition-colors duration-200 ${
+            checked ? (disabled ? 'bg-cyan-800' : 'bg-cyan-500') : 'bg-gray-700'
+          }`}
         />
         <div
           className={`absolute top-0.5 start-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
@@ -114,6 +128,34 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
     unlockAudioContext()
     playAlertSound(soundPrefs.volume)
   }, [soundPrefs.volume])
+
+  const {
+    consent,
+    dntActive,
+    updateCategory,
+    setMaster,
+    acceptAll: handleAcceptAllAnalytics,
+    declineAll: handleDeclineAllAnalytics,
+    resetToDefaults: handleResetAnalytics,
+  } = useAnalyticsConsent()
+
+  const handleMasterAnalyticsToggle = useCallback(
+    (enabled: boolean) => {
+      setMaster(enabled)
+      updatePreference('analyticsOptOut', !enabled)
+    },
+    [setMaster, updatePreference]
+  )
+
+  const handleCategoryToggle = useCallback(
+    (category: AnalyticsCategory, enabled: boolean) => {
+      updateCategory(category, enabled)
+      if (enabled && preferences.analyticsOptOut) {
+        updatePreference('analyticsOptOut', false)
+      }
+    },
+    [updateCategory, preferences.analyticsOptOut, updatePreference]
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -322,24 +364,129 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): ReactElement {
             </div>
           </section>
 
-          {/* Privacy / Analytics */}
+          {/* Privacy / Granular Analytics Controls (#847) */}
           <section aria-labelledby="privacy-settings-heading">
-            <h3
-              id="privacy-settings-heading"
-              className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3"
-            >
-              {t('settings.sections.privacy')}
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3
+                id="privacy-settings-heading"
+                className="text-xs font-semibold uppercase tracking-wider text-gray-500"
+              >
+                {t('settings.sections.privacy')}
+              </h3>
+              <span
+                className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                  dntActive
+                    ? 'bg-amber-950/60 text-amber-400 border border-amber-800/60'
+                    : !consent.enabled || preferences.analyticsOptOut
+                    ? 'bg-gray-800 text-gray-400 border border-gray-700'
+                    : 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/60'
+                }`}
+              >
+                {dntActive
+                  ? 'DNT Enforced'
+                  : !consent.enabled || preferences.analyticsOptOut
+                  ? 'Telemetry Paused'
+                  : 'Telemetry Active'}
+              </span>
+            </div>
+
+            {dntActive && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mb-4 p-3 rounded-lg bg-amber-950/30 border border-amber-800/40 text-amber-300 text-xs"
+              >
+                <p className="font-medium">Do Not Track (DNT) header detected</p>
+                <p className="text-amber-400/80 mt-0.5">
+                  Your browser requested not to be tracked. All product analytics collection is automatically disabled.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-4">
               <AccessibilityToggle
                 label={t('settings.privacy.enableAnalytics')}
                 description={t('settings.privacy.enableAnalyticsDesc')}
-                checked={!preferences.analyticsOptOut}
-                onChange={(val) => {
-                  updatePreference('analyticsOptOut', !val)
-                  writeRaw(STORAGE_KEYS.analyticsOptOut, !val ? '0' : '1')
-                }}
+                checked={consent.enabled && !preferences.analyticsOptOut}
+                onChange={handleMasterAnalyticsToggle}
               />
+
+              {/* Granular category toggles */}
+              <div className="pt-2 border-t border-gray-800/80">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                      {t('settings.privacy.granularHeading', 'Granular Data Categories')}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {t('settings.privacy.granularSubheading', 'Choose which non-identifying telemetry categories are permitted.')}
+                    </p>
+                  </div>
+                  {consent.enabled && !preferences.analyticsOptOut && (
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleAcceptAllAnalytics}
+                        className="text-xs px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-cyan-400 font-medium transition-colors"
+                        aria-label="Opt in to all analytics categories"
+                      >
+                        {t('settings.privacy.optInAll', 'All')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeclineAllAnalytics}
+                        className="text-xs px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium transition-colors"
+                        aria-label="Opt out of all analytics categories"
+                      >
+                        {t('settings.privacy.optOutAll', 'None')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {(!consent.enabled || preferences.analyticsOptOut) && (
+                  <p className="text-xs text-gray-500 italic mb-3">
+                    Enable master analytics above to customize individual tracking categories.
+                  </p>
+                )}
+
+                <div className="space-y-3 ps-1 mt-3">
+                  {ANALYTICS_CATEGORIES.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className="p-2.5 rounded-lg bg-gray-800/40 border border-gray-800"
+                    >
+                      <AccessibilityToggle
+                        label={cat.name}
+                        description={cat.description}
+                        checked={
+                          consent.enabled &&
+                          !preferences.analyticsOptOut &&
+                          Boolean(consent.categories[cat.id])
+                        }
+                        disabled={!consent.enabled || Boolean(preferences.analyticsOptOut)}
+                        onChange={(val) => handleCategoryToggle(cat.id, val)}
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1.5 ps-13">
+                        <span className="text-gray-400 font-medium">Examples:</span> {cat.examples}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                  <button
+                    type="button"
+                    onClick={handleResetAnalytics}
+                    className="text-xs text-gray-400 hover:text-cyan-400 underline transition-colors"
+                  >
+                    Reset categories to defaults
+                  </button>
+                  {consent.hasExplicitChoice && consent.updatedAt && (
+                    <span className="text-[11px] text-gray-500">Saved locally</span>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
 

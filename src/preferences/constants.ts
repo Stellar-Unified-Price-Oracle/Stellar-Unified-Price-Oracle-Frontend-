@@ -1,4 +1,5 @@
 import type { BacktestPreset } from '../utils/backtest'
+import { DEFAULT_ANALYTICS_CONSENT } from '../utils/analyticsConsent'
 import type {
   AccessibilityPreferences,
   ToggleableTableColumn,
@@ -73,6 +74,7 @@ export const DEFAULT_ACCESSIBILITY_PREFERENCES: AccessibilityPreferences = {
 
 export const DEFAULT_PRIVACY_PREFERENCES: PrivacyPreferences = {
   analyticsOptOut: false,
+  analyticsConsent: DEFAULT_ANALYTICS_CONSENT,
   chartTimezone: 'UTC',
   formatLocale: 'auto',
   showExcludedSources: false,
