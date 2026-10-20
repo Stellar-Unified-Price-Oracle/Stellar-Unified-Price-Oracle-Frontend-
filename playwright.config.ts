@@ -38,17 +38,50 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: '**/visual-regression.spec.ts',
+      testIgnore: ['**/visual-regression.spec.ts', '**/keyboard-pointer-matrix.spec.ts'],
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
-      testIgnore: '**/visual-regression.spec.ts',
+      testIgnore: ['**/visual-regression.spec.ts', '**/keyboard-pointer-matrix.spec.ts'],
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
-      testIgnore: '**/visual-regression.spec.ts',
+      testIgnore: ['**/visual-regression.spec.ts', '**/keyboard-pointer-matrix.spec.ts'],
+    },
+    // Interaction Matrix (#863): Keyboard & pointer modality testing across desktop & mobile
+    {
+      name: 'interaction-desktop-keyboard',
+      use: {
+        ...devices['Desktop Chrome'],
+        hasTouch: false,
+      },
+      testMatch: '**/keyboard-pointer-matrix.spec.ts',
+    },
+    {
+      name: 'interaction-desktop-pointer',
+      use: {
+        ...devices['Desktop Chrome'],
+        hasTouch: false,
+      },
+      testMatch: '**/keyboard-pointer-matrix.spec.ts',
+    },
+    {
+      name: 'interaction-mobile-touch',
+      use: {
+        ...devices['Pixel 5'],
+        hasTouch: true,
+      },
+      testMatch: '**/keyboard-pointer-matrix.spec.ts',
+    },
+    {
+      name: 'interaction-safari-touch',
+      use: {
+        ...devices['iPhone 13'],
+        hasTouch: true,
+      },
+      testMatch: '**/keyboard-pointer-matrix.spec.ts',
     },
   ],
   // Skip spinning up a local server when testing against a remote preview URL.

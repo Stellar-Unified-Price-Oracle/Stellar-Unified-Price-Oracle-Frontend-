@@ -201,4 +201,13 @@ describe('PriceChart', () => {
     // or test the hook that calls this callback
     expect(onLoadMore).toBeDefined()
   })
+
+  it('opens data-quality report modal when clicking Report Concern button', () => {
+    renderWithProviders(<PriceChart data={sampleData} pair="BTC/USD" />)
+    const reportBtn = screen.getByRole('button', { name: /report data-quality concern for btc\/usd/i })
+    expect(reportBtn).toBeInTheDocument()
+    fireEvent.click(reportBtn)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /report data-quality concern/i })).toBeInTheDocument()
+  })
 })

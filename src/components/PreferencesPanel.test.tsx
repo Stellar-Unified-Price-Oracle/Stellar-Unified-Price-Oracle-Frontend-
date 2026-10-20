@@ -83,6 +83,18 @@ describe('PreferencesPanel', () => {
     expect(refreshInterval).toHaveValue('300000')
   })
 
+  it('defaults price decimals to auto and lets users pin a fixed precision', async () => {
+    const user = userEvent.setup()
+    render(<PreferencesPanel />, { wrapper: Wrapper })
+
+    const precision = screen.getByLabelText('Price decimals')
+    expect(precision).toHaveValue('auto')
+    await user.selectOptions(precision, '6')
+    expect(precision).toHaveValue('6')
+    await user.selectOptions(precision, 'auto')
+    expect(precision).toHaveValue('auto')
+  })
+
   it('undo and redo buttons are disabled by default', () => {
     render(<PreferencesPanel />, { wrapper: Wrapper })
     expect(screen.getByRole('button', { name: 'Undo last preference change' })).toBeDisabled()

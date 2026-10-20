@@ -2,12 +2,55 @@
 import fs from 'fs'
 import path from 'path'
 import { execFileSync } from 'node:child_process'
-import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
+import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { computeReleaseVersion, RELEASE_MANIFEST_FILE } from './src/utils/releaseManifest'
 
 type ProxyConfig = Record<string, ProxyOptions>
+
+/** Declaration in public/sw.js that the build replaces with the release version (#828). */
+const SW_VERSION_DECLARATION = "const RELEASE_VERSION = '__RELEASE_VERSION__'"
+
+/**
+ * After the bundle and public files are written, derives a release version from
+ * the emitted asset list, stamps it into `sw.js` so the service worker's cache is
+ * keyed to the files it ships, and writes `release-manifest.json` alongside it.
+ */
+function releaseManifestPlugin(buildId: string): Plugin {
+  let outDir = ''
+  return {
+    name: 'release-manifest',
+    apply: 'build',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir)
+    },
+    closeBundle() {
+      const swPath = path.join(outDir, 'sw.js')
+      if (!fs.existsSync(swPath)) return
+
+      const swSource = fs.readFileSync(swPath, 'utf8')
+      if (!swSource.includes(SW_VERSION_DECLARATION)) {
+        throw new Error('release-manifest: sw.js is missing the RELEASE_VERSION declaration')
+      }
+
+      const assets = fs
+        .readdirSync(outDir, { recursive: true })
+        .map((entry) => String(entry).split(path.sep).join('/'))
+        .filter((entry) => entry !== 'sw.js' && entry !== RELEASE_MANIFEST_FILE)
+        .filter((entry) => fs.statSync(path.join(outDir, entry)).isFile())
+        .sort()
+
+      const releaseVersion = computeReleaseVersion(buildId, assets)
+      fs.writeFileSync(swPath, swSource.replace(SW_VERSION_DECLARATION, `const RELEASE_VERSION = '${releaseVersion}'`))
+      fs.writeFileSync(
+        path.join(outDir, RELEASE_MANIFEST_FILE),
+        `${JSON.stringify({ buildId, releaseVersion, assets }, null, 2)}\n`,
+      )
+    },
+  }
+}
 
 /**
  * Load HTTPS certificates for local development.
@@ -163,6 +206,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      releaseManifestPlugin(buildId),
       {
         name: 'resource-hints',
         transformIndexHtml: {

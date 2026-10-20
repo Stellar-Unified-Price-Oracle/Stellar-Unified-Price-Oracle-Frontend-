@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, createContext, useContext, ReactNode } from 'react'
 import { recordRuleVersion, removeRuleHistory } from '../services/alertRuleHistory'
+import { sendWebPush } from '../services/webPushDelivery'
 import type {
   Alert,
   AlertEvaluationEntry,
@@ -55,10 +56,14 @@ function alertMessage(alert: Alert, currentPrice: number): string {
 
 // ── Per-channel dispatchers (#315, extended with Telegram/Discord for #488) ────
 
-function dispatchWebPushChannel(cfg: NotifConfig, body: string, kind: AlertNotificationKind = 'triggered'): void {
-  if (cfg.webPush.enabled && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    new Notification(kind === 'recovered' ? 'Price Alert Recovered' : 'Price Alert Triggered', { body })
-  }
+/** Browser notifications report denied, revoked, or refused deliveries as failures rather than dropping them (#829). */
+async function dispatchWebPushChannel(
+  cfg: NotifConfig,
+  body: string,
+  kind: AlertNotificationKind = 'triggered',
+): Promise<DeliverySendResult> {
+  if (!cfg.webPush.enabled) return { ok: false, error: 'Web push is disabled' }
+  return sendWebPush(kind === 'recovered' ? 'Price Alert Recovered' : 'Price Alert Triggered', body)
 }
 
 async function dispatchEmailChannel(
@@ -166,14 +171,14 @@ async function dispatchNotifications(
       ? `${alert.assetPair} threshold cleared. Current price: $${currentPrice.toFixed(4)}`
       : alertMessage(alert, currentPrice)
   const targets = resolveAlertChannels(cfg, alert.channels)
-  await Promise.all([
-    targets.has('email') ? dispatchEmailChannel(cfg, alert, currentPrice, body, kind) : Promise.resolve(),
-    targets.has('webhook') ? dispatchWebhookChannel(cfg, alert, currentPrice, body, kind) : Promise.resolve(),
-    targets.has('telegram') ? dispatchTelegramChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
-    targets.has('discord') ? dispatchDiscordChannel(cfg, alert, currentPrice, body) : Promise.resolve(),
-  ])
-  if (targets.has('webPush')) {
-    dispatchWebPushChannel(cfg, body, kind)
+  // Each channel goes through the delivery tracker exactly once, so a failed
+  // browser notification is recorded as a receipt instead of being dropped (#829).
+  const sends: Record<Exclude<NotificationChannelId, 'inApp'>, SendFn> = {
+    email: () => dispatchEmailChannel(cfg, alert, currentPrice, body, kind),
+    webhook: () => dispatchWebhookChannel(cfg, alert, currentPrice, body, kind),
+    telegram: () => dispatchTelegramChannel(cfg, alert, currentPrice, body),
+    discord: () => dispatchDiscordChannel(cfg, alert, currentPrice, body),
+    webPush: () => dispatchWebPushChannel(cfg, body, kind),
   }
   await Promise.all(
     [...targets].flatMap((channel) =>

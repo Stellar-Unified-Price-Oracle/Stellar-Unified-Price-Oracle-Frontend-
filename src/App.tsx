@@ -44,6 +44,7 @@ import { useAlertAnnouncer } from './hooks/useAlertAnnouncer'
 import { Webhooks } from './pages/Webhooks'
 import { Moderation } from './pages/Moderation'
 import { Transparency } from './pages/Transparency'
+import { Roadmap } from './pages/Roadmap'
 import { DeveloperInsights } from './components/DeveloperInsights'
 import {
   LazyApiDocs,
@@ -183,6 +184,7 @@ export function AppContent(): ReactElement {
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/moderation" element={<Moderation />} />
             <Route path="/transparency" element={<Transparency />} />
+            <Route path="/roadmap" element={<Roadmap />} />
             <Route
               path="/portfolio"
               element={

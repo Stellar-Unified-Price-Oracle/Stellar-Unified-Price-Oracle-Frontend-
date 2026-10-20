@@ -101,7 +101,8 @@ describe('MultiPairOverlayChart', () => {
     fireEvent.change(end, { target: { value: asLocalDateTime(NOW) } })
 
     expect(screen.getByText('+$1,000.00')).toBeInTheDocument()
-    expect(screen.getByText('+1.96%')).toBeInTheDocument()
+    // Also shown in the pre-chart summary for the same window, so more than one match is expected.
+    expect(screen.getAllByText('+1.96%').length).toBeGreaterThan(0)
     expect(screen.getByText(/Observed boundaries:/)).toBeInTheDocument()
     expect(screen.getByLabelText('Rolling beta and volatility window')).toBeInTheDocument()
   })

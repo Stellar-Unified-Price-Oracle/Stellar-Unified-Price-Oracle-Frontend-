@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../test/render'
 import { checkAccessibility } from '../test/accessibility'
 import { clearSwrCache } from '../hooks/useSwr'
@@ -10,6 +10,8 @@ import {
   fetchTreasury,
   fetchDisputes,
   fetchParameterRegistry,
+  fetchOperatorDisclosures,
+  fetchGovernanceEvents,
 } from '../api/rest'
 import { GovernanceProposalCard } from '../components/GovernanceProposalCard'
 import type { GovernanceProposal } from '../types'
@@ -22,6 +24,11 @@ vi.mock('../api/rest', () => ({
   fetchTreasury: vi.fn(),
   fetchDisputes: vi.fn(),
   fetchParameterRegistry: vi.fn(),
+  fetchReputationScores: vi.fn(),
+  fetchIncentiveSummaries: vi.fn(),
+  fetchPriceDisputes: vi.fn(),
+  fetchOperatorDisclosures: vi.fn(),
+  fetchGovernanceEvents: vi.fn(),
 }))
 
 vi.mock('../context/PriceContext', () => ({
@@ -57,6 +64,8 @@ beforeEach(() => {
   vi.mocked(fetchTreasury).mockResolvedValue([])
   vi.mocked(fetchDisputes).mockResolvedValue([])
   vi.mocked(fetchParameterRegistry).mockResolvedValue([])
+  vi.mocked(fetchOperatorDisclosures).mockResolvedValue([])
+  vi.mocked(fetchGovernanceEvents).mockResolvedValue([])
 })
 
 afterEach(cleanup)
@@ -156,5 +165,30 @@ describe('Governance page', () => {
 describe('GovernanceProposalCard', () => {
   it('has no accessibility violations', async () => {
     await checkAccessibility(<GovernanceProposalCard proposal={proposal()} now={Date.now()} />)
+  })
+
+  it('renders proposed parameter changes side-by-side when present (#851)', () => {
+    const propWithDiff = proposal({
+      proposedParameterChanges: [
+        {
+          paramKey: 'aggregator.minSources',
+          paramName: 'Minimum Active Sources',
+          category: 'aggregation',
+          currentValue: '3',
+          proposedValue: '5',
+          diffType: 'modify',
+          unit: 'sources',
+        },
+      ],
+    })
+
+    render(<GovernanceProposalCard proposal={propWithDiff} now={Date.now()} />)
+    expect(screen.getByText('Minimum Active Sources')).toBeInTheDocument()
+    expect(screen.getByText('aggregator.minSources')).toBeInTheDocument()
+    expect(screen.getByText('Current Registry Value')).toBeInTheDocument()
+    expect(screen.getByText('Proposed Governance Value')).toBeInTheDocument()
+    expect(screen.getByText('3 sources')).toBeInTheDocument()
+    expect(screen.getByText('5 sources')).toBeInTheDocument()
+    expect(screen.getByText(/\+2 \(\+66\.7%\)/i)).toBeInTheDocument()
   })
 })

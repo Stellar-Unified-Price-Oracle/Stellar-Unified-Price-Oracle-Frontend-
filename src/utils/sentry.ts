@@ -16,6 +16,8 @@
  * ```
  */
 
+import { scrubBreadcrumb } from './breadcrumbScrubber'
+
 export interface SentryConfig {
   enabled: boolean
   dsn: string
@@ -81,6 +83,10 @@ export async function initSentry(): Promise<boolean> {
       tracesSampleRate: config.tracesSampleRate,
       attachStacktrace: config.attachStacktrace,
       maxBreadcrumbs: config.maxBreadcrumbs,
+
+      // Last line of defence: strip personal data from every breadcrumb, including
+      // ones the SDK records itself (console, fetch, DOM) and not just ours.
+      beforeBreadcrumb: (breadcrumb) => scrubBreadcrumb(breadcrumb),
 
       // Ignore specific errors that are not actionable
       ignoreErrors: [
@@ -194,8 +200,7 @@ export function addSentryBreadcrumb(
     import('@sentry/react')
       .then((Sentry) => {
         Sentry.addBreadcrumb({
-          message,
-          data,
+          ...scrubBreadcrumb({ message, data }),
           level: level as import('@sentry/react').SeverityLevel,
           category: 'user-action',
         })

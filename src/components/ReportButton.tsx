@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent, type ReactElement } from 'react'
+import { useEffect, useId, useState, useMemo, type FormEvent, type ReactElement } from 'react'
 import {
   CODE_OF_CONDUCT_URL,
   REPORT_CATEGORIES,
@@ -8,6 +8,8 @@ import {
   type CommunitySurface,
   type ReportCategory,
 } from '../utils/moderation'
+import { findDuplicateReports } from '../utils/duplicateDetection'
+import { DuplicateReportAlert } from './DuplicateReportAlert'
 
 interface ReportButtonProps {
   surface: CommunitySurface
@@ -16,20 +18,37 @@ interface ReportButtonProps {
   label?: string
 }
 
-/** "Report" action for community surfaces (#699). Opens an inline dialog. */
+/** "Report" action for community surfaces (#699, #860). Opens an inline dialog. */
 export function ReportButton({ surface, targetId, label = 'Report' }: ReportButtonProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState<ReportCategory>('spam')
   const [evidence, setEvidence] = useState('')
   const [confidential, setConfidential] = useState(false)
   const [status, setStatus] = useState<'idle' | 'sent' | 'error'>('idle')
+  const [dismissedDuplicates, setDismissedDuplicates] = useState(false)
   const titleId = useId()
+
+  const existingReports = useMemo(() => (open ? loadReports() : []), [open])
+  const duplicates = useMemo(
+    () => findDuplicateReports({ surface, targetId, category, evidence }, existingReports),
+    [surface, targetId, category, evidence, existingReports],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const report = createReport({ surface, targetId, category, evidence, confidential })
-    setStatus(saveReports([...loadReports(), report]) ? 'sent' : 'error')
+    setStatus(saveReports([...existingReports, report]) ? 'sent' : 'error')
     setEvidence('')
+    setDismissedDuplicates(false)
   }
 
   return (
@@ -102,6 +121,11 @@ export function ReportButton({ surface, targetId, label = 'Report' }: ReportButt
                     className="rounded border px-2 py-1 dark:bg-gray-800"
                   />
                 </label>
+                <DuplicateReportAlert
+                  duplicates={duplicates}
+                  dismissed={dismissedDuplicates}
+                  onDismiss={() => setDismissedDuplicates(true)}
+                />
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={confidential} onChange={(e) => setConfidential(e.target.checked)} />
                   Keep evidence confidential to moderators

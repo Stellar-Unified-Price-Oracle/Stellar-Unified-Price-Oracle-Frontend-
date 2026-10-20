@@ -20,9 +20,13 @@ import { rasterizeChartToDataUrl } from '../utils/chartExport'
 import { exportPriceHistoryPdf } from '../utils/pdfExport'
 import { loadChartExport } from '../utils/deferredExports'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { calculateRollingStatistics } from '../utils/rollingStatistics'
 import { getChartPalette, getChartTheme, type ChartPalette, type ChartTheme } from '../utils/chartTheme'
 import { getSourceTimestampState } from '../utils/sourceTimestamps'
 import { buildSourceCoverageData } from '../utils/priceHistoryCoverage'
+import { findPriceHistoryGaps } from '../utils/priceHistoryGaps'
+import { useIsRtl } from '../hooks/useIsRtl'
+import { DataQualityReportModal } from './DataQualityReportModal'
 
 // ---------------------------------------------------------------------------
 // #305 – Chart annotation types
@@ -328,6 +332,7 @@ function ChartContent({
   const exportMenuRef = useRef<HTMLDivElement>(null)
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
 
   useEffect(() => {
     if (!exportMenuOpen) return
@@ -371,6 +376,7 @@ function ChartContent({
   const tzAbbr = getTimezoneAbbr(timezone)
   const filteredData = filterByRange(data, timeRange)
   const potentialGaps = useMemo(() => findPriceHistoryGaps(filteredData), [filteredData])
+  const rollingStatistics = calculateRollingStatistics(filteredData)
 
   const chartData = filteredData
     .slice()
@@ -742,6 +748,23 @@ function ChartContent({
               </div>
             )}
           </div>
+          <button
+            type="button"
+            onClick={() => setReportModalOpen(true)}
+            className="px-2 py-1 text-xs rounded-lg border text-amber-400 border-amber-600/40 hover:text-amber-200 hover:bg-amber-600/20 transition-colors flex items-center gap-1"
+            aria-haspopup="dialog"
+            aria-label={`Report data-quality concern for ${pair}`}
+          >
+            <svg className="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            Report Concern
+          </button>
           <button
             type="button"
             onClick={onToggleFullScreen}
@@ -1292,6 +1315,12 @@ function ChartContent({
                 <th scope="col" className="px-3 py-2 text-end font-medium text-gray-400">
                   Confidence
                 </th>
+                <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
+                  Rolling median
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-medium text-gray-400">
+                  Range low–high
+                </th>
                 <th scope="col" className="px-3 py-2 text-left font-medium text-gray-400">
                   Source timestamps
                 </th>
@@ -1303,6 +1332,10 @@ function ChartContent({
                   <td className="px-3 py-1.5 font-mono">{d.time}</td>
                   <td className="px-3 py-1.5 text-right font-mono">${formatPriceShort(d.price)}</td>
                   <td className="px-3 py-1.5 text-right">{(d.confidence * 100).toFixed(1)}%</td>
+                  <td className="px-3 py-1.5 text-right font-mono">${formatPriceShort(d.rollingMedian)}</td>
+                  <td className="px-3 py-1.5 text-right font-mono">
+                    ${formatPriceShort(d.rangeLow)} – ${formatPriceShort(d.rangeHigh)}
+                  </td>
                   <td className="px-3 py-1.5">{sourceTimestampSummary(d)}</td>
                 </tr>
               ))}
@@ -1336,6 +1369,15 @@ function ChartContent({
           </tbody>
         </table>
       </div>
+
+      <DataQualityReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        pair={pair}
+        selectedTimestamp={data[data.length - 1]?.timestamp}
+        selectedPrice={data[data.length - 1]?.price}
+        availableSources={data[data.length - 1]?.sources}
+      />
     </div>
   )
 }

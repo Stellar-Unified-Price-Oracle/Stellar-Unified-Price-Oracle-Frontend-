@@ -203,6 +203,13 @@ export interface PriceHistoryEntry {
   qualityFlags?: PriceQualityFlags
 }
 
+/** Quality classification flags for an aggregate price tick. */
+export interface PriceQualityFlags {
+  synthetic?: boolean
+  stale?: boolean
+  imputed?: boolean
+}
+
 /** Timestamp at which an oracle source contributed to the aggregate. */
 export interface SourceTimestamp {
   source: string

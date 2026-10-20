@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ParameterRecord } from '../types'
 import { ParameterRegistryPanel } from './ParameterRegistryPanel'
@@ -20,6 +20,10 @@ function makeRecord(overrides: Partial<ParameterRecord> = {}): ParameterRecord {
 }
 
 describe('ParameterRegistryPanel', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
   it('renders the section heading', () => {
     render(<ParameterRegistryPanel records={[]} now={NOW} />)
     expect(screen.getByRole('heading', { name: 'Parameter registry' })).toBeDefined()
@@ -106,4 +110,85 @@ describe('ParameterRegistryPanel', () => {
     await user.type(screen.getByRole('searchbox'), 'zzz_nomatch')
     expect(screen.getByText(/No parameters match your search/)).toBeDefined()
   })
+
+  it('allows subscribing to and unsubscribing from parameter updates (#852)', async () => {
+    const user = userEvent.setup()
+    const record = makeRecord({ key: 'aggregator.minSources', label: 'Minimum sources' })
+    render(<ParameterRegistryPanel records={[record]} now={NOW} />)
+
+    const watchButton = screen.getByRole('button', { name: 'Watch Minimum sources' })
+    expect(watchButton.getAttribute('aria-pressed')).toBe('false')
+
+    await user.click(watchButton)
+    expect(screen.getByRole('button', { name: 'Unwatch Minimum sources' })).toBeDefined()
+    expect(screen.getAllByText('Watching').length).toBeGreaterThanOrEqual(1)
+
+    // Unwatch
+    await user.click(screen.getByRole('button', { name: 'Unwatch Minimum sources' }))
+    expect(screen.getByRole('button', { name: 'Watch Minimum sources' })).toBeDefined()
+    expect(screen.queryByText('Watching')).toBeNull()
+  })
+
+  it('filters by watched parameters tab and handles empty watched state (#852)', async () => {
+    const user = userEvent.setup()
+    const records = [
+      makeRecord({ key: 'param.a', label: 'Param Alpha', category: 'cat1' }),
+      makeRecord({ key: 'param.b', label: 'Param Beta', category: 'cat2' }),
+    ]
+    render(<ParameterRegistryPanel records={records} now={NOW} />)
+
+    const watchedTab = screen.getByRole('tab', { name: /Watched/ })
+    await user.click(watchedTab)
+
+    expect(
+      screen.getByText(/You are not watching any parameters yet. Click the "Watch" button on any parameter/),
+    ).toBeDefined()
+    expect(screen.queryByText('Param Alpha')).toBeNull()
+
+    // Switch back to all and watch Param Alpha
+    await user.click(screen.getByRole('tab', { name: /All parameters/ }))
+    await user.click(screen.getByRole('button', { name: 'Watch Param Alpha' }))
+
+    // Switch to watched tab again
+    await user.click(watchedTab)
+    expect(screen.getByText('Param Alpha')).toBeDefined()
+    expect(screen.queryByText('Param Beta')).toBeNull()
+  })
+
+  it('renders change alert banner when a watched parameter updates and allows dismissing (#852)', async () => {
+    const user = userEvent.setup()
+    const initialRecord = makeRecord({
+      key: 'aggregator.minSources',
+      label: 'Minimum sources',
+      currentValue: '3',
+      lastChangedAt: NOW - 10_000,
+    })
+
+    const { rerender } = render(<ParameterRegistryPanel records={[initialRecord]} now={NOW} />)
+
+    // Subscribe to Minimum sources
+    await user.click(screen.getByRole('button', { name: 'Watch Minimum sources' }))
+
+    // Simulate incoming data refresh with an updated parameter value
+    const updatedRecord = makeRecord({
+      key: 'aggregator.minSources',
+      label: 'Minimum sources',
+      currentValue: '5',
+      lastChangedAt: NOW,
+    })
+
+    rerender(<ParameterRegistryPanel records={[updatedRecord]} now={NOW} />)
+
+    // Notification banner should be visible
+    const banner = screen.getByRole('status', { name: 'Watched parameter updates' })
+    expect(banner).toBeDefined()
+    expect(within(banner).getByText(/1 watched parameter has changed/)).toBeDefined()
+    expect(within(banner).getByText('5')).toBeDefined()
+
+    // Dismiss the banner
+    const dismissAllBtn = screen.getByRole('button', { name: 'Dismiss all' })
+    await user.click(dismissAllBtn)
+    expect(screen.queryByRole('status', { name: 'Watched parameter updates' })).toBeNull()
+  })
 })
+

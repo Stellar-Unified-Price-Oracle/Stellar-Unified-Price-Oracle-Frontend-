@@ -10,6 +10,7 @@ export type {
   ExcludedSourceTick,
   SourceTimestamp,
   PriceHistoryResponse,
+  PriceQualityFlags,
   SourceName,
   SourceHealth,
   // Aggregation breakdown (#459)
@@ -35,14 +36,56 @@ export { isPriceData, ATTRIBUTION_RING_BUFFER_SIZE } from './price'
 
 // Governance types — see src/types/governance.ts
 export type { ProposalStatus, VoteChoice, VoteTally, GovernanceProposal } from './governance'
+// #851 — Side-by-side proposed parameter diffs
+export type { ParameterDiffType, ProposedParameterChange } from './governance'
 // #698 — Transparent parameter registry
-export type { ParameterChangeEntry, ParameterRecord } from './governance'
+export type { ParameterChangeEntry, ParameterRecord, ParameterEntry, ParameterChangeLogEntry } from './governance'
 // #697 — Reputation decay and sybil resistance
 export type { SybilRisk, SourceReputationScore } from './governance'
 // #696 — Treasury and incentive accounting
-export type { AccountingPeriod, IncentiveLedgerEntry, SourceIncentiveSummary } from './governance'
+export type { AccountingPeriod, IncentiveLedgerEntry, SourceIncentiveSummary, TreasuryEntry } from './governance'
 // #695 — Dispute and challenge process
-export type { DisputeStatus, DisputeEvidence, DisputeComment, PriceDispute } from './governance'
+export type { DisputeStatus, DisputeEvidence, DisputeComment, PriceDispute, DisputeOutcome, LegacyPriceDispute } from './governance'
+// #855 — Source certification status, evidence, and expiry dates
+export type { CertificationStatus, CertificationEvidence, SourceCertification } from './governance'
+
+// #856 — Operator conflict-of-interest disclosures
+export type {
+  ConflictCategory,
+  MaterialityLevel,
+  ProvenanceStatus,
+  ProvenanceMethod,
+  ProvenanceRecord,
+  OperatorDisclosure,
+  OperatorDisclosureSummary,
+} from './operatorDisclosures'
+
+// #857 — Governance roles and permissions
+export type {
+  GovernanceRole,
+  GovernanceAction,
+  ActionGateEvaluation,
+  RoleRegistryEntry,
+} from './governancePermissions'
+
+// #858 — Governance event log with stable identifiers
+export type {
+  GovernanceEventType,
+  GovernanceEvent,
+  GovernanceEventFilters,
+  GovernanceEventExportJson,
+} from './governanceEvents'
+
+// #862 — Mobile device tier benchmarks
+export type {
+  InteractionBenchmarkId,
+  BenchmarkStatus,
+  MobileDeviceTier,
+  BenchmarkInteractionBudget,
+  BenchmarkResult,
+  MobileBenchmarkSuiteSummary,
+} from './mobileBenchmarks'
+export { TIER_2_MOBILE_REFERENCE, MOBILE_BENCHMARK_BUDGETS } from './mobileBenchmarks'
 
 // On-chain price / proof types — see src/types/onChainPrice.ts
 export type { OnChainPriceRecord, SourceContribution, PriceProof } from './onChainPrice'
@@ -87,6 +130,7 @@ export type {
   EscalationPolicy,
   EscalationRuntimeState,
   EscalationValidationError,
+  ScheduleSpec,
 } from './alerts'
 export {
   isConditionGroup,

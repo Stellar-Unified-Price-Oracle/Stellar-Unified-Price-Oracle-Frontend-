@@ -1,119 +1,146 @@
-import { render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
-import { PreferencesProvider } from '../preferences/PreferencesContext'
-import {
-  saveAnalyticsConsent,
-  getAnalyticsConsent,
-  acceptAllAnalyticsConsent,
-  DEFAULT_ANALYTICS_CONSENT,
-} from '../utils/analyticsConsent'
+import { axe } from 'vitest-axe'
+import { DEFAULT_PREFERENCES } from '../preferences/constants'
+import { clearAllData } from '../utils/storage'
 import { SettingsPanel } from './SettingsPanel'
 
-vi.mock('../context/PriceContext', () => ({
-  usePriceContext: () => ({
-    clearPriceCache: vi.fn(),
+const contextMock = vi.hoisted(() => ({
+  clearHistory: vi.fn(),
+  clearPriceCache: vi.fn<() => Promise<void>>(),
+}))
+
+vi.mock('../preferences/PreferencesContext', () => ({
+  usePreferences: () => ({
+    preferences: DEFAULT_PREFERENCES,
+    updatePreference: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
+    canUndo: false,
+    canRedo: false,
+    clearHistory: contextMock.clearHistory,
   }),
 }))
 
-function renderWithProviders(ui: React.ReactElement) {
-  return render(
-    <MemoryRouter>
-      <PreferencesProvider>
-        {ui}
-      </PreferencesProvider>
-    </MemoryRouter>
-  )
-}
+vi.mock('../context/PriceContext', () => ({
+  usePriceContext: () => ({ clearPriceCache: contextMock.clearPriceCache }),
+}))
 
-describe('SettingsPanel - Privacy & Granular Analytics Controls', () => {
+vi.mock('../utils/storage', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils/storage')>()),
+  clearAllData: vi.fn<() => Promise<void>>(),
+}))
+
+const OFFLINE_CACHE_BUTTON = 'Clear cached offline price snapshot'
+const CLEAR_ALL_BUTTON = 'Clear all local data stored by this app'
+const CONFIRM_BUTTON = 'Confirm — clear all local data'
+
+describe('SettingsPanel local data clearing', () => {
   beforeEach(() => {
     localStorage.clear()
-    saveAnalyticsConsent({ ...DEFAULT_ANALYTICS_CONSENT, hasExplicitChoice: true })
-    vi.restoreAllMocks()
+    contextMock.clearHistory.mockReset()
+    contextMock.clearPriceCache.mockReset().mockResolvedValue()
+    vi.mocked(clearAllData).mockReset().mockResolvedValue()
   })
 
-  it('renders Privacy section with master toggle and granular categories', () => {
-    renderWithProviders(<SettingsPanel onClose={vi.fn()} />)
+  afterEach(cleanup)
 
-    expect(screen.getByRole('heading', { name: /privacy/i })).toBeInTheDocument()
-    expect(screen.getByLabelText(/product analytics/i)).toBeInTheDocument()
-    expect(screen.getByText('Granular Data Categories')).toBeInTheDocument()
+  it('clears only the offline price snapshot when that scope is chosen', async () => {
+    render(<SettingsPanel onClose={vi.fn()} />)
 
-    expect(screen.getByLabelText('Navigation & Page Views')).toBeInTheDocument()
-    expect(screen.getByLabelText('Feature Usage & Interactions')).toBeInTheDocument()
-    expect(screen.getByLabelText('Performance & Diagnostics')).toBeInTheDocument()
-    expect(screen.getByLabelText('UI Engagement & Usability')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: OFFLINE_CACHE_BUTTON }))
+
+    expect(await screen.findByRole('button', { name: OFFLINE_CACHE_BUTTON })).toHaveTextContent(
+      'Offline price cache cleared',
+    )
+    expect(contextMock.clearPriceCache).toHaveBeenCalledOnce()
+    expect(clearAllData).not.toHaveBeenCalled()
+    expect(contextMock.clearHistory).not.toHaveBeenCalled()
   })
 
-  it('toggling master analytics switches telemetry on/off and disables categories', async () => {
+  it('shows progress and blocks repeat clicks while the offline snapshot is being cleared', () => {
+    let finish: () => void = () => {}
+    contextMock.clearPriceCache.mockReturnValueOnce(new Promise<void>((resolve) => (finish = resolve)))
+    render(<SettingsPanel onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: OFFLINE_CACHE_BUTTON }))
+
+    const clearing = screen.getByRole('button', { name: OFFLINE_CACHE_BUTTON })
+    expect(clearing).toHaveTextContent('Clearing…')
+    expect(clearing).toBeDisabled()
+
+    finish()
+  })
+
+  it('requires confirmation before clearing all local data', () => {
+    render(<SettingsPanel onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: CLEAR_ALL_BUTTON }))
+
+    expect(
+      screen.getByText(/This will delete all alerts, notification settings, preferences, and cached prices/),
+    ).toBeInTheDocument()
+    expect(clearAllData).not.toHaveBeenCalled()
+  })
+
+  it('leaves all data untouched when the confirmation is cancelled', () => {
+    render(<SettingsPanel onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: CLEAR_ALL_BUTTON }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.getByRole('button', { name: CLEAR_ALL_BUTTON })).toBeInTheDocument()
+    expect(clearAllData).not.toHaveBeenCalled()
+    expect(contextMock.clearPriceCache).not.toHaveBeenCalled()
+  })
+
+  it('clears every app-owned store and reports the reload once confirmed', async () => {
+    render(<SettingsPanel onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: CLEAR_ALL_BUTTON }))
+    fireEvent.click(screen.getByRole('button', { name: CONFIRM_BUTTON }))
+
+    expect(await screen.findByText('Data cleared. Reloading…')).toBeInTheDocument()
+    expect(clearAllData).toHaveBeenCalledOnce()
+    expect(contextMock.clearPriceCache).not.toHaveBeenCalled()
+  })
+
+  it('clears undo history without touching cached data', () => {
+    render(<SettingsPanel onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear undo history' }))
+
+    expect(contextMock.clearHistory).toHaveBeenCalledOnce()
+    expect(clearAllData).not.toHaveBeenCalled()
+    expect(contextMock.clearPriceCache).not.toHaveBeenCalled()
+  })
+
+  it('reports the storage used by this app in the local data section', () => {
+    render(<SettingsPanel onClose={vi.fn()} />)
+
+    expect(screen.getByRole('region', { name: 'Local data' })).toHaveTextContent('Storage used')
+  })
+
+  it('runs the offline snapshot clear from the keyboard', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<SettingsPanel onClose={vi.fn()} />)
+    render(<SettingsPanel onClose={vi.fn()} />)
 
-    const masterToggle = screen.getByLabelText(/product analytics/i)
-    expect(masterToggle).toBeChecked()
+    const offlineCache = screen.getByRole('button', { name: OFFLINE_CACHE_BUTTON })
+    offlineCache.focus()
+    expect(offlineCache).toHaveFocus()
 
-    // Toggle master off
-    await user.click(masterToggle)
-    expect(masterToggle).not.toBeChecked()
+    await user.keyboard('{Enter}')
 
-    const consent = getAnalyticsConsent()
-    expect(consent.enabled).toBe(false)
-
-    // Category toggles should now be disabled
-    expect(screen.getByLabelText('Navigation & Page Views')).toBeDisabled()
-    expect(screen.getByLabelText('Feature Usage & Interactions')).toBeDisabled()
+    expect(contextMock.clearPriceCache).toHaveBeenCalledOnce()
+    expect(clearAllData).not.toHaveBeenCalled()
   })
 
-  it('toggling individual category updates granular consent', async () => {
-    const user = userEvent.setup()
-    acceptAllAnalyticsConsent()
-    renderWithProviders(<SettingsPanel onClose={vi.fn()} />)
+  it('has no accessibility violations in the local data section', async () => {
+    render(<SettingsPanel onClose={vi.fn()} />)
 
-    const featureToggle = screen.getByLabelText('Feature Usage & Interactions')
-    expect(featureToggle).toBeChecked()
-
-    await user.click(featureToggle)
-    expect(featureToggle).not.toBeChecked()
-
-    const consent = getAnalyticsConsent()
-    expect(consent.categories.feature).toBe(false)
-    expect(consent.categories.navigation).toBe(true)
-  })
-
-  it('All and None quick action buttons update all categories', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<SettingsPanel onClose={vi.fn()} />)
-
-    // Click None
-    const noneBtn = screen.getByRole('button', { name: /opt out of all analytics categories/i })
-    await user.click(noneBtn)
-
-    let consent = getAnalyticsConsent()
-    expect(consent.enabled).toBe(false)
-
-    // Turn master back on
-    const masterToggle = screen.getByLabelText(/product analytics/i)
-    await user.click(masterToggle)
-
-    // Click All
-    const allBtn = screen.getByRole('button', { name: /opt in to all analytics categories/i })
-    await user.click(allBtn)
-
-    consent = getAnalyticsConsent()
-    expect(consent.enabled).toBe(true)
-    expect(Object.values(consent.categories).every(Boolean)).toBe(true)
-  })
-
-  it('reset categories button restores default configuration', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<SettingsPanel onClose={vi.fn()} />)
-
-    const resetBtn = screen.getByRole('button', { name: /reset categories to defaults/i })
-    await user.click(resetBtn)
-
-    const consent = getAnalyticsConsent()
-    expect(consent.categories.feature).toBe(DEFAULT_ANALYTICS_CONSENT.categories.feature)
+    // Scoped to the clear-data region: other panel sections have unlabelled <select>s.
+    const results = await axe(screen.getByRole('region', { name: 'Local data' }))
+    expect(results).toHaveNoViolations()
   })
 })

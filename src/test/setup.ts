@@ -20,6 +20,33 @@ afterEach(() => {
   cleanup()
 })
 
+// Ensure localStorage is functional in node/jsdom test environment
+if (typeof window !== 'undefined') {
+  const memoryStore = new Map<string, string>()
+  const mockStorage: Storage = {
+    getItem: (key: string) => memoryStore.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      memoryStore.set(key, String(value))
+    },
+    removeItem: (key: string) => {
+      memoryStore.delete(key)
+    },
+    clear: () => {
+      memoryStore.clear()
+    },
+    key: (index: number) => Array.from(memoryStore.keys())[index] ?? null,
+    get length() {
+      return memoryStore.size
+    },
+  }
+  Object.defineProperty(window, 'localStorage', { value: mockStorage, writable: true, configurable: true })
+  try {
+    Object.defineProperty(globalThis, 'localStorage', { value: mockStorage, writable: true, configurable: true })
+  } catch {
+    // ignore
+  }
+}
+
 class ResizeObserverMock {
   observe = () => {}
   unobserve = () => {}

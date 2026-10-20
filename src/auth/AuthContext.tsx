@@ -3,6 +3,7 @@ import { config } from '../config'
 import { createPkceParams } from './pkce'
 import { OAUTH_PROVIDERS, buildAuthorizeUrl, redirectUri, type OAuthProviderId } from './oauthProviders'
 import { fetchSession, exchangeCode, signOut as apiSignOut, signOutEverywhere as apiSignOutEverywhere, type AuthUser } from './authApi'
+import { isSessionExpiry } from './sessionExpiry'
 
 /** Session-storage keys for the in-flight PKCE attempt. Single-use, non-credential nonces only. */
 const PKCE_VERIFIER_KEY = 'stellar-oracle:auth-pkce-verifier'
@@ -66,6 +67,13 @@ interface AuthContextValue {
   status: AuthStatus
   user: AuthUser | null
   error: string | null
+  /**
+   * True when the server ended the session while the user was signed in, so
+   * the UI can warn before in-progress work is discarded. Cleared on sign-in
+   * or by {@link dismissSessionExpired}. Explicit sign-out never sets it.
+   */
+  sessionExpired: boolean
+  dismissSessionExpired: () => void
   /** Starts the redirect-based OAuth2/OIDC + PKCE sign-in flow. */
   signIn: (provider: OAuthProviderId, returnTo?: string) => Promise<void>
   /** Completes the flow after the provider redirects back to /auth/callback. */
@@ -82,14 +90,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [user, setUser] = useState<AuthUser | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sessionExpired, setSessionExpired] = useState(false)
+  // Last status a session check or sign-in observed. Read synchronously so an
+  // async refresh compares against the true previous state, not a stale render.
+  const statusRef = useRef<AuthStatus>('loading')
   const mountedRef = useRef(true)
+  // Whether this tab last saw a live session. Lets a server-side expiry be told
+  // apart from a user who was never signed in, or who signed out on purpose.
+  const hadSessionRef = useRef(false)
 
   const refresh = useCallback(async () => {
-    const session = await fetchSession()
+    const check = await checkSession()
     if (!mountedRef.current) return
+    const next: AuthStatus = session ? 'authenticated' : 'unauthenticated'
+    // fetchSession also maps network failures to null, so a brief outage can
+    // read as an expiry. Accepted: the warning is dismissible and non-destructive.
+    if (isSessionExpiry(statusRef.current, next)) setSessionExpired(true)
+    if (session) setSessionExpired(false)
+    statusRef.current = next
     setUser(session)
-    setStatus(session ? 'authenticated' : 'unauthenticated')
+    setStatus(next)
   }, [])
+
+  const dismissSessionExpired = useCallback(() => setSessionExpired(false), [])
 
   useEffect(() => {
     mountedRef.current = true
@@ -138,33 +161,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const signedInUser = await exchangeCode(providerId, code, verifier, redirectUri())
+      hadSessionRef.current = true
       setUser(signedInUser)
       setStatus('authenticated')
+      statusRef.current = 'authenticated'
+      setSessionExpired(false)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
       setStatus('unauthenticated')
+      statusRef.current = 'unauthenticated'
       throw e
     }
     return { returnTo }
   }, [])
 
+  // An explicit sign-out is not an expiry, so mark the session as ended before the
+  // request; a refresh racing with it then will not raise the expired banner.
   const signOut = useCallback(async () => {
+    hadSessionRef.current = false
     await apiSignOut()
     setUser(null)
+    setSessionExpired(false)
     setStatus('unauthenticated')
+    statusRef.current = 'unauthenticated'
   }, [])
 
   const signOutEverywhere = useCallback(async () => {
+    hadSessionRef.current = false
     await apiSignOutEverywhere()
     setUser(null)
+    setSessionExpired(false)
     setStatus('unauthenticated')
+    statusRef.current = 'unauthenticated'
   }, [])
+
+  const dismissSessionExpired = useCallback(() => setSessionExpired(false), [])
 
   const checkAuthorized = useCallback((route: string) => isAuthorized(user, route), [user])
 
   return (
-    <AuthContext.Provider value={{ status, user, error, signIn, completeSignIn, signOut, signOutEverywhere, isAuthorized: checkAuthorized }}>
+    <AuthContext.Provider
+      value={{
+        status,
+        user,
+        error,
+        sessionExpired,
+        dismissSessionExpired,
+        signIn,
+        completeSignIn,
+        signOut,
+        signOutEverywhere,
+        isAuthorized: checkAuthorized,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
@@ -174,4 +224,9 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
   return ctx
+}
+
+/** Like {@link useAuth}, but returns `null` outside an AuthProvider instead of throwing. */
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext)
 }

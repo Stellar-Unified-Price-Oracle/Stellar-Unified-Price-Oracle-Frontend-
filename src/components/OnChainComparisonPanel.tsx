@@ -15,6 +15,7 @@ import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { shortenAccount } from '../lib/stellarAssets'
 import type { DivergenceStatus } from '../types/onchain'
 import { MetricHelp } from './MetricHelp'
+import { VerifiableLedgerLink } from './VerifiableLedgerLink'
 
 const STATUS_STYLES: Record<DivergenceStatus, { badge: string; label: string }> = {
   'in-sync': { badge: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'In sync' },
@@ -111,9 +112,13 @@ export function OnChainComparisonPanel({ pair, offChainPrice, thresholdPercent }
           </span>
           <span>
             Contract:{' '}
-            <span className="font-mono text-gray-400" title={registryEntry.contractId}>
-              {shortenAccount(registryEntry.contractId)}
-            </span>
+            <VerifiableLedgerLink
+              claimType="contract"
+              identifier={registryEntry.contractId}
+              network={registryEntry.network}
+              label={shortenAccount(registryEntry.contractId)}
+              title={`Verify oracle contract ${registryEntry.contractId} on ${registryEntry.network}`}
+            />
           </span>
           {onChainPublishedAt !== null && (
             <span title={formatTimestamp(onChainPublishedAt)}>
@@ -122,7 +127,14 @@ export function OnChainComparisonPanel({ pair, offChainPrice, thresholdPercent }
           )}
           {onChainLedger !== null && (
             <span>
-              Ledger: <span className="font-mono text-gray-300">{onChainLedger.toLocaleString()}</span>
+              Ledger:{' '}
+              <VerifiableLedgerLink
+                claimType="ledger"
+                identifier={onChainLedger}
+                network={registryEntry.network}
+                label={onChainLedger.toLocaleString()}
+                title={`Verify on-chain ledger #${onChainLedger} on ${registryEntry.network}`}
+              />
             </span>
           )}
         </div>

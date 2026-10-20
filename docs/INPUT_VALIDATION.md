@@ -434,6 +434,17 @@ const result = validators.assetPair.safeParse(userInput)
 5. **Document requirements** — Comment complex validation rules
 6. **Test with edge cases** — Unicode, special chars, limits
 
+## Duplicate Community Report Detection (#860)
+
+**File:** `src/utils/duplicateDetection.ts`
+
+To minimize redundant triage overhead, community reports (on governance proposals, leaderboards, feedback, and in-chart data-quality concerns) are evaluated in real time against existing submissions before final submission:
+
+- **Tokenized Jaccard Similarity**: Evaluates textual similarity across normalized word tokens, filtering out English stop words.
+- **Multi-Factor Scoring**: Weighted scoring combining exact surface matching (+0.15), exact target matching (+0.38), category alignment (+0.15), and text token similarity (up to +0.45).
+- **Graceful Interaction**: Users are alerted to matching existing reports with lifecycle stage badges (e.g. `triage`, `decided`), but are not blocked from proceeding if their submission adds new evidence or distinct observations.
+- **Accessibility**: Screen reader announcement via `aria-live="polite"` and dismissible warning dialog regions.
+
 ## References
 
 - [Zod Documentation](https://zod.dev)

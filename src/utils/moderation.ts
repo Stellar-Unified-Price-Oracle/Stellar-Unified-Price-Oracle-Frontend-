@@ -12,10 +12,18 @@ import { readJson, writeJson, STORAGE_KEYS } from './storage'
 export const CODE_OF_CONDUCT_URL =
   'https://github.com/Stellar-Unified-Price-Oracle/Stellar-Unified-Price-Oracle-Frontend-/blob/main/CONTRIBUTING.md#code-of-conduct'
 
-export const REPORT_CATEGORIES = ['spam', 'harassment', 'hate', 'misinformation', 'off-topic', 'other'] as const
+export const REPORT_CATEGORIES = [
+  'spam',
+  'harassment',
+  'hate',
+  'misinformation',
+  'off-topic',
+  'data-quality',
+  'other',
+] as const
 export type ReportCategory = (typeof REPORT_CATEGORIES)[number]
 
-export const COMMUNITY_SURFACES = ['feedback', 'translation', 'leaderboard', 'governance'] as const
+export const COMMUNITY_SURFACES = ['feedback', 'translation', 'leaderboard', 'governance', 'chart'] as const
 export type CommunitySurface = (typeof COMMUNITY_SURFACES)[number]
 
 export const MODERATION_STAGES = ['triage', 'decided', 'actioned', 'notified'] as const

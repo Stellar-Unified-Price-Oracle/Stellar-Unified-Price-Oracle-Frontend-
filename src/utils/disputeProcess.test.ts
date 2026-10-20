@@ -8,6 +8,7 @@ import {
   filterByImplicatedSource,
   openDisputeCount,
   evidenceCountLabel,
+  getDisputeStatusTransitions,
 } from './disputeProcess'
 
 const NOW = 1_700_000_000_000
@@ -178,5 +179,45 @@ describe('evidenceCountLabel', () => {
         }),
       ),
     ).toBe('3 pieces of evidence')
+  })
+})
+
+describe('getDisputeStatusTransitions', () => {
+  it('returns explicit statusTransitions when supplied by the API in chronological order', () => {
+    const d = makeDispute({
+      status: 'resolved_upheld',
+      statusTransitions: [
+        { status: 'under_review', timestamp: NOW + 1000, note: 'Auditor assigned', actor: 'G_MOD' },
+        { status: 'open', timestamp: NOW, note: 'Registered' },
+        { status: 'resolved_upheld', timestamp: NOW + 2000, note: 'Confirmed' },
+      ],
+    })
+    const transitions = getDisputeStatusTransitions(d)
+    expect(transitions).toHaveLength(3)
+    expect(transitions[0].status).toBe('open')
+    expect(transitions[1].status).toBe('under_review')
+    expect(transitions[2].status).toBe('resolved_upheld')
+    expect(transitions[1].actor).toBe('G_MOD')
+  })
+
+  it('synthesizes transitions for an open dispute when explicit transitions are absent', () => {
+    const d = makeDispute({ status: 'open', openedAt: NOW })
+    const transitions = getDisputeStatusTransitions(d)
+    expect(transitions).toHaveLength(1)
+    expect(transitions[0].status).toBe('open')
+    expect(transitions[0].timestamp).toBe(NOW)
+  })
+
+  it('synthesizes transitions for an under_review dispute using earliest comment', () => {
+    const d = makeDispute({
+      status: 'under_review',
+      openedAt: NOW,
+      comments: [{ id: 'c1', author: 'G_AUDIT', postedAt: NOW + 500, body: 'Reviewing' }],
+    })
+    const transitions = getDisputeStatusTransitions(d)
+    expect(transitions).toHaveLength(2)
+    expect(transitions[0].status).toBe('open')
+    expect(transitions[1].status).toBe('under_review')
+    expect(transitions[1].timestamp).toBe(NOW + 500)
   })
 })

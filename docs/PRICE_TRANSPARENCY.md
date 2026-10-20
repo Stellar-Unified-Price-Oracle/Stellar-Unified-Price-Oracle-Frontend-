@@ -60,3 +60,12 @@ The upstream API must provide a stable URL for the actual source-tick
 provenance record (including source/tick identifiers and timestamps). The
 frontend does not generate URLs from asset pairs, prices, or timestamps. The
 field is optional until the API contract and service implement it.
+
+## In-chart data-quality concern reporting (#859)
+
+Users can report potential price anomalies, sudden spikes, stale feeds, source divergences, or missing ticks directly from any interactive price chart. 
+
+- **Captured Context**: The report dialog pre-populates observed chart context including the target asset pair, observed timestamp, observed price, and contributing oracle sources.
+- **Privacy Posture**: Reporter identity is never captured or transmitted. Users may flag evidence as confidential to restrict inspection to verified community stewards and automated triage validators.
+- **Workflow Integration**: Submissions enter the moderation triage queue under surface `'chart'` and category `'data-quality'`, allowing auditors to track and investigate reported discrepancies.
+

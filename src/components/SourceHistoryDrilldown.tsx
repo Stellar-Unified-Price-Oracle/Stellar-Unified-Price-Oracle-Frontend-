@@ -9,10 +9,18 @@
  * intervals — i.e. for each hour-bucket that has history entries, the
  * percentage of entries where `sources` included this source.
  */
-import { memo, useMemo, useEffect, useCallback, type ReactElement } from 'react'
+import { memo, useMemo, useEffect, useCallback, useState, type ReactElement } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { PriceHistoryEntry } from '../types'
 import { useIsRtl } from '../hooks/useIsRtl'
+import {
+  getSourceOperator,
+  OPERATOR_STATUS_STYLES,
+  OPERATOR_STATUS_LABELS,
+  type SourceOperatorInfo,
+} from '../utils/sourceOperators'
+import { isSecureProvenanceUrl } from '../utils/provenance'
+import { useOptionalToast } from '../context/ToastContext'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -23,6 +31,10 @@ interface SourceHistoryDrilldownProps {
   history: PriceHistoryEntry[]
   /** Called when the modal should close (Escape key or backdrop/button click). */
   onClose: () => void
+  /** Explicit operator override or API reported metadata. */
+  operator?: SourceOperatorInfo | null
+  /** Source tick provenance URL if known. */
+  provenanceUrl?: string | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -42,14 +54,26 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+function truncateAddress(addr: string): string {
+  if (addr.length <= 12) return addr
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const SourceHistoryDrilldown = memo(function SourceHistoryDrilldown({
   source,
   history,
   onClose,
+  operator,
+  provenanceUrl,
 }: SourceHistoryDrilldownProps): ReactElement {
   const isRtl = useIsRtl()
+  const { addToast } = useOptionalToast()
+  const [copiedAddr, setCopiedAddr] = useState(false)
+
+  const operatorInfo = operator !== undefined ? operator : getSourceOperator(source)
+
   // Close on Escape key
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -213,6 +237,133 @@ export const SourceHistoryDrilldown = memo(function SourceHistoryDrilldown({
               </div>
             )}
           </div>
+
+          {/* Operator Identity & Provenance (#849) */}
+          <section
+            aria-labelledby="source-operator-heading"
+            className="bg-gray-800/40 border border-gray-700/60 rounded-xl p-4 flex flex-col gap-3"
+          >
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 id="source-operator-heading" className="text-sm font-semibold text-gray-200">
+                Operator Identity & Provenance
+              </h3>
+              {operatorInfo ? (
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${OPERATOR_STATUS_STYLES[operatorInfo.verificationStatus]}`}
+                >
+                  {OPERATOR_STATUS_LABELS[operatorInfo.verificationStatus]}
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border border-gray-700 bg-gray-800 text-gray-400">
+                  Unregistered Feed
+                </span>
+              )}
+            </div>
+
+            {operatorInfo ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-gray-500 block">Operator / Organization</span>
+                  <span className="text-gray-200 font-medium">
+                    {operatorInfo.name} ({operatorInfo.organization})
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-gray-500 block">Jurisdiction</span>
+                  <span className="text-gray-200">{operatorInfo.jurisdiction}</span>
+                </div>
+
+                {operatorInfo.operatorAddress && (
+                  <div>
+                    <span className="text-gray-500 block">Operator Address</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono text-gray-300" title={operatorInfo.operatorAddress}>
+                        {truncateAddress(operatorInfo.operatorAddress)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                            navigator.clipboard.writeText(operatorInfo.operatorAddress!).then(
+                              () => {
+                                setCopiedAddr(true)
+                                setTimeout(() => setCopiedAddr(false), 2000)
+                                addToast({ type: 'success', message: 'Operator address copied' })
+                              },
+                              () => addToast({ type: 'error', message: 'Failed to copy address' }),
+                            )
+                          }
+                        }}
+                        aria-label="Copy operator address"
+                        className="text-xs px-1.5 py-0.5 rounded border border-gray-700 text-gray-400 hover:text-gray-200"
+                      >
+                        {copiedAddr ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <span className="text-gray-500 block">Signing Algorithm</span>
+                  <span className="font-mono text-cyan-300">{operatorInfo.signingAlgorithm}</span>
+                </div>
+
+                {operatorInfo.nodeEndpoint && (
+                  <div>
+                    <span className="text-gray-500 block">Node Endpoint</span>
+                    <span className="font-mono text-gray-300">{operatorInfo.nodeEndpoint}</span>
+                  </div>
+                )}
+
+                <div>
+                  <span className="text-gray-500 block">Audit Status</span>
+                  <span className="text-green-400">{operatorInfo.auditStatus}</span>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <span className="text-gray-500 block">Provenance & Ingestion</span>
+                  <p className="text-gray-300 mt-0.5">{operatorInfo.provenanceMethod}</p>
+                </div>
+
+                {operatorInfo.websiteUrl && isSecureProvenanceUrl(operatorInfo.websiteUrl) && (
+                  <div className="sm:col-span-2 pt-1">
+                    <a
+                      href={operatorInfo.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline inline-flex items-center gap-1"
+                    >
+                      Visit operator website
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  </div>
+                )}
+
+                {provenanceUrl && isSecureProvenanceUrl(provenanceUrl) && (
+                  <div className="sm:col-span-2 pt-1">
+                    <a
+                      href={provenanceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline inline-flex items-center gap-1"
+                    >
+                      View source-tick provenance
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-400 space-y-1">
+                <p className="text-yellow-400/90 font-medium">Operator identity not reported by API</p>
+                <p className="text-gray-500">
+                  No cryptographic signing key or legal entity registration has been anchored on-chain for this feed source.
+                </p>
+                <p className="text-gray-500 italic">Source-tick provenance unavailable from the API.</p>
+              </div>
+            )}
+          </section>
         </div>
 
         {/* Footer */}

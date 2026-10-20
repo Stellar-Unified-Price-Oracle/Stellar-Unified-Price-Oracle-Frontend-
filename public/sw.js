@@ -9,7 +9,14 @@
 //     page explicitly asks them to activate (see PwaUpdateBanner.tsx),
 //     so users are never silently switched to a new build mid-session.
 
-const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'development'
+// Stamped by the production build (vite.config.ts, releaseManifestPlugin) from the
+// emitted asset list, so the cache is keyed to the files this worker ships and
+// old caches are pruned when they change. Unbuilt copies keep the placeholder and
+// fall back to the registration's ?v= build ID.
+const RELEASE_VERSION = '__RELEASE_VERSION__'
+const SW_VERSION = RELEASE_VERSION.includes('RELEASE_VERSION')
+  ? new URL(self.location.href).searchParams.get('v') || 'development'
+  : RELEASE_VERSION
 const CACHE_PREFIX = 'stellar-oracle-shell-'
 const CACHE_VERSION = `${CACHE_PREFIX}${SW_VERSION}`
 const SCOPE_URL = new URL('.', self.location.href)

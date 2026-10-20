@@ -17,6 +17,7 @@ import {
   preloadSettingsPanel,
 } from '../utils/chunks'
 import { subscribeToInbox, unreadInboxCount } from '../services/inbox'
+import { SessionExpiredBanner } from '../auth/SessionExpiredBanner'
 import { QueuedRequestsBadge } from './QueuedRequestsBadge'
 import { WalletButton } from './WalletButton'
 
@@ -100,10 +101,10 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
   const NAV_ITEMS = [
     { path: '/', label: t('nav.home'), preload: preloadLanding },
     { path: '/dashboard', label: t('nav.dashboard'), preload: preloadDashboard },
-    { path: '/portfolio', label: 'Portfolio' },
-    { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
-    { path: '/governance', label: 'Governance', preload: preloadGovernance },
     { path: '/portfolio', label: 'Portfolio', preload: preloadPortfolio },
+    { path: '/governance', label: 'Governance', preload: preloadGovernance },
+    { path: '/roadmap', label: 'Roadmap' },
+    { path: '/api-docs', label: t('nav.apiDocs'), preload: preloadApiDocs },
     { path: '/webhooks', label: 'Webhooks' },
   ]
 
@@ -247,6 +248,8 @@ export function Layout({ children }: { children: ReactNode }): ReactElement {
           </div>
         </div>
       </nav>
+
+      <SessionExpiredBanner />
 
       {/* ── Page content ───────────────────────────────────────────── */}
       <div className="flex flex-1">

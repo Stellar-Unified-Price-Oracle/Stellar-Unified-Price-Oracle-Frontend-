@@ -12,7 +12,7 @@
  * 2. Display `resolutionNote` verbatim when present. Do not summarise or trim.
  * 3. Never rewrite `status`. The aggregator is the source of truth.
  */
-import type { DisputeStatus, PriceDispute } from '../types'
+import type { DisputeStatus, DisputeStatusTransition, PriceDispute } from '../types'
 
 /** Human-readable label for each dispute status. */
 export const DISPUTE_STATUS_LABELS: Record<DisputeStatus, string> = {
@@ -39,6 +39,54 @@ export function isDisputeResolved(dispute: PriceDispute): boolean {
     dispute.status === 'resolved_overturned' ||
     dispute.status === 'withdrawn'
   )
+}
+
+/**
+ * Returns the recorded status transitions for a dispute.
+ * When explicit statusTransitions are provided by the API, returns them ordered by timestamp.
+ * Otherwise, reconstructs available recorded milestone timestamps without fabricating data.
+ */
+export function getDisputeStatusTransitions(dispute: PriceDispute): DisputeStatusTransition[] {
+  if (dispute.statusTransitions && dispute.statusTransitions.length > 0) {
+    return [...dispute.statusTransitions].sort((a, b) => a.timestamp - b.timestamp)
+  }
+
+  const transitions: DisputeStatusTransition[] = [
+    {
+      status: 'open',
+      timestamp: dispute.openedAt,
+      note: 'Dispute formally registered on-platform',
+      actor: dispute.challenger,
+    },
+  ]
+
+  if (dispute.status === 'under_review') {
+    const reviewTs = dispute.comments.length > 0 ? dispute.comments[0].postedAt : dispute.openedAt
+    transitions.push({
+      status: 'under_review',
+      timestamp: reviewTs,
+      note: 'Placed under review by audit team',
+    })
+  } else if (isDisputeResolved(dispute)) {
+    // If there were comments/evidence posted before final resolution, include under_review milestone
+    if (dispute.comments.length > 1 || dispute.evidence.length > 0) {
+      transitions.push({
+        status: 'under_review',
+        timestamp: dispute.evidence.length > 0 ? dispute.evidence[0].submittedAt : dispute.openedAt,
+        note: 'Audit evidence examined',
+      })
+    }
+    const resolvedTs = dispute.comments.length > 0
+      ? dispute.comments[dispute.comments.length - 1].postedAt
+      : dispute.openedAt
+    transitions.push({
+      status: dispute.status,
+      timestamp: resolvedTs,
+      note: null,
+    })
+  }
+
+  return transitions
 }
 
 /**

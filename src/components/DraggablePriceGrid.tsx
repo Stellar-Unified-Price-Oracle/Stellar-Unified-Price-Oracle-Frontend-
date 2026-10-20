@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useDragSort } from '../hooks/useDragSort'
 import type { PriceData } from '../types'
 import type { ObservedSourceRange } from '../utils/uncertaintyBand'
+import type { DashboardDensity } from '../preferences/types'
+import { densityGridGapClass } from '../utils/density'
 import { PriceCard } from './PriceCard'
 
 interface DraggablePriceGridProps {
@@ -15,6 +17,8 @@ interface DraggablePriceGridProps {
   selectMode?: boolean
   selected?: Set<string>
   onReorder: (orderedPairs: string[]) => void
+  /** Tile spacing; defaults to the comfortable gap. */
+  density?: DashboardDensity
   observedSourceRanges?: ReadonlyMap<string, ObservedSourceRange | null>
 }
 
@@ -34,6 +38,7 @@ export const DraggablePriceGrid = memo(function DraggablePriceGrid({
   selected,
   onReorder,
   observedSourceRanges,
+  density = 'comfortable',
 }: DraggablePriceGridProps) {
   const { t } = useTranslation()
 
@@ -48,7 +53,7 @@ export const DraggablePriceGrid = memo(function DraggablePriceGrid({
 
   return (
     <section
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${densityGridGapClass(density)}`}
       aria-label={t('dashboard.feedsAriaLabel')}
     >
       {orderedItems.map((p, index) => {

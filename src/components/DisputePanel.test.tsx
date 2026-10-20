@@ -113,4 +113,40 @@ describe('DisputePanel', () => {
     )
     expect(screen.getByText(/No open disputes/)).toBeDefined()
   })
+
+  it('renders status transition timeline with chronological milestones and aria-current="step"', () => {
+    const dispute = makeDispute({
+      id: 'DSP-TIMELINE',
+      status: 'under_review',
+      statusTransitions: [
+        {
+          status: 'open',
+          timestamp: NOW - 100_000,
+          actor: 'GA_SUBMITTER_123',
+          note: 'Challenger submitted stake and bond.',
+        },
+        {
+          status: 'under_review',
+          timestamp: NOW - 50_000,
+          actor: 'GA_ORACLE_COUNCIL',
+          note: 'Council initiated review quorum.',
+        },
+      ],
+    })
+
+    render(<DisputePanel disputes={[dispute]} now={NOW} />)
+
+    expect(screen.getByRole('list', { name: 'Status transitions for dispute DSP-TIMELINE' })).toBeDefined()
+    expect(screen.getByText('Stage: Open')).toBeDefined()
+    expect(screen.getByText('Stage: Under review')).toBeDefined()
+    expect(screen.getByText('Challenger submitted stake and bond.')).toBeDefined()
+    expect(screen.getByText('Council initiated review quorum.')).toBeDefined()
+
+    const listItems = screen.getAllByRole('listitem')
+    const timelineItems = listItems.filter((li) => li.getAttribute('aria-current') !== null)
+    expect(timelineItems).toHaveLength(1)
+    expect(timelineItems[0].getAttribute('aria-current')).toBe('step')
+    expect(timelineItems[0].textContent).toContain('Current Status')
+  })
 })
+

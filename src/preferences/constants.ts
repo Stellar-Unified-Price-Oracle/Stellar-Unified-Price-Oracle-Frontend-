@@ -2,6 +2,7 @@ import type { BacktestPreset } from '../utils/backtest'
 import { DEFAULT_ANALYTICS_CONSENT } from '../utils/analyticsConsent'
 import type {
   AccessibilityPreferences,
+  ToggleableTableColumn,
   DataPreferences,
   LayoutPreferences,
   Preferences,
@@ -58,7 +59,10 @@ export const DEFAULT_DATA_PREFERENCES: DataPreferences = {
 
 export const DEFAULT_LAYOUT_PREFERENCES: LayoutPreferences = {
   dashboardView: 'card',
+  density: 'comfortable',
   cardOrder: [],
+  pricePrecision: 'auto',
+  hiddenTableColumns: [],
 }
 
 export const DEFAULT_ACCESSIBILITY_PREFERENCES: AccessibilityPreferences = {
@@ -101,6 +105,17 @@ export const CHART_HISTORY_PAGE_SIZE_OPTIONS = [
   { value: 50 as const, label: '50 points per page' },
   { value: 100 as const, label: '100 points per page' },
   { value: 250 as const, label: '250 points per page' },
+] as const
+
+/** Table columns that can be hidden, in display order. */
+export const TOGGLEABLE_TABLE_COLUMNS: readonly ToggleableTableColumn[] = ['confidence', 'sources', 'timestamp']
+
+export const PRICE_PRECISION_OPTIONS = [
+  { value: 'auto' as const, label: 'Auto (by price size)' },
+  { value: 2 as const, label: '2 decimals' },
+  { value: 4 as const, label: '4 decimals' },
+  { value: 6 as const, label: '6 decimals' },
+  { value: 8 as const, label: '8 decimals' },
 ] as const
 
 export const CHART_RANGE_OPTIONS = [

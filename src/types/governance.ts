@@ -165,7 +165,14 @@ export interface SourceIncentiveSummary {
 // ---------------------------------------------------------------------------
 
 /** Lifecycle of a price dispute. */
-export type DisputeStatus = 'open' | 'under_review' | 'resolved_upheld' | 'resolved_overturned' | 'withdrawn'
+export type DisputeStatus =
+  | 'open'
+  | 'under_review'
+  | 'resolved_upheld'
+  | 'resolved_overturned'
+  | 'withdrawn'
+  | 'resolved'
+  | 'dismissed'
 
 /**
  * A piece of evidence attached to a dispute by any participant.
@@ -198,6 +205,18 @@ export interface DisputeComment {
   postedAt: number
   /** Markdown-free plain text body. */
   body: string
+}
+
+/** A single recorded status transition in a dispute's lifecycle. */
+export interface DisputeStatusTransition {
+  /** Lifecycle status transitioned to. */
+  status: DisputeStatus
+  /** Unix timestamp (ms) when this status transition occurred. */
+  timestamp: number
+  /** Stellar account address of the actor applying the status change, if recorded. */
+  actor?: string | null
+  /** Optional note or explanation recorded alongside the status transition. */
+  note?: string | null
 }
 
 /** A formal price dispute on record. */
@@ -233,6 +252,8 @@ export interface PriceDispute {
   comments: DisputeComment[]
   /** Human-readable resolution note, null until resolved. */
   resolutionNote: string | null
+  /** Recorded status transitions with timestamps and notes. */
+  statusTransitions?: DisputeStatusTransition[]
 }
 
 /**
@@ -335,49 +356,6 @@ export interface TreasuryEntry {
   lastSettledAt: number | null
 }
 
-// ── #695 Dispute & challenge process ─────────────────────────────────────────
-
-/** Lifecycle of a price dispute. */
-export type DisputeStatus = 'open' | 'under_review' | 'resolved' | 'dismissed'
-
-/** The outcome recorded when a dispute is closed. */
-export type DisputeOutcome = 'upheld' | 'rejected' | 'inconclusive' | null
-
-/**
- * A formal challenge to an aggregated price.
- * All fields are verbatim from the governance API.
- */
-export interface PriceDispute {
-  /** Stable identifier assigned at submission time. */
-  id: string
-  /** The asset pair being challenged, e.g. `"BTC/USD"`. */
-  assetPair: string
-  /** The disputed aggregated price. */
-  disputedPrice: number
-  /** Unix timestamp (ms) of the price tick being challenged. */
-  priceTimestamp: number
-  /** Current lifecycle status. */
-  status: DisputeStatus
-  /** Address or identifier of the party who raised the dispute. */
-  challenger: string
-  /** Human-readable description of the discrepancy observed. */
-  reason: string
-  /**
-   * URL or CID pointing to attached evidence (chart exports, raw tick dumps).
-   * Null when no evidence was attached.
-   */
-  evidenceUrl: string | null
-  /** Unix timestamp (ms) when the dispute was submitted. */
-  createdAt: number
-  /** Unix timestamp (ms) when the dispute was closed, or null when still open. */
-  resolvedAt: number | null
-  /** Final outcome, or null while the dispute is still open. */
-  outcome: DisputeOutcome
-  /** Reviewer notes written when the dispute was closed. Null until resolved. */
-  resolutionNotes: string | null
-  /** Sources flagged by the challenger as contributing to the bad price. */
-  flaggedSources: string[]
-}
 
 /** A single governance proposal the community can act on. */
 export interface GovernanceProposal {
@@ -400,4 +378,96 @@ export interface GovernanceProposal {
   category: string | null
   /** Oracle sources this proposal concerns (add / remove / re-weight). */
   relatedSources: string[]
+  /**
+   * Proposed parameter modifications evaluated in this proposal (#851).
+   * Null or omitted when the proposal does not alter system parameters.
+   */
+  proposedParameterChanges?: ProposedParameterChange[] | null
 }
+
+// ---------------------------------------------------------------------------
+// #851 — Proposed governance parameter changes
+// ---------------------------------------------------------------------------
+
+/** Classification of a parameter modification. */
+export type ParameterDiffType = 'modify' | 'add' | 'remove'
+
+/**
+ * A proposed change to an oracle system parameter under community vote (#851).
+ * Rendered side-by-side (current registry value vs proposed governance value).
+ */
+export interface ProposedParameterChange {
+  /** Stable parameter key, e.g. `"aggregator.minSources"`. */
+  paramKey: string
+  /** Human-readable parameter label, e.g. `"Minimum Active Sources"`. */
+  paramName: string
+  /** Parameter functional group, e.g. `"aggregation"`, `"thresholds"`, `"weights"`. */
+  category: string
+  /**
+   * Current value in the active parameter registry.
+   * Null when proposing an entirely new parameter.
+   */
+  currentValue: string | null
+  /**
+   * Proposed new value if the proposal passes.
+   * Null when proposing parameter deprecation/removal.
+   */
+  proposedValue: string | null
+  /** Type of diff: modify, add, or remove. */
+  diffType: ParameterDiffType
+  /** Optional rationale or governance note for this specific parameter change. */
+  rationale?: string | null
+  /** Optional engineering unit, e.g. `"ms"`, `"%"`, `"sources"`. */
+  unit?: string | null
+}
+
+// ---------------------------------------------------------------------------
+// #855 — Source certification status, evidence, and expiry dates
+// ---------------------------------------------------------------------------
+
+/** Certification status of an oracle source. */
+export type CertificationStatus = 'active' | 'expiring-soon' | 'expired' | 'revoked' | 'suspended'
+
+/** Verifiable proof or audit report backing a source certification. */
+export interface CertificationEvidence {
+  /** Document or artifact title, e.g. "SOC-2 Type II Independent Audit". */
+  title: string
+  /** URL to the verifiable report, public attestation, IPFS artifact, or certificate. */
+  url: string
+  /** Optional cryptographic hash (SHA-256 or IPFS CID) for tamper-evidence verification. */
+  sha256?: string | null
+  /** Type of proof: e.g. 'audit_report', 'attestation', 'cryptographic_key', 'regulatory_license'. */
+  type?: string | null
+}
+
+/**
+ * Formal certification held by an oracle source provider (#855).
+ * Contains technical attestation, audit scope, evidence links, and verifiable expiry dates.
+ */
+export interface SourceCertification {
+  /** Stable identifier for the certificate, e.g. "cert-chainlink-soc2-2026". */
+  id: string
+  /** Oracle source identifier (e.g. "chainlink", "reflector", "binance", "coinbase", "kraken"). */
+  source: string
+  /** Name of the certification, e.g. "SOC 2 Type II", "ISO 27001", "Stellar Attestation". */
+  name: string
+  /** Functional category, e.g. "security", "infrastructure", "compliance", "data_quality". */
+  category: string
+  /** Certifying body or independent auditor, e.g. "Trail of Bits", "CertiK", "KPMG". */
+  issuer: string
+  /** Status reported by the registry. */
+  status: CertificationStatus
+  /** Unix timestamp (ms) when the certificate was issued. */
+  issuedAt: number
+  /** Unix timestamp (ms) when the certificate expires, or null if perpetual/continuous. */
+  expiresAt: number | null
+  /** Verifiable evidence items, reports, or cryptographic proofs. */
+  evidence: CertificationEvidence[]
+  /** Optional brief description or audit summary. */
+  description?: string | null
+  /** Optional revocation timestamp (ms) if revoked or suspended. */
+  revokedAt?: number | null
+  /** Optional explanation recorded when certification was revoked. */
+  revocationReason?: string | null
+}
+

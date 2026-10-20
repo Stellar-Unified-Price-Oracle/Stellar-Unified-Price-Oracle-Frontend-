@@ -81,7 +81,8 @@ import { memo, useState, useCallback, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useTranslation } from 'react-i18next'
 import type { PriceData } from '../types'
-import { formatPrice, timeAgo } from '../utils/format'
+import { formatPriceWithPrecision, timeAgo } from '../utils/format'
+import type { PricePrecision, ToggleableTableColumn } from '../preferences/types'
 import type { ConnectionStatus } from '../api/websocket'
 import { SubscriptionHealthBadge } from './SubscriptionHealthBadge'
 
@@ -105,7 +106,13 @@ interface PriceTableViewProps {
   onToggleSelect?: (pair: string) => void
   subscriptionStatus?: ConnectionStatus
   isOfflineSnapshot?: boolean
+  /** Decimal places for the price column; defaults to the scale-based `auto` precision. */
+  pricePrecision?: PricePrecision
+  /** Optional columns the user has hidden (#813). Pair, price, and alert always show. */
+  hiddenColumns?: readonly ToggleableTableColumn[]
 }
+
+const NO_HIDDEN_COLUMNS: readonly ToggleableTableColumn[] = []
 
 export const PriceTableView = memo(function PriceTableView({
   items,
@@ -119,19 +126,25 @@ export const PriceTableView = memo(function PriceTableView({
   onToggleSelect,
   subscriptionStatus = 'disconnected',
   isOfflineSnapshot,
+  pricePrecision = 'auto',
+  hiddenColumns = NO_HIDDEN_COLUMNS,
 }: PriceTableViewProps) {
   const { t } = useTranslation()
   const [sortKey, setSortKey] = useState<SortKey>('assetPair')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const COLUMNS: { key: SortKey; label: string }[] = [
+  const isVisible = (key: ToggleableTableColumn) => !hiddenColumns.includes(key)
+  const ALL_COLUMNS: { key: SortKey; label: string }[] = [
     { key: 'assetPair', label: t('table.columns.pair') },
     { key: 'price', label: t('table.columns.price') },
     { key: 'confidence', label: t('table.columns.confidence') },
     { key: 'sources', label: t('table.columns.sources') },
     { key: 'timestamp', label: t('table.columns.updated') },
   ]
+  const COLUMNS = ALL_COLUMNS.filter((c) => c.key === 'assetPair' || c.key === 'price' || isVisible(c.key))
+  // Sorting by a hidden column would be invisible to the user, so fall back to pair order.
+  const activeSortKey: SortKey = hiddenColumns.some((key) => key === sortKey) ? 'assetPair' : sortKey
   const columnCount = COLUMNS.length + (selectMode ? 1 : 0) + 1
 
   const handleSort = useCallback(
@@ -150,14 +163,14 @@ export const PriceTableView = memo(function PriceTableView({
     () =>
       [...items].sort((a, b) => {
         let cmp = 0
-        if (sortKey === 'assetPair') cmp = a.assetPair.localeCompare(b.assetPair)
-        else if (sortKey === 'price') cmp = a.price - b.price
-        else if (sortKey === 'confidence') cmp = a.confidence - b.confidence
-        else if (sortKey === 'sources') cmp = a.sources.length - b.sources.length
-        else if (sortKey === 'timestamp') cmp = a.timestamp - b.timestamp
+        if (activeSortKey === 'assetPair') cmp = a.assetPair.localeCompare(b.assetPair)
+        else if (activeSortKey === 'price') cmp = a.price - b.price
+        else if (activeSortKey === 'confidence') cmp = a.confidence - b.confidence
+        else if (activeSortKey === 'sources') cmp = a.sources.length - b.sources.length
+        else if (activeSortKey === 'timestamp') cmp = a.timestamp - b.timestamp
         return sortDir === 'asc' ? cmp : -cmp
       }),
-    [items, sortKey, sortDir],
+    [items, activeSortKey, sortDir],
   )
 
   const isVirtual = sorted.length > VIRTUALIZE_THRESHOLD
@@ -266,12 +279,20 @@ export const PriceTableView = memo(function PriceTableView({
             )}
           </span>
         </td>
-        <td className="px-4 py-3 font-mono text-gray-100 whitespace-nowrap">${formatPrice(p.price)}</td>
-        <td className="px-4 py-3 text-cyan-400 whitespace-nowrap">{(p.confidence * 100).toFixed(1)}%</td>
-        <td className="px-4 py-3 whitespace-nowrap">
-          <span className="text-gray-400">{p.sources.join(', ')}</span>
+        <td className="px-4 py-3 font-mono text-gray-100 whitespace-nowrap">
+          ${formatPriceWithPrecision(p.price, pricePrecision)}
         </td>
-        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{timeAgo(p.timestamp)}</td>
+        {isVisible('confidence') && (
+          <td className="px-4 py-3 text-cyan-400 whitespace-nowrap">{(p.confidence * 100).toFixed(1)}%</td>
+        )}
+        {isVisible('sources') && (
+          <td className="px-4 py-3 whitespace-nowrap">
+            <span className="text-gray-400">{p.sources.join(', ')}</span>
+          </td>
+        )}
+        {isVisible('timestamp') && (
+          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{timeAgo(p.timestamp)}</td>
+        )}
         <td className="px-4 py-3 whitespace-nowrap">
           <button
             type="button"
@@ -309,11 +330,11 @@ export const PriceTableView = memo(function PriceTableView({
                 scope="col"
                 onClick={() => handleSort(key)}
                 className={`px-4 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap hover:text-gray-200 transition-colors ${key === 'assetPair' ? 'sticky-col-header bg-gray-900' : ''}`}
-                aria-sort={sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                aria-sort={activeSortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
                 <span className="flex items-center gap-1">
                   {label}
-                  {sortKey === key ? (
+                  {activeSortKey === key ? (
                     <span aria-hidden="true">{sortDir === 'asc' ? '↑' : '↓'}</span>
                   ) : (
                     <span className="text-gray-700" aria-hidden="true">

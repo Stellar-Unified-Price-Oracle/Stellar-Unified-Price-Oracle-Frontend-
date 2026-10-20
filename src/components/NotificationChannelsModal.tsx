@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { readJson, writeJson, STORAGE_KEYS } from '../utils/storage'
+import { maskSecret } from '../utils/maskSecret'
 import { loadBotSecrets, saveBotSecrets, sendTelegramMessage, sendDiscordMessage } from '../services/botNotifications'
 import {
   buildVerifySample,
@@ -14,6 +15,7 @@ import { useAlerts } from '../hooks/useAlerts'
 import { useAlertDigest } from '../hooks/useAlertDigest'
 import type { DigestFrequency } from '../utils/alertDigest'
 import { WebhookTestPayloadSchema, webhookTestPayload } from '../api/webhookPayload'
+import { maskSecret } from '../utils/maskSecret'
 
 interface NotificationConfig {
   email: { address: string; enabled: boolean }
@@ -251,6 +253,8 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
   const [testStatus, setTestStatus] = useState<string | null>(null)
   // #502 — the rotated secret, shown exactly once right after rotation.
   const [justRotatedSecret, setJustRotatedSecret] = useState<string | null>(null)
+  // #843 — the rotated secret stays masked until the user explicitly reveals it.
+  const [rotatedSecretRevealed, setRotatedSecretRevealed] = useState(false)
   const [verifyLang, setVerifyLang] = useState<VerifySampleLang>('node')
   const dialogRef = useRef<HTMLDivElement>(null)
   const { containerRef, handleKeyDown: trapKeyDown } = useFocusTrap()
@@ -265,6 +269,7 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
     if (isOpen) {
       setTestStatus(null)
       setJustRotatedSecret(null)
+      setRotatedSecretRevealed(false)
       requestAnimationFrame(() => dialogRef.current?.focus())
     }
   }, [isOpen])
@@ -281,6 +286,7 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
     const secret = generateWebhookSecret()
     setConfig((c) => ({ ...c, webhook: { ...c.webhook, secret, secretUpdatedAt: Date.now() } }))
     setJustRotatedSecret(secret)
+    setRotatedSecretRevealed(false)
   }, [])
 
   const requestPushPermission = useCallback(async () => {
@@ -591,9 +597,19 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
                     <p className="text-xs font-medium text-cyan-300">
                       New secret — copy it now, it won't be shown again:
                     </p>
-                    <code className="block text-xs text-white bg-gray-900/60 rounded-lg px-2.5 py-2 break-all select-all">
-                      {justRotatedSecret}
-                    </code>
+                    <div className="flex items-center gap-2">
+                      <code className="block flex-1 text-xs text-white bg-gray-900/60 rounded-lg px-2.5 py-2 break-all select-all">
+                        {rotatedSecretRevealed ? justRotatedSecret : maskSecret(justRotatedSecret)}
+                      </code>
+                      <button
+                        type="button"
+                        aria-pressed={rotatedSecretRevealed}
+                        onClick={() => setRotatedSecretRevealed((v) => !v)}
+                        className="shrink-0 text-xs px-2.5 py-1 rounded-lg border border-gray-700 text-cyan-400 hover:bg-gray-800 transition-colors"
+                      >
+                        {rotatedSecretRevealed ? 'Hide' : 'Reveal'}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -753,6 +769,11 @@ export function NotificationChannelsModal({ isOpen, onClose }: Props): ReactElem
               <p id="notif-discord-webhook-help" className="mt-1.5 text-xs text-gray-500">
                 Anyone with this URL can post as the bot. Not saved to this browser — re-enter it after a reload.
               </p>
+              {botSecrets.discordWebhookUrl && (
+                <p className="mt-1 text-xs text-gray-400">
+                  Current webhook: <code className="font-mono">{maskSecret(botSecrets.discordWebhookUrl)}</code>
+                </p>
+              )}
             </div>
             <div>
               <label htmlFor="notif-discord-channelid" className="block text-sm text-gray-400 mb-1.5">

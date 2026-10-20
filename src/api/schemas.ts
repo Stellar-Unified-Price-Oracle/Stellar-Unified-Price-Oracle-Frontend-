@@ -317,6 +317,21 @@ export const VoteTallySchema = z.object({
   abstain: z.number().int().min(0),
 })
 
+// ── #851 Proposed parameter change schema ───────────────────────────────────
+
+export const ProposedParameterChangeSchema = z.object({
+  paramKey: z.string().min(1),
+  paramName: z.string().min(1),
+  category: z.string().min(1),
+  currentValue: z.string().nullable(),
+  proposedValue: z.string().nullable(),
+  diffType: z.enum(['modify', 'add', 'remove']),
+  rationale: z.string().nullable().optional(),
+  unit: z.string().nullable().optional(),
+})
+
+export const ProposedParameterChangesSchema = z.array(ProposedParameterChangeSchema)
+
 /**
  * Strict schema for {@link import('../types/governance').GovernanceProposal}.
  * All fields are required (nullable ones must be explicitly `null`, not absent)
@@ -334,6 +349,7 @@ export const GovernanceProposalSchema = z.object({
   totalVotingPower: z.number().finite().nonnegative().nullable(),
   category: z.string().nullable(),
   relatedSources: z.array(z.string()),
+  proposedParameterChanges: z.array(ProposedParameterChangeSchema).nullable().optional(),
 })
 
 /** Response of `GET /api/governance/proposals`. */
@@ -389,6 +405,8 @@ export const TreasuryEntrySchema = z.object({
 })
 
 export const TreasurySchema = z.array(TreasuryEntrySchema)
+
+
 
 // ── Type inference from schemas ──────────────────────────────────────────────
 
@@ -476,6 +494,13 @@ export const DisputeCommentSchema = z.object({
   body: z.string(),
 })
 
+export const DisputeStatusTransitionSchema = z.object({
+  status: z.enum(['open', 'under_review', 'resolved_upheld', 'resolved_overturned', 'withdrawn']),
+  timestamp: z.number().int().min(0),
+  actor: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+})
+
 export const PriceDisputeSchema = z.object({
   id: z.string().min(1),
   assetPair: z.string().min(1),
@@ -491,4 +516,7 @@ export const PriceDisputeSchema = z.object({
   evidence: z.array(DisputeEvidenceSchema),
   comments: z.array(DisputeCommentSchema),
   resolutionNote: z.string().nullable(),
+  statusTransitions: z.array(DisputeStatusTransitionSchema).optional(),
 })
+
+export const PriceDisputesSchema = z.array(PriceDisputeSchema)

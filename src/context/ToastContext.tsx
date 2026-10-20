@@ -43,7 +43,7 @@ interface ToastContextValue {
   clearToasts: () => void
 }
 
-const ToastContext = createContext<ToastContextValue | null>(null)
+export const ToastContext = createContext<ToastContextValue | null>(null)
 
 /** Priority order (higher index = higher priority) */
 const PRIORITY_ORDER: Record<ToastPriority, number> = {
@@ -183,4 +183,9 @@ export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext)
   if (!ctx) throw new Error('useToast must be used within a ToastProvider')
   return ctx
+}
+
+export function useOptionalToast(): { addToast: (toast: Omit<Toast, 'id' | 'addedAt'>) => string } {
+  const ctx = useContext(ToastContext)
+  return ctx ?? { addToast: () => '' }
 }

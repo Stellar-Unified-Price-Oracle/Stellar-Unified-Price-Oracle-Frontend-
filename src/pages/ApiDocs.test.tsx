@@ -4,12 +4,14 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '../context/ToastContext'
 import { PreferencesProvider } from '../preferences/PreferencesContext'
+import { clearSelectedNetwork, setSelectedNetwork } from '../lib/networkRegistry'
 import { clearStoredErrorReports, getStoredErrorReports } from '../utils/errorReporting'
 import { ApiDocs } from './ApiDocs'
 
 afterEach(() => {
   cleanup()
   clearStoredErrorReports()
+  clearSelectedNetwork()
   vi.unstubAllGlobals()
 })
 
@@ -45,7 +47,9 @@ describe('API docs SDK playground', () => {
     const sdkTabs = screen.getAllByRole('tab', { name: 'SDK' })
     await user.click(sdkTabs[1])
 
-    expect(screen.getByText(/client\.getPrice\('XLM-USD'\)/)).toBeInTheDocument()
+    expect(screen.getByRole('tabpanel', { name: 'SDK example for /api/prices/:pair' })).toHaveTextContent(
+      "client.getPrice('XLM-USD')",
+    )
     await user.click(screen.getAllByRole('button', { name: 'Run SDK example' })[1])
 
     expect(await screen.findByText(/"assetPair": "XLM-USD"/)).toBeInTheDocument()
@@ -82,6 +86,21 @@ describe('API docs SDK playground', () => {
 
     expect(screen.getAllByRole('tab', { name: 'JavaScript' })[0]).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tabpanel', { name: 'JavaScript example for /api/prices' })).toBeInTheDocument()
+  })
+
+  it('stamps copied snippets with the selected network and the Accept version header (#807)', async () => {
+    const user = userEvent.setup()
+    setSelectedNetwork('futurenet')
+    renderApiDocs()
+
+    const curlPanel = screen.getByRole('tabpanel', { name: 'curl example for /api/prices' })
+    expect(curlPanel).toHaveTextContent('# Network: futurenet · API version: detecting…')
+    expect(curlPanel).toHaveTextContent('-H "Accept: application/vnd.stellar+json;version=')
+
+    await user.click(screen.getAllByRole('tab', { name: 'JavaScript' })[0])
+    const jsPanel = screen.getByRole('tabpanel', { name: 'JavaScript example for /api/prices' })
+    expect(jsPanel).toHaveTextContent('Network: futurenet')
+    expect(jsPanel).toHaveTextContent("headers: { Accept: 'application/vnd.stellar+json;version=")
   })
 
   it('shows the same trace identifier in the failure message and stored request report', async () => {

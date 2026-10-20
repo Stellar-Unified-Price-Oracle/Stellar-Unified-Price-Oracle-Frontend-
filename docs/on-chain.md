@@ -200,10 +200,27 @@ Before trusting an on-chain read in your own client:
 | RPC request times out / connection refused | Wrong `RPC_URL` for the network, or Soroban RPC rate limiting | Double-check the network passphrase matches the RPC endpoint; back off and retry on `429`s |
 | On-chain price way outside recent history | Publisher misconfiguration, or you're pointed at the wrong contract/network | Cross-check the contract ID against the table in §1 before assuming an oracle fault |
 
+## 7. Verifiable Ledger Records & Integrity Claims (#854)
+
+Every on-chain claim displayed across the dashboard is linked directly to a verifiable ledger record on [stellar.expert](https://stellar.expert):
+
+- **Ledger Sequences**: Rendered via [`VerifiableLedgerLink`](../src/components/VerifiableLedgerLink.tsx) (and [`LedgerAnchorBadge`](../src/components/LedgerAnchorBadge.tsx)), linking to `https://stellar.expert/explorer/<network>/ledger/<sequence>`.
+- **Contract Identifiers**: Linked to `https://stellar.expert/explorer/<network>/contract/<contractId>`.
+- **Transaction Hashes**: Linked to `https://stellar.expert/explorer/<network>/tx/<txHash>`.
+- **Account Addresses**: Linked to `https://stellar.expert/explorer/<network>/account/<accountId>`.
+
+### Trust & Integrity Rules
+1. **Network-Aware Routing**: Links automatically resolve under `testnet` or `public` (mainnet) depending on the active network context.
+2. **Graceful Nullability**: If a claim is unanchored, pending confirmation, or structurally invalid, the UI explicitly renders an "Unavailable" or unlinked fallback state rather than producing broken links or fabricated zero-ledgers.
+3. **Accessibility**: All external explorer links include `rel="noopener noreferrer"`, `target="_blank"`, and an accessible screen-reader note indicating the external ledger verification destination.
+
 ## See also
 
 - [`src/lib/contractRegistry.ts`](../src/lib/contractRegistry.ts) — the registry itself, plus its unit tests
+- [`src/lib/stellarExplorer.ts`](../src/lib/stellarExplorer.ts) — explorer URL builders and claim validation
+- [`src/components/VerifiableLedgerLink.tsx`](../src/components/VerifiableLedgerLink.tsx) — verifiable ledger link component
 - [`src/lib/onChainClient.ts`](../src/lib/onChainClient.ts) — the on-chain client module the UI uses
 - [`src/components/OnChainComparisonPanel.tsx`](../src/components/OnChainComparisonPanel.tsx) — the divergence UI
 - [Soroban docs: Reading contract data](https://developers.stellar.org/docs/build/smart-contracts/getting-started/data-storage)
 - [`/api-docs`](/api-docs) in this app — the off-chain REST/WebSocket API this guide's on-chain reads are compared against
+

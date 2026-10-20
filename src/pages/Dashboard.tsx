@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useMemo, useRef, useState, useTransition, useOptimistic } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useTransition, useOptimistic } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePriceContext } from '../context/PriceContext'
@@ -27,14 +27,23 @@ import { FilterPanel, readFilterState, countActiveFilters } from '../components/
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { ReliabilityLeaderboard } from '../components/ReliabilityLeaderboard'
 import { OfflineSnapshotBanner } from '../components/OfflineSnapshotBanner'
+import { OfflineUnavailableNotice } from '../components/OfflineUnavailableNotice'
+import { resolveOfflineDataState } from '../utils/offlineDataState'
 import type { AlertFormData, LivePriceEntry, PriceData, SourceHealth } from '../types'
 import { PairSearchBar } from '../components/PairSearchBar'
 import { LazyPriceTable, preloadPriceTable } from '../utils/chunks'
+import { useRestoreRememberedFilters } from '../hooks/useRememberedDashboardFilters'
+import { TableColumnsDialog } from '../components/TableColumnsDialog'
+import { sanitizeHiddenTableColumns } from '../utils/tableColumns'
+import type { ToggleableTableColumn } from '../preferences/types'
 import { buildConditionGroupFromFormData } from '../utils/alertEvaluator'
 import { localDateToTimestamp } from '../utils/alertLifecycle'
 import { deriveSourceHealths } from '../utils/sourceHealth'
 import { WORKSPACE_PARAM, type Workspace } from '../utils/workspaceShare'
 import { OnboardingTour, resetTour } from '../components/OnboardingTour'
+import { FirstComparisonGuide } from '../components/FirstComparisonGuide'
+import { SampleDataPreview } from '../components/SampleDataPreview'
+import { readComparisonGuide, saveComparisonGuide, type ComparisonGuideProgress } from '../utils/firstComparisonGuide'
 import { WorkspaceShareDialog } from '../components/WorkspaceShareDialog'
 import { ConfidenceRegimePanel } from '../components/ConfidenceRegimePanel'
 import { getObservedSourceRange } from '../utils/uncertaintyBand'
@@ -91,11 +100,25 @@ export function Dashboard() {
   const { preferences, updatePreference } = usePreferences()
   const { addToast } = useToast()
   const [searchParams] = useSearchParams()
+  useRestoreRememberedFilters()
 
   const [columnModalOpen, setColumnModalOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalPair, setModalPair] = useState('')
   const [dashboardView, setDashboardView] = useState<'card' | 'table'>('card')
+  const [columnsDialogOpen, setColumnsDialogOpen] = useState(false)
+  const hiddenTableColumns = useMemo(
+    () => sanitizeHiddenTableColumns(preferences.hiddenTableColumns),
+    [preferences.hiddenTableColumns],
+  )
+  const closeColumnsDialog = useCallback(() => setColumnsDialogOpen(false), [])
+  const applyHiddenColumns = useCallback(
+    (next: ToggleableTableColumn[]) => {
+      updatePreference('hiddenTableColumns', next)
+      setColumnsDialogOpen(false)
+    },
+    [updatePreference],
+  )
   const [notifModalOpen, setNotifModalOpen] = useState(false)
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -119,6 +142,17 @@ export function Dashboard() {
 
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [comparisonGuide, setComparisonGuide] = useState<ComparisonGuideProgress>(readComparisonGuide)
+
+  useEffect(() => {
+    saveComparisonGuide(comparisonGuide)
+  }, [comparisonGuide])
+
+  useEffect(() => {
+    if (selected.size >= 2) {
+      setComparisonGuide((p) => (p.comparedPairs ? p : { ...p, comparedPairs: true }))
+    }
+  }, [selected])
 
   // Optimistic alerts: show immediately, revert if needed
   const [optimisticAlerts, addOptimisticAlert] = useOptimistic(
@@ -263,6 +297,7 @@ export function Dashboard() {
           return next
         })
       } else {
+        setComparisonGuide((p) => (p.viewedPair ? p : { ...p, viewedPair: true }))
         navigate(`/prices/${encodeURIComponent(pair)}`)
       }
     },
@@ -552,6 +587,18 @@ export function Dashboard() {
               </button>
             </div>
           )}
+          {dashboardView === 'table' && !pricesLoading && prices.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setColumnsDialogOpen(true)}
+              className="min-h-[44px] rounded-lg border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:text-white"
+            >
+              Columns
+            </button>
+          )}
+          {columnsDialogOpen && (
+            <TableColumnsDialog hidden={hiddenTableColumns} onApply={applyHiddenColumns} onClose={closeColumnsDialog} />
+          )}
           <AlertBadge count={activeCount} alerts={alerts} />
           <button
             type="button"
@@ -714,6 +761,14 @@ export function Dashboard() {
           onRefresh={refetchPrices}
         />
       )}
+      {resolveOfflineDataState({ hasLivePrices: prices.length > 0, hasSnapshot: isOfflineSnapshot }) ===
+        'unavailable' &&
+        !pricesLoading && <OfflineUnavailableNotice onRetry={refetchPrices} />}
+
+      <FirstComparisonGuide
+        progress={comparisonGuide}
+        onDismiss={() => setComparisonGuide((p) => ({ ...p, dismissed: true }))}
+      />
 
       {pricesLoading && prices.length === 0 ? (
         <section
@@ -725,7 +780,13 @@ export function Dashboard() {
           ))}
         </section>
       ) : dashboardView === 'table' ? (
-        <ErrorBoundary boundaryId="price-table-view" featureLabel="Price Table">
+        <ErrorBoundary
+          boundaryId="price-table-view"
+          featureLabel="Price Table"
+          recoveryActions={[
+            { label: 'Switch to card view', onAction: () => updatePreference('dashboardView', 'card') },
+          ]}
+        >
           <Suspense
             fallback={
               <div
@@ -747,11 +808,20 @@ export function Dashboard() {
               onToggleSelect={onToggleSelect}
               subscriptionStatus={wsStatus}
               isOfflineSnapshot={isOfflineSnapshot}
+              pricePrecision={preferences.pricePrecision}
+              hiddenColumns={hiddenTableColumns}
             />
           </Suspense>
         </ErrorBoundary>
       ) : (
-        <ErrorBoundary boundaryId="price-card-grid" featureLabel="Price Cards">
+        <ErrorBoundary
+          boundaryId="price-card-grid"
+          featureLabel="Price Cards"
+          recoveryActions={[
+            { label: 'Reset card order', onAction: () => updatePreference('cardOrder', []) },
+            { label: 'Switch to table view', onAction: () => updatePreference('dashboardView', 'table') },
+          ]}
+        >
           <DraggablePriceGrid
             items={filtered}
             observedSourceRanges={observedSourceRanges}
@@ -763,6 +833,7 @@ export function Dashboard() {
             selectMode={selectMode}
             selected={selected}
             onReorder={(orderedPairs) => updatePreference('cardOrder', orderedPairs)}
+            density={preferences.density}
             subscriptionStatus={wsStatus}
             isOfflineSnapshot={isOfflineSnapshot}
           />
@@ -788,6 +859,7 @@ export function Dashboard() {
               Take the tour
             </button>
           </div>
+          <SampleDataPreview />
         </div>
       )}
 
@@ -815,7 +887,11 @@ export function Dashboard() {
       <ConfidenceRegimePanel histories={attributionHistory} />
 
       <div className="mt-8">
-        <ErrorBoundary boundaryId="reliability-leaderboard" featureLabel="Reliability Leaderboard">
+        <ErrorBoundary
+          boundaryId="reliability-leaderboard"
+          featureLabel="Reliability Leaderboard"
+          recoveryActions={[{ label: 'Reload prices', onAction: () => refetchPrices() }]}
+        >
           <ReliabilityLeaderboard sourceHealths={sourceHealths} />
         </ErrorBoundary>
       </div>

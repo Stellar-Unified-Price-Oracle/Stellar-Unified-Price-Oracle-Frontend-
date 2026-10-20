@@ -136,4 +136,67 @@ describe('PriceProofPanel', () => {
     render(<PriceProofPanel pair="XLM/USD" latestTimestamp={1700000000000} />)
     expect(screen.queryByLabelText('Verify record')).not.toBeInTheDocument()
   })
+
+  it('triggers download of the proof verification bundle and shows a success toast', async () => {
+    const { usePriceProof } = await import('../hooks/usePriceProof')
+    vi.mocked(usePriceProof).mockReturnValue({ proof: mockProof, loading: false, error: null, refetch })
+
+    const createObjectURLMock = vi.fn().mockReturnValue('blob:test')
+    const revokeObjectURLMock = vi.fn()
+    window.URL.createObjectURL = createObjectURLMock
+    window.URL.revokeObjectURL = revokeObjectURLMock
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    render(<PriceProofPanel pair="XLM/USD" latestTimestamp={1700000000000} />)
+
+    const downloadBtn = screen.getByRole('button', { name: 'Download proof (JSON)' })
+    expect(downloadBtn).toBeInTheDocument()
+    fireEvent.click(downloadBtn)
+
+    expect(createObjectURLMock).toHaveBeenCalledTimes(1)
+    expect(clickSpy).toHaveBeenCalledTimes(1)
+    expect(addToast).toHaveBeenCalledWith({
+      type: 'success',
+      message: 'Proof bundle downloaded',
+    })
+
+    clickSpy.mockRestore()
+  })
+
+  it('toggles the independent verification guide and displays step-by-step instructions', async () => {
+    const { usePriceProof } = await import('../hooks/usePriceProof')
+    vi.mocked(usePriceProof).mockReturnValue({ proof: mockProof, loading: false, error: null, refetch })
+
+    render(<PriceProofPanel pair="XLM/USD" latestTimestamp={1700000000000} />)
+
+    expect(screen.getByText('Independent Proof Verification Guide')).toBeInTheDocument()
+    const toggleBtn = screen.getByRole('button', { name: 'How to independently verify this proof' })
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false')
+
+    // Expand
+    fireEvent.click(toggleBtn)
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true')
+    expect(toggleBtn).toHaveTextContent('Hide independent verification guide')
+
+    // Steps should be visible
+    expect(screen.getByText('1. Verify On-Chain Transaction & Ledger Anchor')).toBeInTheDocument()
+    expect(screen.getByText('2. Query Soroban Contract Directly')).toBeInTheDocument()
+    expect(screen.getByText('3. Verify Ed25519 Cryptographic Signatures')).toBeInTheDocument()
+    expect(screen.getByText('4. Confirm Aggregation Consensus & Confidence')).toBeInTheDocument()
+
+    // CLI command should be visible
+    expect(screen.getByText(/soroban contract invoke --id/)).toBeInTheDocument()
+
+    // Copy CLI command button works
+    const copyCliBtn = screen.getByRole('button', { name: 'Copy CLI command' })
+    fireEvent.click(copyCliBtn)
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining(`soroban contract invoke --id ${mockProof.contractId}`),
+    )
+
+    // Collapse
+    fireEvent.click(toggleBtn)
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('1. Verify On-Chain Transaction & Ledger Anchor')).not.toBeInTheDocument()
+  })
 })

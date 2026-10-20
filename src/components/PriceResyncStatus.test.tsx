@@ -31,4 +31,27 @@ describe('PriceResyncStatus', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('No tracked prices are available')
   })
+
+  it('explains that background sync is pending while offline before any run completes', () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false })
+    render(<PriceResyncStatus progress={null} />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('pending until the connection returns')
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true })
+  })
+
+  it('keeps a failed run visible with an accessible status while offline', async () => {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false })
+    const failed = <PriceResyncStatus progress={progress('failed', 3, 3)} />
+    render(failed)
+
+    expect(screen.getByRole('status')).toHaveTextContent('unavailable: all 3 refreshes failed')
+    await checkAccessibility(failed)
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => true })
+  })
+
+  it('renders nothing when online with no run and nothing queued', () => {
+    const { container } = render(<PriceResyncStatus progress={null} />)
+    expect(container).toBeEmptyDOMElement()
+  })
 })

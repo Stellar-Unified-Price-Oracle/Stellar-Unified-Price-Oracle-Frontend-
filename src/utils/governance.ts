@@ -117,6 +117,63 @@ export function formatVotingPower(value: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// #853 — Voting quorum, eligibility, and deadline explanation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Quorum progress as a percentage of the required quorum threshold.
+ * Returns null when quorum is unset.
+ */
+export function quorumProgressPercent(
+  tally: VoteTally,
+  quorum: number | null,
+  clamp = true,
+): number | null {
+  if (quorum === null || quorum <= 0) return null
+  const ratio = (tallyTotal(tally) / quorum) * 100
+  return clamp ? Math.min(100, Math.max(0, ratio)) : ratio
+}
+
+/**
+ * Remaining voting power needed to achieve quorum.
+ * Returns 0 if quorum is met, null if quorum is unset.
+ */
+export function votesRemainingToQuorum(tally: VoteTally, quorum: number | null): number | null {
+  if (quorum === null) return null
+  const total = tallyTotal(tally)
+  return Math.max(0, quorum - total)
+}
+
+/** Urgency classification for deadline countdowns. */
+export type DeadlineUrgency = 'normal' | 'urgent' | 'passed' | 'unreported'
+
+/**
+ * Determines deadline urgency (e.g. urgent when < 24 hours remain).
+ */
+export function deadlineUrgency(closesAt: number | null, now: number = Date.now()): DeadlineUrgency {
+  if (closesAt === null) return 'unreported'
+  const diff = closesAt - now
+  if (diff <= 0) return 'passed'
+  if (diff <= 24 * 60 * 60 * 1000) return 'urgent'
+  return 'normal'
+}
+
+/**
+ * Formats full deadline details in both local and UTC strings.
+ */
+export function formatFullDeadline(closesAt: number | null): { local: string; utc: string } | null {
+  if (closesAt === null) return null
+  const d = new Date(closesAt)
+  return {
+    local: d.toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }),
+    utc: d.toUTCString(),
+  }
+}
+
+// ---------------------------------------------------------------------------
 // #698 — Transparent parameter registry utilities
 // ---------------------------------------------------------------------------
 
@@ -227,11 +284,14 @@ export function contributionScore(entry: import('../types').TreasuryEntry): numb
 // ---------------------------------------------------------------------------
 
 /** Display labels for each dispute status. */
-export const DISPUTE_STATUS_LABELS: Record<import('../types').DisputeStatus, string> = {
+export const DISPUTE_STATUS_LABELS: Record<string, string> = {
   open: 'Open',
   under_review: 'Under review',
   resolved: 'Resolved',
   dismissed: 'Dismissed',
+  resolved_upheld: 'Resolved (Upheld)',
+  resolved_overturned: 'Resolved (Overturned)',
+  withdrawn: 'Withdrawn',
 }
 
 /** Display labels for each dispute outcome. */
@@ -244,7 +304,7 @@ export const DISPUTE_OUTCOME_LABELS: Record<NonNullable<import('../types').Dispu
 /**
  * Whether a dispute is still actionable (can receive evidence or review).
  */
-export function isDisputeOpen(dispute: import('../types').PriceDispute): boolean {
+export function isDisputeOpen(dispute: import('../types').LegacyPriceDispute): boolean {
   return dispute.status === 'open' || dispute.status === 'under_review'
 }
 
@@ -254,9 +314,9 @@ export function isDisputeOpen(dispute: import('../types').PriceDispute): boolean
  * Stable and deterministic.
  */
 export function orderDisputes(
-  disputes: readonly import('../types').PriceDispute[],
-): import('../types').PriceDispute[] {
-  const rank = (d: import('../types').PriceDispute): number => {
+  disputes: readonly import('../types').LegacyPriceDispute[],
+): import('../types').LegacyPriceDispute[] {
+  const rank = (d: import('../types').LegacyPriceDispute): number => {
     if (d.status === 'open') return 0
     if (d.status === 'under_review') return 1
     return 2

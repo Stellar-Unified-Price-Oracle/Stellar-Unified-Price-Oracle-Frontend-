@@ -3,6 +3,7 @@ import {
   formatPrice,
   formatCurrency,
   formatPriceShort,
+  formatPriceWithPrecision,
   formatChartPrice,
   formatTimestamp,
   formatChartTime,
@@ -262,5 +263,22 @@ describe('Locale-aware formatting', () => {
       const uniqueFormats = new Set(Object.values(results))
       expect(uniqueFormats.size).toBeGreaterThan(1)
     })
+  })
+})
+
+describe('formatPriceWithPrecision', () => {
+  it('defers to formatPrice when precision is auto', () => {
+    expect(formatPriceWithPrecision(1234.5, 'auto')).toBe(formatPrice(1234.5))
+    expect(formatPriceWithPrecision(0.5, 'auto')).toBe(formatPrice(0.5))
+  })
+
+  it('pins the number of decimals when a fixed precision is chosen', () => {
+    expect(formatPriceWithPrecision(1.23456789, 4)).toBe('1.2346')
+    expect(formatPriceWithPrecision(1.5, 2)).toBe('1.50')
+    expect(formatPriceWithPrecision(0.1, 8)).toBe('0.10000000')
+  })
+
+  it('uses locale separators with a fixed precision', () => {
+    expect(formatPriceWithPrecision(1234.5, 2, 'de-DE')).toBe('1.234,50')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { GovernanceProposal, ParameterEntry, ParameterChangeLogEntry, TreasuryEntry, PriceDispute } from '../types'
+import type { GovernanceProposal, ParameterEntry, ParameterChangeLogEntry, TreasuryEntry, LegacyPriceDispute } from '../types'
 import {
   deadlineState,
   formatVotingPower,
@@ -9,6 +9,10 @@ import {
   quorumState,
   tallyTotal,
   voteShares,
+  quorumProgressPercent,
+  votesRemainingToQuorum,
+  deadlineUrgency,
+  formatFullDeadline,
   // #698
   groupParametersByCategory,
   formatChangeLogEntry,
@@ -292,7 +296,7 @@ describe('contributionScore', () => {
 
 // ── #695 Disputes ─────────────────────────────────────────────────────────────
 
-function makeDispute(overrides: Partial<PriceDispute> = {}): PriceDispute {
+function makeDispute(overrides: Partial<LegacyPriceDispute> = {}): LegacyPriceDispute {
   return {
     id: 'DISP-1',
     assetPair: 'BTC/USD',
@@ -324,7 +328,7 @@ describe('isDisputeOpen', () => {
 
 describe('DISPUTE_STATUS_LABELS', () => {
   it('has a label for every status', () => {
-    const statuses: PriceDispute['status'][] = ['open', 'under_review', 'resolved', 'dismissed']
+    const statuses: LegacyPriceDispute['status'][] = ['open', 'under_review', 'resolved', 'dismissed']
     for (const s of statuses) {
       expect(DISPUTE_STATUS_LABELS[s]).toBeTruthy()
     }
@@ -352,5 +356,75 @@ describe('orderDisputes', () => {
     const input = [makeDispute({ id: 'Z' }), makeDispute({ id: 'A' })]
     orderDisputes(input)
     expect(input.map((d) => d.id)).toEqual(['Z', 'A'])
+  })
+})
+
+describe('#853 Quorum and deadline explanation helpers', () => {
+  const sampleTally = { for: 40_000, against: 10_000, abstain: 10_000 } // 60,000 total
+
+  describe('quorumProgressPercent', () => {
+    it('calculates progress percentage capped at 100 by default', () => {
+      expect(quorumProgressPercent(sampleTally, 100_000)).toBeCloseTo(60, 1)
+      // If participating exceeds quorum, clamp = true keeps it at 100
+      expect(quorumProgressPercent(sampleTally, 50_000, true)).toBe(100)
+      // Unclamped
+      expect(quorumProgressPercent(sampleTally, 50_000, false)).toBeCloseTo(120, 1)
+    })
+
+    it('returns null when quorum is unset or non-positive', () => {
+      expect(quorumProgressPercent(sampleTally, null)).toBeNull()
+      expect(quorumProgressPercent(sampleTally, 0)).toBeNull()
+      expect(quorumProgressPercent(sampleTally, -100)).toBeNull()
+    })
+  })
+
+  describe('votesRemainingToQuorum', () => {
+    it('calculates remaining votes when below threshold', () => {
+      expect(votesRemainingToQuorum(sampleTally, 100_000)).toBe(40_000)
+    })
+
+    it('returns 0 when quorum is met or exceeded', () => {
+      expect(votesRemainingToQuorum(sampleTally, 60_000)).toBe(0)
+      expect(votesRemainingToQuorum(sampleTally, 50_000)).toBe(0)
+    })
+
+    it('returns null when quorum is null', () => {
+      expect(votesRemainingToQuorum(sampleTally, null)).toBeNull()
+    })
+  })
+
+  describe('deadlineUrgency', () => {
+    const now = 1_700_000_000_000
+
+    it('returns unreported when closesAt is null', () => {
+      expect(deadlineUrgency(null, now)).toBe('unreported')
+    })
+
+    it('returns passed when closesAt is at or before now', () => {
+      expect(deadlineUrgency(now, now)).toBe('passed')
+      expect(deadlineUrgency(now - 1000, now)).toBe('passed')
+    })
+
+    it('returns urgent when closesAt is within 24 hours', () => {
+      expect(deadlineUrgency(now + 12 * 60 * 60 * 1000, now)).toBe('urgent')
+    })
+
+    it('returns normal when closesAt is more than 24 hours away', () => {
+      expect(deadlineUrgency(now + 48 * 60 * 60 * 1000, now)).toBe('normal')
+    })
+  })
+
+  describe('formatFullDeadline', () => {
+    it('returns null when closesAt is null', () => {
+      expect(formatFullDeadline(null)).toBeNull()
+    })
+
+    it('returns both local and UTC strings when timestamp is valid', () => {
+      const ts = 1_700_000_000_000
+      const formatted = formatFullDeadline(ts)
+      expect(formatted).not.toBeNull()
+      expect(formatted?.utc).toContain('GMT')
+      expect(formatted?.local.length).toBeGreaterThan(0)
+    })
   })
 })

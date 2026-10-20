@@ -13,6 +13,8 @@
 import { memo, type ReactElement } from 'react'
 import type { GovernanceProposal, ProposalStatus, VoteTally } from '../types'
 import { SOURCE_COLORS } from '../utils/sourceColors'
+import { GovernanceActionGate } from './GovernanceActionGate'
+import type { GovernanceRole } from '../types/governancePermissions'
 import {
   STATUS_LABELS,
   deadlineState,
@@ -64,11 +66,17 @@ export interface GovernanceProposalCardProps {
   proposal: GovernanceProposal
   /** Injected clock so deadline and staleness rendering is deterministic in tests. */
   now: number
+  onVote?: (proposalId: string, choice: 'for' | 'against' | 'abstain') => void
+  onExecute?: (proposalId: string) => void
+  simulatedRole?: GovernanceRole
 }
 
 export const GovernanceProposalCard = memo(function GovernanceProposalCard({
   proposal,
   now,
+  onVote,
+  onExecute,
+  simulatedRole,
 }: GovernanceProposalCardProps): ReactElement {
   const titleId = `proposal-${proposal.id}-title`
   const shares = voteShares(proposal.tally)
@@ -134,6 +142,14 @@ export const GovernanceProposalCard = memo(function GovernanceProposalCard({
         </div>
       )}
 
+      {proposal.proposedParameterChanges && proposal.proposedParameterChanges.length > 0 && (
+        <ProposedParameterDiff
+          changes={proposal.proposedParameterChanges}
+          proposalId={proposal.id}
+          compact
+        />
+      )}
+
       {/* ── Tally ── */}
       <section aria-label={`Vote tally for ${proposal.id}`} className="flex flex-col gap-2">
         {shares === null ? (
@@ -187,6 +203,9 @@ export const GovernanceProposalCard = memo(function GovernanceProposalCard({
               : `${participation.toFixed(1)}% of eligible voting power participated`}
           </span>
         </div>
+
+        {/* ── #853 Quorum, eligibility, and deadline explainer ── */}
+        <ProposalVotingRulesExplainer proposal={proposal} now={now} />
       </section>
 
       {/* ── Stale-status caveat ── */}
@@ -198,6 +217,73 @@ export const GovernanceProposalCard = memo(function GovernanceProposalCard({
           The API still reports this proposal as <strong>voting open</strong>, but its deadline has passed. The tally
           shown is as last reported and the outcome has not yet been reconciled — treat it as provisional.
         </p>
+      )}
+
+      {/* ── Governance Action Gating (#857) ── */}
+      {proposal.status === 'active' && !stale && (
+        <div className="border-t border-gray-800 pt-3">
+          <GovernanceActionGate action="proposal:vote" simulatedRole={simulatedRole}>
+            {({ allowed, disabledReason }) => (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-gray-400 font-medium">Cast Ballot:</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={!allowed}
+                    aria-disabled={!allowed}
+                    title={disabledReason ?? 'Vote in favour of this proposal'}
+                    onClick={() => onVote?.(proposal.id, 'for')}
+                    className="px-2.5 py-1 text-xs font-semibold rounded bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Vote For
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!allowed}
+                    aria-disabled={!allowed}
+                    title={disabledReason ?? 'Vote against this proposal'}
+                    onClick={() => onVote?.(proposal.id, 'against')}
+                    className="px-2.5 py-1 text-xs font-semibold rounded bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Vote Against
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!allowed}
+                    aria-disabled={!allowed}
+                    title={disabledReason ?? 'Abstain from voting'}
+                    onClick={() => onVote?.(proposal.id, 'abstain')}
+                    className="px-2.5 py-1 text-xs font-semibold rounded bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Abstain
+                  </button>
+                </div>
+              </div>
+            )}
+          </GovernanceActionGate>
+        </div>
+      )}
+
+      {proposal.status === 'passed' && (
+        <div className="border-t border-gray-800 pt-3">
+          <GovernanceActionGate action="proposal:execute" simulatedRole={simulatedRole}>
+            {({ allowed, disabledReason }) => (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-green-400">Proposal passed quorum threshold.</span>
+                <button
+                  type="button"
+                  disabled={!allowed}
+                  aria-disabled={!allowed}
+                  title={disabledReason ?? 'Execute approved proposal on-chain'}
+                  onClick={() => onExecute?.(proposal.id)}
+                  className="px-3 py-1 text-xs font-semibold rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Execute on Soroban
+                </button>
+              </div>
+            )}
+          </GovernanceActionGate>
+        </div>
       )}
     </article>
   )

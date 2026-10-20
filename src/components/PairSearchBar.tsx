@@ -1,9 +1,11 @@
-import { memo, useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { memo, useState, useRef, useEffect, useCallback, useMemo, useId } from 'react'
 import { sanitizeSearchInput } from '../utils/sanitize'
 import { useSearchRateLimit } from '../hooks/useSearchRateLimit'
 
 const MAX_RECENT = 5
 const RECENT_KEY = 'pairSearchRecent'
+/** How far PageUp / PageDown move the highlighted option. */
+const PAGE_STEP = 5
 
 function loadRecent(): string[] {
   try {
@@ -62,6 +64,7 @@ export const PairSearchBar = memo(function PairSearchBar({
   const [sourceFilter, setSourceFilter] = useState<string>('')
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
+  const listboxId = useId()
 
   // Debounce + rate-limit the search value (max 1 per 100 ms) so that
   // the expensive fuzzy-filter only runs on the debounced input.
@@ -77,6 +80,7 @@ export const PairSearchBar = memo(function PairSearchBar({
   }, [pairs, debouncedValue, sourceFilter])
 
   const items: string[] = value || sourceFilter ? suggestions : recent
+  const listVisible = open && items.length > 0
 
   const handleSelect = useCallback(
     (item: string) => {
@@ -103,28 +107,65 @@ export const PairSearchBar = memo(function PairSearchBar({
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (!open) {
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault()
           setOpen(true)
         }
         return
       }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setActiveIndex((i) => Math.min(i + 1, items.length - 1))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setActiveIndex((i) => Math.max(i - 1, -1))
-      } else if (e.key === 'Enter') {
-        if (activeIndex >= 0 && items[activeIndex]) {
-          handleSelect(items[activeIndex])
-        } else {
+      const last = items.length - 1
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          setActiveIndex((i) => Math.min(i + 1, last))
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          setActiveIndex((i) => Math.max(i - 1, -1))
+          break
+        case 'PageDown':
+          e.preventDefault()
+          setActiveIndex((i) => Math.min(i + PAGE_STEP, last))
+          break
+        case 'PageUp':
+          e.preventDefault()
+          setActiveIndex((i) => Math.max(i - PAGE_STEP, 0))
+          break
+        // Home/End only move through options once one is highlighted, so they keep
+        // moving the caret inside the text field otherwise.
+        case 'Home':
+          if (activeIndex >= 0) {
+            e.preventDefault()
+            setActiveIndex(0)
+          }
+          break
+        case 'End':
+          if (activeIndex >= 0) {
+            e.preventDefault()
+            setActiveIndex(last)
+          }
+          break
+        case 'Enter':
+          if (activeIndex >= 0 && items[activeIndex]) {
+            handleSelect(items[activeIndex])
+          } else if (value && items.length > 0) {
+            // Typeahead: with a query typed and nothing highlighted, Enter completes to the best match.
+            handleSelect(items[0])
+          } else {
+            setOpen(false)
+          }
+          break
+        case 'Escape':
           setOpen(false)
-        }
-      } else if (e.key === 'Escape') {
-        setOpen(false)
-        setActiveIndex(-1)
+          setActiveIndex(-1)
+          break
+        case 'Tab':
+          // Let focus move on naturally, but do not leave a stale popup open behind it.
+          setOpen(false)
+          setActiveIndex(-1)
+          break
       }
     },
-    [open, items, activeIndex, handleSelect],
+    [open, items, activeIndex, value, handleSelect],
   )
 
   // Scroll active item into view
@@ -146,7 +187,7 @@ export const PairSearchBar = memo(function PairSearchBar({
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [])
 
-  const listboxId = 'pair-search-listbox'
+  const optionId = (i: number) => `${listboxId}-opt-${i}`
 
   return (
     <div data-pairsearch className={`relative ${className}`}>
@@ -156,11 +197,11 @@ export const PairSearchBar = memo(function PairSearchBar({
             ref={inputRef}
             type="text"
             role="combobox"
-            aria-expanded={open}
+            aria-expanded={listVisible}
             aria-haspopup="listbox"
             aria-autocomplete="list"
             aria-controls={listboxId}
-            aria-activedescendant={activeIndex >= 0 ? `pair-opt-${activeIndex}` : undefined}
+            aria-activedescendant={activeIndex >= 0 && listVisible ? optionId(activeIndex) : undefined}
             placeholder="Search pairs…"
             value={value}
             onChange={handleChange}
@@ -222,7 +263,7 @@ export const PairSearchBar = memo(function PairSearchBar({
         )}
       </div>
 
-      {open && items.length > 0 && (
+      {listVisible && (
         <ul
           id={listboxId}
           ref={listRef}
@@ -251,7 +292,7 @@ export const PairSearchBar = memo(function PairSearchBar({
             return (
               <li
                 key={item}
-                id={`pair-opt-${i}`}
+                id={optionId(i)}
                 role="option"
                 aria-selected={i === activeIndex}
                 className={`flex items-center justify-between px-3 py-2 cursor-pointer text-sm transition-colors ${

@@ -54,10 +54,10 @@ export const STORAGE_KEYS = {
   developerWebhooks: 'developer-webhooks',
   /** `'1'` when the user has opted out of analytics. */
   analyticsOptOut: 'analyticsOptOut',
-  /** Granular product analytics consent preferences (#847). No PII. */
-  analyticsConsent: 'analytics-consent',
-  /** `'dark'` / `'light'`. Also read by the pre-paint script in `index.html`. */
+  /** `'dark'` / `'light'` / `'system'`. Also read by the pre-paint script in `public/theme-init.js`. */
   theme: 'stellar-oracle-theme',
+  /** Theme key written before #834 unified it with the pre-paint script. Read once for migration. */
+  themeLegacy: 'theme-preference',
   /** Random per-browser bucket id used for sticky percentage-rollout feature flags (#359). No PII. */
   featureFlagBucket: 'feature-flag-bucket',
   /** Ids of alert health flags (#493) the user has dismissed. No PII. */
@@ -66,6 +66,8 @@ export const STORAGE_KEYS = {
   pwaInstallDismissed: 'pwa-install-dismissed-until',
   /** Timestamp until which the PWA update banner is snoozed. No PII. */
   pwaUpdateDismissed: 'pwa-update-dismissed-until',
+  /** Map of inline-explanation id to the time it was dismissed (#822). No PII. */
+  dismissedExplanations: 'dismissed-explanations',
   /** Alert sound preferences (#308): enabled flag + 0–1 volume. No PII. */
   soundPreferences: 'sound-preferences',
   /** Recently-used UI language codes, newest first (#373). No PII. */
@@ -74,12 +76,16 @@ export const STORAGE_KEYS = {
   activeNetwork: 'active-network',
   /** Onboarding tour progress (#701): last step reached + completed/dismissed flag. No PII. */
   onboardingTour: 'onboarding-tour',
+  /** First-comparison guide checkpoints (#816): which steps are done and whether it was dismissed. No PII. */
+  firstComparisonGuide: 'first-comparison-guide',
   /** Community moderation reports + decisions (#699). Reporter identity is never stored. */
   moderationReports: 'moderation-reports',
   /** Dated transparency report snapshots (#700), keyed by period. Aggregates only. */
   transparencyArchive: 'transparency-archive',
   /** User-entered local-only portfolio positions; no account sync or PII. */
   portfolioHoldings: 'portfolio-holdings',
+  /** Pinned pair detail snapshots kept for offline access (#831). Prices only, no PII. */
+  pinnedPairs: 'supo:pinned-pairs',
 } as const
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS]
@@ -318,6 +324,7 @@ function formatBytes(bytes: number): string {
  * | alert-health-dismissed | Ids of dismissed alert health flags (#493). No PII.                |
  * | pwa-install-dismissed-until | PWA install prompt snooze timestamp. No PII.                  |
  * | pwa-update-dismissed-until | PWA update banner snooze timestamp. No PII.                     |
+ * | dismissed-explanations | Map of dismissed inline-explanation ids to dismissal times (#822). No PII. |
  * | sound-preferences      | Alert sound enabled flag + 0–1 volume (#308). No PII.             |
  *
  * ## IndexedDB stores (stellar-oracle DB)
@@ -361,7 +368,11 @@ export const STORAGE_INVENTORY = Object.freeze({
     },
     {
       key: STORAGE_KEYS.theme,
-      description: "UI theme choice ('dark'/'light'). No PII.",
+      description: "UI theme choice ('dark'/'light'/'system'). No PII.",
+    },
+    {
+      key: STORAGE_KEYS.themeLegacy,
+      description: 'Pre-#834 theme choice, migrated to the theme key on first read. No PII.',
     },
     {
       key: STORAGE_KEYS.featureFlagBucket,
@@ -380,8 +391,16 @@ export const STORAGE_INVENTORY = Object.freeze({
       description: 'Timestamp until which the PWA update banner is snoozed. No PII.',
     },
     {
+      key: STORAGE_KEYS.dismissedExplanations,
+      description: 'Map of dismissed inline-explanation ids to dismissal times. No PII.',
+    },
+    {
       key: STORAGE_KEYS.soundPreferences,
       description: 'Alert sound enabled flag + 0–1 volume. No PII.',
+    },
+    {
+      key: STORAGE_KEYS.pinnedPairs,
+      description: 'Last-known price snapshots of pinned pairs for offline access (#831). No PII.',
     },
   ],
   indexedDB: [
