@@ -494,6 +494,13 @@ export const DisputeCommentSchema = z.object({
   body: z.string(),
 })
 
+export const DisputeStatusTransitionSchema = z.object({
+  status: z.enum(['open', 'under_review', 'resolved_upheld', 'resolved_overturned', 'withdrawn']),
+  timestamp: z.number().int().min(0),
+  actor: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+})
+
 export const PriceDisputeSchema = z.object({
   id: z.string().min(1),
   assetPair: z.string().min(1),
@@ -509,6 +516,7 @@ export const PriceDisputeSchema = z.object({
   evidence: z.array(DisputeEvidenceSchema),
   comments: z.array(DisputeCommentSchema),
   resolutionNote: z.string().nullable(),
+  statusTransitions: z.array(DisputeStatusTransitionSchema).optional(),
 })
 
 export const PriceDisputesSchema = z.array(PriceDisputeSchema)

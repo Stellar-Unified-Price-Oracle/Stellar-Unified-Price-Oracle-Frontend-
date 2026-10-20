@@ -21,6 +21,7 @@ import {
   orderDisputes,
   openDisputeCount,
   evidenceCountLabel,
+  getDisputeStatusTransitions,
 } from '../utils/disputeProcess'
 
 function formatTimestamp(ms: number): string {
@@ -85,6 +86,83 @@ const CommentList = memo(function CommentList({ items }: CommentListProps): Reac
   )
 })
 
+interface StatusTransitionTimelineProps {
+  dispute: PriceDispute
+}
+
+const StatusTransitionTimeline = memo(function StatusTransitionTimeline({
+  dispute,
+}: StatusTransitionTimelineProps): ReactElement {
+  const transitions = getDisputeStatusTransitions(dispute)
+
+  return (
+    <div className="flex flex-col gap-2.5 bg-gray-950/60 border border-gray-800/80 rounded-xl p-3.5">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          Status Transition History
+        </h4>
+        <span className="text-[11px] text-gray-500">
+          {transitions.length} recorded transition{transitions.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <ol
+        aria-label={`Status transitions for dispute ${dispute.id}`}
+        className="relative border-l border-gray-700/80 ml-2 space-y-3.5 py-1 list-none p-0"
+      >
+        {transitions.map((t, idx) => {
+          const isLatest = idx === transitions.length - 1
+          const statusStyle = DISPUTE_STATUS_STYLES[t.status]
+          const statusLabel = DISPUTE_STATUS_LABELS[t.status]
+          const stepNumber = idx + 1
+
+          return (
+            <li
+              key={`${t.status}-${t.timestamp}-${idx}`}
+              className="ml-4 relative flex flex-col gap-1 text-xs"
+              aria-current={isLatest ? 'step' : undefined}
+            >
+              <span
+                className={`absolute -left-[23px] flex items-center justify-center w-4 h-4 rounded-full ring-2 ring-gray-900 text-[10px] ${
+                  isLatest
+                    ? 'bg-cyan-500 text-black font-bold ring-cyan-500/30'
+                    : 'bg-gray-700 text-gray-300'
+                }`}
+                aria-hidden="true"
+              >
+                {stepNumber}
+              </span>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${statusStyle}`}
+                >
+                  Stage: {statusLabel}
+                </span>
+                <span className="text-gray-400 tabular-nums">
+                  {formatTimestamp(t.timestamp)}
+                </span>
+                {t.actor && (
+                  <span className="text-gray-500 font-mono" title={t.actor}>
+                    by {truncateAddress(t.actor)}
+                  </span>
+                )}
+                {isLatest && !isDisputeResolved(dispute) && (
+                  <span className="text-[10px] font-medium text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-800/60">
+                    Current Status
+                  </span>
+                )}
+              </div>
+
+              {t.note && <p className="text-gray-300 italic pl-0.5">{t.note}</p>}
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  )
+})
+
 interface DisputeCardProps {
   dispute: PriceDispute
   now: number
@@ -141,6 +219,9 @@ const DisputeCard = memo(function DisputeCard({ dispute, now }: DisputeCardProps
           )}
         </div>
       </header>
+
+      {/* Status Transition Timeline (#850) */}
+      <StatusTransitionTimeline dispute={dispute} />
 
       {/* Rationale */}
       <p className="text-sm text-gray-300 leading-relaxed">{dispute.rationale}</p>

@@ -207,6 +207,18 @@ export interface DisputeComment {
   body: string
 }
 
+/** A single recorded status transition in a dispute's lifecycle. */
+export interface DisputeStatusTransition {
+  /** Lifecycle status transitioned to. */
+  status: DisputeStatus
+  /** Unix timestamp (ms) when this status transition occurred. */
+  timestamp: number
+  /** Stellar account address of the actor applying the status change, if recorded. */
+  actor?: string | null
+  /** Optional note or explanation recorded alongside the status transition. */
+  note?: string | null
+}
+
 /** A formal price dispute on record. */
 export interface PriceDispute {
   /** Stable identifier assigned by the aggregator. */
@@ -240,6 +252,8 @@ export interface PriceDispute {
   comments: DisputeComment[]
   /** Human-readable resolution note, null until resolved. */
   resolutionNote: string | null
+  /** Recorded status transitions with timestamps and notes. */
+  statusTransitions?: DisputeStatusTransition[]
 }
 
 /**

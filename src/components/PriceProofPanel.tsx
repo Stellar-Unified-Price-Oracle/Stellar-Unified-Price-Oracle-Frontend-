@@ -17,6 +17,76 @@ export interface PriceProofPanelProps {
   historyTimestamps?: number[]
 }
 
+export interface PriceProofVerificationBundle {
+  proof: PriceProof
+  verification: {
+    version: string
+    description: string
+    exportedAt: string
+    contractId: string
+    network: string
+    ledgerSequence: number
+    transactionHash: string
+    cliCommand: string
+    verificationSteps: Array<{ step: number; title: string; detail: string }>
+  }
+}
+
+export function buildProofVerificationBundle(proof: PriceProof): PriceProofVerificationBundle {
+  const cliCommand = `soroban contract invoke --id ${proof.contractId} --network ${proof.network} -- get_proof --asset_pair ${proof.record.assetPair} --at_timestamp ${proof.record.timestamp}`
+  return {
+    proof,
+    verification: {
+      version: '1.0.0',
+      description: 'Independent verification bundle for Stellar Unified Price Oracle on-chain proof',
+      exportedAt: new Date().toISOString(),
+      contractId: proof.contractId,
+      network: proof.network,
+      ledgerSequence: proof.ledgerSequence,
+      transactionHash: proof.transactionHash,
+      cliCommand,
+      verificationSteps: [
+        {
+          step: 1,
+          title: 'Verify Ledger Finality & Transaction',
+          detail: `Inspect transaction ${proof.transactionHash} anchored at ledger #${proof.ledgerSequence} via Stellar Horizon/RPC or Stellar Expert.`,
+        },
+        {
+          step: 2,
+          title: 'Verify On-Chain Soroban Contract State',
+          detail: `Query the contract directly via the Soroban CLI using: ${cliCommand}`,
+        },
+        {
+          step: 3,
+          title: 'Verify Ed25519 Cryptographic Signatures',
+          detail:
+            'Validate aggregate signature and each source contribution signature against the reported public keys using standard Ed25519 verification.',
+        },
+        {
+          step: 4,
+          title: 'Verify Aggregation & Confidence Bounds',
+          detail: `Confirm the record price $${formatPrice(proof.record.price)} matches the consensus algorithm across the ${proof.contributions.length} source contributions.`,
+        },
+      ],
+    },
+  }
+}
+
+export function triggerProofDownload(filename: string, content: string): void {
+  if (typeof document === 'undefined') return
+  const blob = new Blob([content], { type: 'application/json' })
+  if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+}
+
 function CopyButton({ value, label, ariaLabel }: { value: string; label: string; ariaLabel: string }) {
   const { t } = useTranslation()
   const { addToast } = useToast()
@@ -49,10 +119,29 @@ function CopyButton({ value, label, ariaLabel }: { value: string; label: string;
  */
 export function PriceProofPanel({ pair, latestTimestamp, historyTimestamps = [] }: PriceProofPanelProps) {
   const { t } = useTranslation()
+  const { addToast } = useToast()
   const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null)
+  const [showGuide, setShowGuide] = useState(false)
   const { proof, loading, error, refetch } = usePriceProof(pair, selectedTimestamp ?? undefined)
 
   const recordOptions = [latestTimestamp, ...historyTimestamps.filter((ts) => ts !== latestTimestamp)]
+
+  const handleDownloadProof = () => {
+    if (!proof) return
+    try {
+      const bundle = buildProofVerificationBundle(proof)
+      const cleanPair = proof.record.assetPair.replace(/[/\\?%*:|"<>]/g, '-')
+      const filename = `${cleanPair}-proof-${proof.record.timestamp}.json`
+      triggerProofDownload(filename, JSON.stringify(bundle, null, 2))
+      addToast({ type: 'success', message: t('priceDetail.proof.downloadSuccess') })
+    } catch {
+      addToast({ type: 'error', message: t('priceDetail.proof.downloadError') })
+    }
+  }
+
+  const cliQueryCommand = proof
+    ? `soroban contract invoke --id ${proof.contractId} --network ${proof.network} -- get_proof --asset_pair ${proof.record.assetPair} --at_timestamp ${proof.record.timestamp}`
+    : ''
 
   return (
     <div>
@@ -104,15 +193,28 @@ export function PriceProofPanel({ pair, latestTimestamp, historyTimestamps = [] 
       ) : proof ? (
         <div className="space-y-6">
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <p className="text-xs text-gray-500 uppercase tracking-wider">
                 {t('priceDetail.proof.aggregateSection')}
               </p>
-              <CopyButton
-                value={JSON.stringify(proof, null, 2)}
-                label={t('priceDetail.proof.copy')}
-                ariaLabel={t('priceDetail.proof.copyProofPayload')}
-              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadProof}
+                  aria-label={t('priceDetail.proof.downloadProof')}
+                  className="text-xs px-2.5 py-0.5 rounded border border-cyan-800/80 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-900/60 hover:text-cyan-200 transition-colors shrink-0 flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  {t('priceDetail.proof.downloadProof')}
+                </button>
+                <CopyButton
+                  value={JSON.stringify(proof, null, 2)}
+                  label={t('priceDetail.proof.copy')}
+                  ariaLabel={t('priceDetail.proof.copyProofPayload')}
+                />
+              </div>
             </div>
             <dl className="grid gap-2 text-sm">
               <div className="flex items-center justify-between gap-3">
@@ -206,6 +308,77 @@ export function PriceProofPanel({ pair, latestTimestamp, historyTimestamps = [] 
               ))}
             </ul>
           </div>
+
+          {/* Independent Verification Guide */}
+          <section
+            aria-labelledby="proof-verification-heading"
+            className="border border-gray-800 bg-gray-900/40 rounded-xl p-4"
+          >
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h4 id="proof-verification-heading" className="text-sm font-semibold text-gray-200">
+                  {t('priceDetail.proof.guideTitle')}
+                </h4>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {t('priceDetail.proof.guideDescription')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGuide((prev) => !prev)}
+                aria-expanded={showGuide}
+                aria-controls="independent-verification-guide"
+                className="text-xs text-cyan-400 hover:text-cyan-300 underline font-medium"
+              >
+                {showGuide ? t('priceDetail.proof.guideToggleHide') : t('priceDetail.proof.guideToggleShow')}
+              </button>
+            </div>
+
+            {showGuide && (
+              <div id="independent-verification-guide" className="mt-4 space-y-4 text-xs border-t border-gray-800 pt-3">
+                <div className="space-y-1">
+                  <h5 className="font-semibold text-gray-300">{t('priceDetail.proof.step1Title')}</h5>
+                  <p className="text-gray-400 leading-relaxed">{t('priceDetail.proof.step1Detail')}</p>
+                  <div className="flex items-center gap-3 pt-1">
+                    <span className="text-gray-500 font-mono">Tx: {shortenAccount(proof.transactionHash)}</span>
+                    <a
+                      href={explorerTxUrl(proof.network, proof.transactionHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline"
+                    >
+                      {t('priceDetail.proof.viewOnExplorer')}
+                    </a>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <h5 className="font-semibold text-gray-300">{t('priceDetail.proof.step2Title')}</h5>
+                  <p className="text-gray-400 leading-relaxed">{t('priceDetail.proof.step2Detail')}</p>
+                  <div className="bg-gray-950 border border-gray-800 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                    <code className="text-cyan-300 font-mono text-xs overflow-x-auto whitespace-pre">
+                      {cliQueryCommand}
+                    </code>
+                    <CopyButton
+                      value={cliQueryCommand}
+                      label={t('priceDetail.proof.copy')}
+                      ariaLabel={t('priceDetail.proof.copyCliCommand')}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <h5 className="font-semibold text-gray-300">{t('priceDetail.proof.step3Title')}</h5>
+                  <p className="text-gray-400 leading-relaxed">{t('priceDetail.proof.step3Detail')}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <h5 className="font-semibold text-gray-300">{t('priceDetail.proof.step4Title')}</h5>
+                  <p className="text-gray-400 leading-relaxed">{t('priceDetail.proof.step4Detail')}</p>
+                </div>
+              </div>
+            )}
+          </section>
 
           <div className="flex items-center justify-between text-xs text-gray-600">
             <span className={`px-2 py-0.5 rounded border ${getConfidenceColor(proof.record.confidence)}`}>

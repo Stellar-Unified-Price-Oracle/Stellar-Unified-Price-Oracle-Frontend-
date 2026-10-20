@@ -625,6 +625,28 @@ const en = {
       copyProofPayload: 'Copy proof payload',
       copied: 'Copied to clipboard',
       copyFailed: 'Failed to copy to clipboard',
+      downloadProof: 'Download proof (JSON)',
+      downloadSuccess: 'Proof bundle downloaded',
+      downloadError: 'Failed to download proof bundle',
+      guideToggleShow: 'How to independently verify this proof',
+      guideToggleHide: 'Hide independent verification guide',
+      guideTitle: 'Independent Proof Verification Guide',
+      guideDescription:
+        'Exported proof payloads can be independently validated offline or via Soroban RPC without trusting this frontend.',
+      cliCommandLabel: 'Soroban CLI query command',
+      copyCliCommand: 'Copy CLI command',
+      step1Title: '1. Verify On-Chain Transaction & Ledger Anchor',
+      step1Detail:
+        'Verify the transaction hash and ledger sequence on Stellar Horizon or Soroban RPC to ensure the aggregate state is finalized on-chain.',
+      step2Title: '2. Query Soroban Contract Directly',
+      step2Detail:
+        'Run the Soroban CLI command to query the get_proof method directly against the deployed oracle contract.',
+      step3Title: '3. Verify Ed25519 Cryptographic Signatures',
+      step3Detail:
+        'Verify the aggregate commitment and each individual source contribution signature against reported public keys.',
+      step4Title: '4. Confirm Aggregation Consensus & Confidence',
+      step4Detail:
+        'Validate that the published aggregate price represents the deterministic median and confidence weighting of all contributing oracle sources.',
     },
   },
 
