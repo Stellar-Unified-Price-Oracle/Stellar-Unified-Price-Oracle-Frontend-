@@ -77,7 +77,7 @@
     "comlink": "4.4.2",
     "dompurify": "^3.4.14",
     "i18next": "24.2.3",
-    "i18next-browser-languagedetector": "8.2.1",
+    "i18next-browser-languagedetector": "8.2.3",
     "jspdf": "^4.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
