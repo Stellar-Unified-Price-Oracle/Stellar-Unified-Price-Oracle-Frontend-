@@ -180,194 +180,74 @@ export function AlertHistoryLog(): ReactElement {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('alertPanel.history.searchPlaceholder')}
-            aria-label={t('alertPanel.history.searchPlaceholder')}
-            className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
         </div>
       )}
 
-      <p className="mb-3 text-xs text-gray-500">{t('alertPanel.history.sourceNote')}</p>
-      {exportStatus !== 'idle' && (
-        <p
-          className={`mb-3 text-xs ${exportStatus === 'error' ? 'text-red-300' : 'text-gray-400'}`}
-          role={exportStatus === 'error' ? 'alert' : 'status'}
-          aria-live={exportStatus === 'error' ? 'assertive' : 'polite'}
-        >
-          {exportStatus === 'exporting'
-            ? t('alertPanel.history.exporting')
-            : exportStatus === 'complete'
-              ? t('alertPanel.history.exportComplete')
-              : t('alertPanel.history.exportFailed')}
+      {filtered.length === 0 ? (
+        <p className="text-sm text-gray-500 text-center py-8">
+          {alertHistory.length === 0
+            ? t('alertPanel.history.empty')
+            : t('alertPanel.history.noMatches')}
         </p>
-      )}
-      {alertHistoryStatus === 'unavailable' && alertHistory.length > 0 && (
-        <p className="mb-3 text-xs text-amber-300" role="status">
-          {t('alertPanel.history.storageUnavailable')}
-        </p>
-      )}
-      {alertHistoryStatus === 'error' && alertHistory.length > 0 && (
-        <p className="mb-3 text-xs text-red-300" role="alert">
-          {t('alertPanel.history.storageError')}
-        </p>
-      )}
-      {alertHistory.length >= HISTORY_LIMIT && (
-        <p className="mb-3 text-xs text-amber-300" role="status">
-          {t('alertPanel.history.retentionLimit')}
-        </p>
-      )}
-
-      {alertHistoryStatus === 'error' && alertHistory.length === 0 ? (
-        <p className="text-center py-8 text-sm text-red-300" role="alert">
-          {t('alertPanel.history.storageError')}
-        </p>
-      ) : alertHistoryStatus === 'unavailable' && alertHistory.length === 0 ? (
-        <p className="text-center py-8 text-sm text-gray-400" role="status">
-          {t('alertPanel.history.storageUnavailable')}
-        </p>
-      ) : alertHistory.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <svg
-            className="w-12 h-12 mx-auto mb-3 text-gray-700"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <p>{t('alertPanel.history.empty')}</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <p className="text-center py-8 text-sm text-gray-500">{t('alertPanel.history.noResults')}</p>
       ) : (
-        // #507 — long alert histories (1k+ entries) are windowed with
-        // @tanstack/react-virtual so only visible rows are mounted; short
-        // lists render every row directly, same as before.
         <div
           ref={scrollRef}
-          style={isVirtual ? { maxHeight: SCROLL_CONTAINER_MAX_HEIGHT_PX, overflowY: 'auto' } : undefined}
+          className="overflow-y-auto"
+          style={{ maxHeight: SCROLL_CONTAINER_MAX_HEIGHT_PX }}
         >
-          <ul className="space-y-2">
-            {paddingTop > 0 && <li aria-hidden="true" style={{ height: paddingTop }} />}
-            {(virtualRows ?? filtered.map((_, index) => ({ index }))).map(({ index }) => {
-              const entry = filtered[index]
-              const triggeredAtUtc = new Date(entry.triggeredAt).toISOString()
-              return (
-                <li key={entry.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-white text-sm flex items-center gap-1.5">
-                      {entry.assetPair}
-                      {/* #487 — distinguish escalation-step firings from the initial trigger */}
-                      {entry.escalation && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
-                          {t('alertPanel.escalation.historyBadge', {
-                            channel: t(`alertModal.escalation.channel_${entry.escalation.channel}`),
-                          })}
+          <div style={{ height: totalSize, position: 'relative' }}>
+            <div style={{ transform: `translateY(${paddingTop}px)` }}>
+              {(virtualRows ?? filtered.map((_, i) => ({ index: i, key: i, start: i * ROW_HEIGHT_PX, end: (i + 1) * ROW_HEIGHT_PX }))).map(
+                (row) => {
+                  const entry = filtered[row.index]
+                  if (!entry) return null
+                  return (
+                    <div
+                      key={row.key}
+                      className="border-b border-gray-800 py-3 px-1"
+                      style={{ minHeight: ROW_HEIGHT_PX }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-gray-200">{entry.assetPair}</span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(entry.timestamp).toLocaleString()}
                         </span>
-                      )}
-                      {/* #491 — flag retest-enabled alert fire sequence entries */}
-                      {entry.retest && entry.retest.kind === 'retest' && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
-                          {t('alertPanel.retest.historyBadge')}
-                        </span>
-                      )}
-                    </span>
-                    <time className="text-xs text-gray-500" dateTime={triggeredAtUtc}>
-                      {triggeredAtUtc}
-                    </time>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400 font-mono">{conditionText(entry, t)}</span>
-                    <span className="text-gray-300 font-mono">
-                      {t('alertPanel.history.priceAt', { price: formatPrice(entry.price) })}
-                    </span>
-                  </div>
-                  {entry.evidence && (
-                    <details className="mt-2 text-xs text-gray-400">
-                      <summary className="w-fit cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
-                        {t('alertPanel.history.tickEvidence')}
-                      </summary>
-                      <dl className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
-                        <div>
-                          <dt className="inline">{t('alertPanel.history.tickTime')}: </dt>
-                          <dd className="inline">{formatTimestamp(entry.evidence.timestamp)}</dd>
-                        </div>
-                        <div>
-                          <dt className="inline">{t('alertPanel.history.tickConfidence')}: </dt>
-                          <dd className="inline">{(entry.evidence.confidence * 100).toFixed(1)}%</dd>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <dt className="inline">{t('alertPanel.history.tickSources')}: </dt>
-                          <dd className="inline">
-                            {entry.evidence.sources.length > 0
-                              ? entry.evidence.sources.join(', ')
-                              : t('alertPanel.history.tickUnavailable')}
-                          </dd>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <dt className="inline">{t('alertPanel.history.sourcePrices')}: </dt>
-                          <dd className="inline">
-                            {entry.evidence.sourcePrices && Object.keys(entry.evidence.sourcePrices).length > 0
-                              ? Object.entries(entry.evidence.sourcePrices)
-                                  .map(([source, price]) => `${source}: ${formatPrice(price)}`)
-                                  .join(', ')
-                              : t('alertPanel.history.tickUnavailable')}
-                          </dd>
-                        </div>
-                      </dl>
-                    </details>
-                  )}
-                </li>
-              )
-            })}
-            {paddingBottom > 0 && <li aria-hidden="true" style={{ height: paddingBottom }} />}
-          </ul>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">{conditionText(entry, t)}</p>
+                    </div>
+                  )
+                },
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      <details className="mt-4 rounded-xl border border-gray-700 bg-gray-800/30">
-        <summary className="cursor-pointer rounded-xl px-3 py-2 text-sm text-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
-          {t('alertPanel.history.evaluationTimeline', { count: evaluationTimeline.length })}
-        </summary>
-        {evaluationTimeline.length === 0 ? (
-          <p className="px-3 pb-3 text-xs text-gray-500">{t('alertPanel.history.noEvaluations')}</p>
-        ) : (
-          <ol
-            className="max-h-72 space-y-2 overflow-y-auto px-3 pb-3"
-            aria-label={t('alertPanel.history.evaluationTimelineLabel')}
-          >
-            {evaluationTimeline.map((entry) => (
-              <li key={entry.id} className="rounded-lg border border-gray-700/70 p-2 text-xs">
-                <div className="flex flex-wrap items-center justify-between gap-1">
-                  <span className="font-medium text-gray-200">
-                    {entry.assetPair} · {t(EVALUATION_REASON_KEYS[entry.reason])}
-                  </span>
-                  <time className="text-gray-500" dateTime={new Date(entry.evaluatedAt).toISOString()}>
-                    {formatTimestamp(entry.evaluatedAt)}
-                  </time>
-                </div>
-                <p className="mt-1 text-gray-400">
-                  {entry.price === null
-                    ? t('alertPanel.history.evaluationReasons.notAvailable')
-                    : t('alertPanel.history.priceAt', { price: formatPrice(entry.price) })}
-                </p>
-                {entry.conditions && entry.conditions.length > 0 && (
-                  <ul className="mt-1 space-y-0.5 pl-3 text-gray-500">
-                    {entry.conditions.map((condition) => (
-                      <li key={condition.conditionId}>{conditionTraceText(condition, t)}</li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-      </details>
+      {evaluationTimeline.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <h4 className="text-xs font-semibold text-gray-400">
+            {t('alertPanel.history.evaluationTimeline')}
+          </h4>
+          {evaluationTimeline.map((entry, i) => (
+            <div key={i} className="text-xs text-gray-500 border-s-2 border-gray-700 ps-2">
+              <span className="text-gray-400">
+                {t(EVALUATION_REASON_KEYS[entry.reason])}
+              </span>
+              {entry.conditions && entry.conditions.length > 0 && (
+                <ul className="mt-1 space-y-0.5">
+                  {entry.conditions.map((c, j) => (
+                    <li key={j} className="text-gray-500">
+                      {conditionTraceText(c, t)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
