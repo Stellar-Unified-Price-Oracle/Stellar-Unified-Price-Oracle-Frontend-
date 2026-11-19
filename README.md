@@ -29,3 +29,8 @@ Confidence-model changes are gated against calibration bounds in CI. The gate re
 
 - the monotonicity check is violated, or
 - the calibration error (e.g. expected calibration error) exceeds the configured bound.
+
+## Handsoff notes
+
+<!-- handsoff-issue-865 -->
+- #865: [Roadmap] Create deterministic fixtures for combinations of provider failures
