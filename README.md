@@ -29,3 +29,8 @@ Confidence-model changes are gated against calibration bounds in CI. The gate re
 
 - the monotonicity check is violated, or
 - the calibration error (e.g. expected calibration error) exceeds the configured bound.
+
+## Handsoff notes
+
+<!-- handsoff-issue-951 -->
+- #951: [Stabilize] fr, es and ja locales are missing 48 translation keys
