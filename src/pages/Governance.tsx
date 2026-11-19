@@ -41,15 +41,11 @@ import {
   fetchOperatorDisclosures,
   fetchGovernanceEvents,
 } from '../api/rest'
-import { ParameterRegistryPanel } from '../components/ParameterRegistryPanel'
-import { ReputationScorePanel } from '../components/ReputationScorePanel'
-import { IncentiveLedgerPanel } from '../components/IncentiveLedgerPanel'
-import { DisputePanel } from '../components/DisputePanel'
 import { OperatorDisclosuresPanel } from '../components/OperatorDisclosuresPanel'
 import { GovernanceEventLogPanel } from '../components/GovernanceEventLogPanel'
 import { GovernanceRoleBadge, GovernanceActionGate } from '../components/GovernanceActionGate'
 import { useGovernancePermissions } from '../hooks/useGovernancePermissions'
-import { VALID_PAIRS, type PriceHistoryEntry } from '../types'
+import { VALID_PAIRS, type PriceHistoryEntry, type OperatorDisclosure, type GovernanceEvent } from '../types'
 import { deriveSourceHealths } from '../utils/sourceHealth'
 import { orderProposals } from '../utils/governance'
 
@@ -119,7 +115,7 @@ export function Governance(): ReactElement {
     loading: disclosuresLoading,
     error: disclosuresError,
     refetch: refetchDisclosures,
-  } = useSwr(
+  } = useSwr<OperatorDisclosure[]>(
     'governance/operator-disclosures',
     (signal) => fetchOperatorDisclosures(signal),
     { staleTime: 60_000, refreshInterval: 120_000 },
@@ -131,7 +127,7 @@ export function Governance(): ReactElement {
     loading: eventsLoading,
     error: eventsError,
     refetch: refetchEvents,
-  } = useSwr(
+  } = useSwr<GovernanceEvent[]>(
     'governance/events',
     (signal) => fetchGovernanceEvents(signal),
     { staleTime: 30_000, refreshInterval: 60_000 },
@@ -193,176 +189,123 @@ export function Governance(): ReactElement {
       {/* ── Provenance ─────────────────────────────────────────────────── */}
       <section
         aria-label="How to read these figures"
-        className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col gap-3"
+        className="rounded-xl border border-gray-700/60 bg-gray-800/40 px-4 py-3 text-xs text-gray-400"
       >
-        <h2 className="text-sm font-semibold text-gray-100">How to read these figures</h2>
-        <dl className="grid gap-3 sm:grid-cols-2 text-xs text-gray-400">
-          <div className="flex flex-col gap-1">
-            <dt className="font-medium text-gray-300">Source performance</dt>
-            <dd>
-              Computed in this browser from the price history it has observed — <strong>not</strong> the
-              aggregator&rsquo;s own monitoring, and not an on-chain record. &ldquo;Observed lag&rdquo; is derived from
-              the age of the last tick this browser saw, not a measured round trip. Treat these as indicative; export
-              the CSV if you need to cite them.
-            </dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="font-medium text-gray-300">Votes</dt>
-            <dd>
-              Reported verbatim by the governance API. Nothing is inferred client-side: an unreported value is shown as
-              &ldquo;not reported&rdquo;, never as zero. Proposals that fail schema validation are withheld rather than
-              displayed.
-            </dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="font-medium text-gray-300">Parameters, reputation, incentives, disputes</dt>
-            <dd>
-              All reported verbatim by the aggregator API. Nothing is derived, inferred, or fabricated client-side. A
-              missing value is shown as &ldquo;not reported&rdquo;.
-            </dd>
-          </div>
-        </dl>
-        <p className="text-xs text-gray-500 border-t border-gray-800 pt-3">
-          This page is a read-only mirror. It cannot cast votes and is not the source of truth for any figure shown.
+        <p>
+          Vote tallies are reported verbatim by the API; an unreported value shows as{' '}
+          <span className="text-gray-300">not reported</span>, never as zero. Source metrics are{' '}
+          <span className="text-gray-300">client-observed</span> and provisional. This page is a read-only mirror —
+          it casts no votes and is not the source of truth.
         </p>
       </section>
 
       {/* ── Proposals ──────────────────────────────────────────────────── */}
-      <section aria-labelledby="proposals-heading" className="flex flex-col gap-4">
-        <div className="flex items-baseline justify-between gap-4">
-          <h2 id="proposals-heading" className="text-lg font-semibold text-gray-100">
-            Decisions under vote
-          </h2>
-          {!proposalsLoading && proposalsError === null && (
-            <span className="text-xs text-gray-500">
-              {ordered.length} proposal{ordered.length === 1 ? '' : 's'}
-            </span>
-          )}
-        </div>
-
-        <ErrorBoundary boundaryId="governance-proposals" featureLabel="Governance proposals">
-          {proposalsLoading && ordered.length === 0 && (
-            <p className="text-sm text-gray-500 py-8 text-center" role="status">
-              Loading proposals…
-            </p>
-          )}
-
-          {!proposalsLoading && proposalsError !== null && (
-            <div
-              role="alert"
-              className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex flex-col items-start gap-3"
+      <section aria-label="Community proposals" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Proposals</h2>
+        {proposalsLoading && <p className="text-sm text-gray-400">Loading proposals…</p>}
+        {proposalsError && (
+          <div className="flex items-center gap-3 text-sm text-red-400">
+            <span>Could not load proposals.</span>
+            <button
+              type="button"
+              onClick={() => void refetchProposals()}
+              className="underline hover:text-red-300"
             >
-              <p className="text-sm text-red-300">
-                Could not load governance proposals, so none are shown. This is a load failure — not a report that there
-                are no decisions pending.
-              </p>
-              <button
-                type="button"
-                onClick={refetchProposals}
-                className="min-h-[44px] px-4 py-2 text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {!proposalsLoading && proposalsError === null && ordered.length === 0 && (
-            <p className="text-sm text-gray-500 py-8 text-center">The governance API returned no proposals.</p>
-          )}
-
-          {ordered.length > 0 && (
-            <ul className="flex flex-col gap-4 list-none p-0">
-              {ordered.map((proposal) => (
-                <li key={proposal.id}>
-                  <GovernanceProposalCard proposal={proposal} now={now} />
-                  <div className="text-end mt-1">
-                    <ReportButton surface="governance" targetId={proposal.id} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ErrorBoundary>
+              Retry
+            </button>
+          </div>
+        )}
+        {!proposalsLoading && !proposalsError && ordered.length === 0 && (
+          <p className="text-sm text-gray-400">No proposals under vote.</p>
+        )}
+        {ordered.map((proposal) => (
+          <ErrorBoundary key={proposal.id}>
+            <GovernanceProposalCard proposal={proposal} now={now} />
+          </ErrorBoundary>
+        ))}
       </section>
 
       {/* ── Source performance ─────────────────────────────────────────── */}
-      <section aria-labelledby="source-performance-heading" className="flex flex-col gap-4">
-        <h2 id="source-performance-heading" className="text-lg font-semibold text-gray-100">
-          Source performance
-        </h2>
-        <ErrorBoundary boundaryId="governance-source-performance" featureLabel="Source performance">
-          {historyByPair !== undefined ? (
-            <>
-              <ReliabilityLeaderboard
-                sourceHealths={sourceHealths}
-                priceHistory={historyByPair}
-                latencyLabel="Observed lag (ms)"
-                caption="Client-observed from this browser's feed history — provisional, not authoritative monitoring."
-              />
-              <div className="text-end mt-1">
-                <ReportButton surface="leaderboard" targetId="reliability-leaderboard" />
-              </div>
-            </>
-          ) : historyError !== null ? (
-            <p role="alert" className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 text-sm text-red-300">
-              Source performance history could not be loaded. Uptime and trend are withheld rather than shown as zero,
-              which would read as every source being down.
-            </p>
-          ) : (
-            <p className="text-sm text-gray-500 py-8 text-center" role="status">
-              Loading source performance…
-            </p>
-          )}
+      <section aria-label="Source performance" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Source performance</h2>
+        {historyError ? (
+          <p className="text-sm text-gray-400">Source history unavailable — leaderboard withheld.</p>
+        ) : (
+          <ReliabilityLeaderboard historyByPair={historyByPair ?? {}} sourceHealths={sourceHealths} />
+        )}
+      </section>
+
+      {/* ── Source certification ───────────────────────────────────────── */}
+      <section aria-label="Source certification" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Source certification</h2>
+        <ErrorBoundary>
+          <SourceCertificationPanel />
         </ErrorBoundary>
       </section>
 
-      {/* ── #698 Parameter registry ────────────────────────────────────── */}
-      <ErrorBoundary boundaryId="governance-parameter-registry" featureLabel="Parameter registry">
-        <ParameterRegistryPanel records={parameterRecords ?? []} now={now} />
-      </ErrorBoundary>
+      {/* ── Parameter registry (#698) ──────────────────────────────────── */}
+      <section aria-label="Parameter registry" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Parameter registry</h2>
+        <ErrorBoundary>
+          <ParameterRegistryPanel records={parameterRecords ?? []} />
+        </ErrorBoundary>
+      </section>
 
-      {/* ── #697 Reputation scores ─────────────────────────────────────── */}
-      <ErrorBoundary boundaryId="governance-reputation-scores" featureLabel="Reputation scores">
-        <ReputationScorePanel scores={reputationScores ?? []} now={now} />
-      </ErrorBoundary>
+      {/* ── Reputation scores (#697) ───────────────────────────────────── */}
+      <section aria-label="Reputation scores" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Reputation scores</h2>
+        <ErrorBoundary>
+          <ReputationScorePanel scores={reputationScores ?? []} />
+        </ErrorBoundary>
+      </section>
 
-      {/* ── #696 Incentive accounting ──────────────────────────────────── */}
-      <ErrorBoundary boundaryId="governance-incentive-accounting" featureLabel="Incentive accounting">
-        <IncentiveLedgerPanel summaries={incentiveSummaries ?? []} />
-      </ErrorBoundary>
+      {/* ── Incentive accounting (#696) ────────────────────────────────── */}
+      <section aria-label="Incentive accounting" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Incentive accounting</h2>
+        <ErrorBoundary>
+          <IncentiveLedgerPanel summaries={incentiveSummaries ?? []} />
+        </ErrorBoundary>
+      </section>
 
-      {/* ── #695 Price disputes ────────────────────────────────────────── */}
-      <ErrorBoundary boundaryId="governance-disputes" featureLabel="Price disputes">
-        <DisputePanel disputes={disputes ?? []} now={now} />
-      </ErrorBoundary>
+      {/* ── Price disputes (#695) ──────────────────────────────────────── */}
+      <section aria-label="Price disputes" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Price disputes</h2>
+        <ErrorBoundary>
+          <DisputePanel disputes={disputes ?? []} />
+        </ErrorBoundary>
+      </section>
 
-      {/* ── #856 Operator conflict-of-interest disclosures ───────────────── */}
-      <ErrorBoundary
-        boundaryId="governance-operator-disclosures"
-        featureLabel="Operator conflict-of-interest disclosures"
-      >
-        <OperatorDisclosuresPanel
-          disclosures={disclosures ?? []}
-          loading={disclosuresLoading}
-          error={disclosuresError ? String(disclosuresError) : null}
-          onRetry={refetchDisclosures}
-          now={now}
-        />
-      </ErrorBoundary>
+      {/* ── Operator disclosures (#856) ────────────────────────────────── */}
+      <section aria-label="Operator disclosures" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Operator disclosures</h2>
+        <ErrorBoundary>
+          <OperatorDisclosuresPanel
+            disclosures={disclosures ?? []}
+            loading={disclosuresLoading}
+            error={disclosuresError}
+            onRetry={() => void refetchDisclosures()}
+          />
+        </ErrorBoundary>
+      </section>
 
-      {/* ── #858 Governance event log & audit trail ─────────────────────── */}
-      <ErrorBoundary
-        boundaryId="governance-events"
-        featureLabel="Governance event log and audit trail"
-      >
-        <GovernanceEventLogPanel
-          events={governanceEvents ?? []}
-          loading={eventsLoading}
-          error={eventsError ? String(eventsError) : null}
-          onRetry={refetchEvents}
-          now={now}
-        />
-      </ErrorBoundary>
+      {/* ── Governance event log (#858) ────────────────────────────────── */}
+      <section aria-label="Governance event log" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Governance event log</h2>
+        <ErrorBoundary>
+          <GovernanceEventLogPanel
+            events={governanceEvents ?? []}
+            loading={eventsLoading}
+            error={eventsError}
+            onRetry={() => void refetchEvents()}
+          />
+        </ErrorBoundary>
+      </section>
+
+      {/* ── Report ─────────────────────────────────────────────────────── */}
+      <section aria-label="Report an issue" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-gray-100">Report an issue</h2>
+        <ReportButton />
+      </section>
     </div>
   )
 }
