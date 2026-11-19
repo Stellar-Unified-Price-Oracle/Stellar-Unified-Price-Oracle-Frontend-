@@ -34,3 +34,6 @@ Confidence-model changes are gated against calibration bounds in CI. The gate re
 
 <!-- handsoff-issue-964 -->
 - #964: [Stabilize] alertPlayground dry-run miscounts fires and breached time
+
+<!-- handsoff-issue-965 -->
+- #965: [Stabilize] Startup architecture: data stages from PriceContext are no longer recorded
