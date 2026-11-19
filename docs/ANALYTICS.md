@@ -57,10 +57,37 @@ If profiling reveals that a backend/contract change is required (for example, a
 new field to distinguish stale from unavailable data), document it here as a
 dependency rather than fabricating upstream data in the frontend.
 
-## Health checklist
+## Post-release health checklist (#873)
 
-- [ ] Analytics events fire for pair and range changes.
-- [ ] Loading, empty, stale/unavailable, and error states render correctly.
+Run this checklist after every release. Each item pairs a user-facing behavior
+with a **measurable frontend signal** so a release can be signed off with
+objective evidence rather than a subjective glance. Signals reuse existing
+frontend state, components, design tokens, and API contracts; no upstream data
+is fabricated.
+
+### Measurable signals
+
+| Signal | How to measure | Healthy threshold |
+| --- | --- | --- |
+| Analytics coverage | Count `pair_change` / `range_change` events in the analytics debug log while exercising both selectors. | 1 event per interaction, 0 dropped |
+| State coverage | Walk each pair/range through loading → empty → stale/unavailable → error and confirm a distinct, labeled UI state. | 4/4 states render explicitly |
+| Stale/unavailable honesty | Confirm stale or missing upstream data shows an explicit message, never a fabricated price. | 0 fabricated values |
+| Accessibility | Keyboard-only pass plus screen-reader pass over the pair and range selectors. | All controls reachable, labeled, and operable |
+| Memory retention | Follow the profiling workflow above; record retained delta after GC. | No retained growth scaling with cycles |
+| Rollback readiness | Verify the previous release can be restored and the checklist re-run against it. | Rollback path verified |
+
+### Checklist
+
+- [ ] Analytics events fire for pair and range changes (1 per interaction).
+- [ ] Loading, empty, stale/unavailable, and error states render correctly and
+      are distinguishable to assistive tech.
+- [ ] Stale or unavailable data is labeled explicitly; no fabricated values.
 - [ ] Keyboard and screen-reader behavior verified for selectors.
 - [ ] Memory profiling run shows no retained growth after GC.
 - [ ] Rollback path verified against the previous release.
+
+### Dependencies
+
+If a signal cannot be measured with the current API contract (for example, no
+field distinguishes stale from unavailable data), record it here as a
+dependency and resolve it upstream rather than approximating in the frontend.

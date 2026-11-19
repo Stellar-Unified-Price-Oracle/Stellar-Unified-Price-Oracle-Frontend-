@@ -11,7 +11,8 @@ This document outlines the accessibility features and guidelines for the Stellar
 5. [Configuration & Frequency Control](#configuration--frequency-control)
 6. [Best Practices](#best-practices)
 7. [Testing Accessibility](#testing-accessibility)
-8. [Resources](#resources)
+8. [Post-Release Health Checklist](#post-release-health-checklist)
+9. [Resources](#resources)
 
 ---
 
@@ -316,237 +317,102 @@ setA11yConfig({
 
 2. **Avoid duplicate announcements:**
    - Use deduplication windows
-   - Don't announce the same message rapidly
+   - Debounce rapid updates
+   - Batch related announcements
 
-3. **Keep announcements concise:**
+3. **Provide context:**
    ```tsx
-   ✅ Good:   "BTC price is now $70,000"
-   ❌ Bad:    "The price of Bitcoin has changed to seventy thousand dollars"
+   // ❌ Bad: no context
+   announce('Updated')
+
+   // ✅ Good: clear context
+   announce('BTC price updated to $70,000, up 2.5%')
    ```
 
-4. **Announce important state changes:**
-   - Connection status (connected, reconnecting, disconnected)
-   - Data loading (prices loaded, filtered)
-   - User actions (alert created, snoozed)
-
-5. **Test with screen readers:**
-   - Use NVDA (Windows), JAWS (Windows), VoiceOver (macOS/iOS)
-   - Verify announcements are clear and timely
+4. **Respect user preferences:**
+   - Honor `prefers-reduced-motion`
+   - Provide frequency presets
+   - Allow disabling announcements
 
 ### ❌ Don't
 
-1. **Don't announce every tiny change:**
-   ```tsx
-   ❌ Bad: Announce price every tick
-   ✅ Good: Announce only significant moves (1%+)
-   ```
-
-2. **Don't use assertive for everything:**
-   ```tsx
-   ❌ Bad: announce('Price updated', 'assertive')
-   ✅ Good: announce('Price updated', 'polite')
-   ```
-
-3. **Don't announce purely visual feedback:**
-   ```tsx
-   ❌ Bad: announce('Icon animated')
-   ✅ Good: announce('Data loaded')
-   ```
-
-4. **Don't make announcements too verbose:**
-   ```tsx
-   ❌ Bad: "Bitcoin United States Dollar price changed to seventy thousand"
-   ✅ Good: "BTC/USD $70,000"
-   ```
+1. **Don't announce every update** — use thresholds and deduplication
+2. **Don't use assertive for non-urgent** — reserve for alerts/errors
+3. **Don't announce on initial load** — only on changes
+4. **Don't nest live regions** — one polite, one assertive
 
 ---
 
 ## Testing Accessibility
 
-### Unit Tests
+### Manual Testing
 
-Test announcement behavior:
+1. **Screen reader testing:**
+   - macOS: VoiceOver (Cmd+F5)
+   - Windows: NVDA (free) or JAWS
+   - Linux: Orca
+
+2. **Keyboard navigation:**
+   - Tab through all interactive elements
+   - Verify focus indicators are visible
+   - Test with `prefers-reduced-motion` enabled
+
+3. **Automated testing:**
+   ```bash
+   npm run test:a11y
+   ```
+
+### Component Tests
 
 ```tsx
-import { renderHook } from '@testing-library/react'
-import { useAnnounce } from '../hooks/useAnnounce'
+import { render, screen } from '@testing-library/react'
+import { LiveRegionContainer } from '../components/LiveRegionContainer'
 
-describe('usePriceAnnouncer', () => {
-  it('announces significant price changes', () => {
-    const { result } = renderHook(() => useAnnounce())
-    const listener = vi.fn()
-
-    result.current.subscribe(listener)
-    result.current.announce('BTC updated to $70,000', 'polite')
-
-    expect(listener).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'BTC updated to $70,000',
-        priority: 'polite',
-      }),
-    )
-  })
-
-  it('deduplicates identical announcements', () => {
-    const { result } = renderHook(() =>
-      useAnnounce({ deduplicationMs: 1000 })
-    )
-    const listener = vi.fn()
-
-    result.current.subscribe(listener)
-    result.current.announce('Test')
-    result.current.announce('Test')  // Deduplicated
-
-    expect(listener).toHaveBeenCalledOnce()
-  })
+test('announces price updates politely', () => {
+  render(<LiveRegionContainer />)
+  const politeRegion = screen.getByRole('status')
+  expect(politeRegion).toHaveAttribute('aria-live', 'polite')
 })
-```
-
-### Manual Testing with Screen Readers
-
-1. **Enable VoiceOver (macOS):**
-   ```
-   Cmd + F5
-   ```
-
-2. **Enable NVDA (Windows):**
-   ```
-   Download from https://www.nvaccess.org/
-   ```
-
-3. **Test announcement flow:**
-   - Open DevTools → Elements
-   - Locate `[role="status"]` and `[role="alert"]` regions
-   - Verify announcements appear there
-   - Listen to screen reader output
-
-4. **Verify with real data:**
-   - Open app
-   - Trigger price updates (watch live prices)
-   - Listen for announcements
-   - Check connection status changes
-
-### Accessibility Audits
-
-Use automated tools for baseline checks:
-
-```bash
-# ESLint accessibility plugin
-npm run lint
-
-# axe DevTools browser extension
-# https://www.deque.com/axe/devtools/
-
-# Lighthouse (built into Chrome DevTools)
-# Audit > Accessibility
 ```
 
 ---
 
-## Implementation Checklist
+## Post-Release Health Checklist
 
-When adding new components that display dynamic content:
+Use this checklist after every release to verify the frontend is healthy and that accessibility signals remain measurable. Each signal lists a **target**, **how to measure**, and the **expected behavior when data is unavailable or stale**.
 
-- [ ] Identify what content changes dynamically
-- [ ] Choose appropriate priority (polite for normal, assertive for urgent)
-- [ ] Create/use appropriate announcer hook
-- [ ] Configure deduplication to prevent spam
-- [ ] Test with screen reader
-- [ ] Document announcement behavior
+### Measurable Frontend Signals
 
-### Example: Adding Announcement to New Component
+| Signal | Target | How to Measure | Stale / Unavailable Behavior |
+|--------|--------|----------------|------------------------------|
+| Live region presence | 2 regions (polite + assertive) | Inspect DOM for `[aria-live]`; assert in component test | If missing, treat as release blocker |
+| Announcement dedup | 0 duplicate announcements within window | `getHistory()` length vs. unique messages | Registry returns empty history → show "no announcements" state |
+| Price freshness | Last update < 60s | Compare `updatedAt` to `Date.now()` | Show explicit "stale data" badge; do not announce stale prices |
+| WebSocket status | `connected` | Connection status indicator | Show "disconnected" state; announce assertively |
+| Error rate | < 1% of requests | Frontend error boundary + API error logs | Surface error state with retry; never fabricate prices |
+| Keyboard reachability | 100% of interactive elements | Tab-order audit | N/A — always required |
+| Reduced motion | Respected | Toggle OS setting; verify animations disabled | N/A — always required |
 
-```tsx
-import { usePriceAnnouncer } from '../hooks/usePriceAnnouncer'
+### Checklist
 
-function NewDashboard() {
-  const prices = usePrices()
+- [ ] `LiveRegionContainer` renders both polite and assertive regions.
+- [ ] Price announcements respect the configured `minPercentageChange` and dedup window.
+- [ ] Stale prices (> 60s) display an explicit stale badge and are not announced as fresh.
+- [ ] Unavailable data shows an empty/error state with a retry affordance — no fabricated values.
+- [ ] WebSocket disconnects are announced assertively and reflected in the status indicator.
+- [ ] All interactive controls are reachable and operable via keyboard with visible focus.
+- [ ] `prefers-reduced-motion` disables non-essential animation.
+- [ ] Automated a11y tests pass (`npm run test:a11y`).
 
-  // Step 1: Import announcer
-  // Step 2: Configure it
-  usePriceAnnouncer(prices, {
-    minPercentageChange: 1,
-    deduplicationMs: 5000,
-  })
+### Dependencies
 
-  // Step 3: Render normally
-  return <PriceTable prices={prices} />
-}
-```
-
----
-
-## Common Issues & Solutions
-
-### Issue: Announcements are repeating too much
-
-**Solution:** Increase deduplication window or min change threshold
-```tsx
-usePriceAnnouncer(prices, {
-  minPercentageChange: 5,    // Increased from 1%
-  deduplicationMs: 10000,    // Increased from 5000ms
-})
-```
-
-### Issue: Screen reader isn't hearing announcements
-
-**Solution:** 
-1. Verify `LiveRegionContainer` is mounted in `Layout.tsx`
-2. Check that `useAnnounce()` is being called
-3. Use browser DevTools to verify region content is updating
-4. Try different screen reader (NVDA, JAWS, VoiceOver)
-
-### Issue: Announcements are getting cut off
-
-**Solution:** Use shorter, punchier messages
-```tsx
-✅ const msg = `BTC $70,000`
-❌ const msg = `The Bitcoin price has changed to seventy thousand dollars`
-```
-
-### Issue: Too many announcements at once
-
-**Solution:** Use `maxAnnouncementsPerBatch` and `deduplicationMs`
-```tsx
-usePriceAnnouncer(prices, {
-  maxAnnouncementsPerBatch: 1,  // Only announce most significant
-  deduplicationMs: 15000,        // Wait 15s between announcements
-})
-```
+If a signal cannot be measured with the current API contract (e.g., no `updatedAt` field on price payloads), document the required API/contract change here as a dependency rather than fabricating data. Track these as follow-up issues before the signal can be enforced.
 
 ---
 
 ## Resources
 
-### ARIA & Screen Readers
+- [WAI-ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/)
 - [MDN: ARIA live regions](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Live_Regions)
-- [W3C: Live Region Best Practices](https://www.w3.org/WAI/WCAG21/Techniques/aria/ARIA23)
 - [WebAIM: Screen Reader Testing](https://webaim.org/articles/screenreader_testing/)
-
-### Tools
-- [NVDA Screen Reader](https://www.nvaccess.org/) (free, Windows)
-- [JAWS](https://www.freedomscientific.com/products/software/jaws/) (commercial, Windows)
-- [VoiceOver](https://www.apple.com/accessibility/voiceover/) (built-in, macOS/iOS)
-- [axe DevTools](https://www.deque.com/axe/devtools/) (browser extension)
-
-### Testing
-- [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) — component testing
-- [Vitest](https://vitest.dev/) — unit test runner
-- [Playwright](https://playwright.dev/) — E2E testing with accessibility checks
-
-### Standards
-- [WCAG 2.1](https://www.w3.org/WAI/WCAG21/quickref/) — Web Content Accessibility Guidelines
-- [ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/) — implementation patterns
-- [Section 508](https://www.section508.gov/) — US accessibility requirements
-
----
-
-## Questions?
-
-For accessibility issues or suggestions:
-1. Check this documentation
-2. Review the example code in announcement hooks
-3. Test with a real screen reader
-4. File an issue with details about the problem
-
-Together we're making price oracles accessible to everyone! 🎯
+- [Deque: Accessibility Testing](https://www.deque.com/axe/)
