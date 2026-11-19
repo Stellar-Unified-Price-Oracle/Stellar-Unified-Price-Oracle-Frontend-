@@ -53,6 +53,16 @@ export async function checkSession(): Promise<SessionCheck> {
   }
 }
 
+/**
+ * Fetches the current session's user, or `null` when there is no active
+ * session. Thin wrapper over {@link checkSession} kept for callers that only
+ * need the user (e.g. `AuthContext`).
+ */
+export async function fetchSession(): Promise<AuthUser | null> {
+  const result = await checkSession()
+  return result.state === 'authenticated' ? result.user : null
+}
+
 /** Exchanges an OAuth authorization code (+ PKCE verifier) for a session cookie. */
 export async function exchangeCode(
   provider: 'github' | 'google',
