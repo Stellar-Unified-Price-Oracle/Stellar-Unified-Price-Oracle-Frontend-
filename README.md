@@ -29,3 +29,8 @@ Confidence-model changes are gated against calibration bounds in CI. The gate re
 
 - the monotonicity check is violated, or
 - the calibration error (e.g. expected calibration error) exceeds the configured bound.
+
+## Handsoff notes
+
+<!-- handsoff-issue-943 -->
+- #943: [Stabilize] lib/realtime websocket fuzz test imports `MAX_FRAME_DEPTH`, which the module doesn't export
