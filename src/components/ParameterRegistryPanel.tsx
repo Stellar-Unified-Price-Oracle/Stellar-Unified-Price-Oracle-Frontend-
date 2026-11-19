@@ -16,7 +16,7 @@
  * - Recently-changed parameters (within 24 h) get a highlight badge.
  */
 import { memo, useState, type ReactElement } from 'react'
-import type { ParameterRecord, ParameterChangeEntry } from '../types'
+import type { ParameterEntry, ParameterChangeEntry } from '../types'
 import {
   groupByCategory,
   latestChange,
@@ -70,10 +70,10 @@ const ChangeEntryRow = memo(function ChangeEntryRow({ entry }: ChangeEntryRowPro
 })
 
 interface ParameterRowProps {
-  record: ParameterRecord
+  record: ParameterEntry
   now: number
   isWatched: boolean
-  onToggleWatch: (record: ParameterRecord) => void
+  onToggleWatch: (record: ParameterEntry) => void
 }
 
 const ParameterRow = memo(function ParameterRow({
@@ -203,96 +203,69 @@ const ParameterRow = memo(function ParameterRow({
 })
 
 export interface ParameterRegistryPanelProps {
-  records: readonly ParameterRecord[]
-  /** Injected clock for deterministic rendering in tests. */
+  records: readonly ParameterEntry[]
+  /** Injected clock (ms since epoch) for deterministic "recently changed" checks. */
   now?: number
-  /** Initial watched keys (overrides persisted state; useful for tests). */
-  initialWatchedKeys?: readonly string[]
-  /** Called whenever the set of watched keys changes. */
-  onWatchedKeysChange?: (keys: string[]) => void
 }
 
 export function ParameterRegistryPanel({
   records,
   now = Date.now(),
-  initialWatchedKeys,
-  onWatchedKeysChange,
 }: ParameterRegistryPanelProps): ReactElement {
-  const { watchedKeys, toggleWatch, isWatched } = useWatchedParameters({
-    initialKeys: initialWatchedKeys,
-    onChange: onWatchedKeysChange,
-  })
   const [query, setQuery] = useState('')
   const [watchedOnly, setWatchedOnly] = useState(false)
+  const { watchedKeys, toggleWatch, isWatched } = useWatchedParameters()
 
-  const filtered = searchParameters(records, query).filter((record) =>
-    watchedOnly ? isWatched(record.key) : true,
-  )
-  const grouped = groupByCategory(filtered)
-
-  const handleToggleWatch = (record: ParameterRecord): void => {
-    toggleWatch(record.key)
-  }
+  const filtered = searchParameters(records, query)
+  const visible = watchedOnly ? filtered.filter((r) => isWatched(r.key)) : filtered
+  const grouped = groupByCategory(visible)
 
   return (
     <section className="flex flex-col gap-4" aria-label="Parameter registry">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-0.5">
-          <h2 className="text-lg font-semibold text-gray-100">System parameters</h2>
-          <p className="text-xs text-gray-500">
-            {records.length} parameter{records.length === 1 ? '' : 's'} ·{' '}
-            {watchedKeys.length} watched
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search parameters…"
-            aria-label="Search parameters"
-            className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-cyan-600"
-          />
-          <button
-            type="button"
-            onClick={() => setWatchedOnly((v) => !v)}
-            aria-pressed={watchedOnly}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              watchedOnly
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
-                : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-gray-200'
-            }`}
-          >
-            {watchedOnly ? 'Watched only' : 'All parameters'}
-          </button>
-        </div>
-      </header>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search parameters…"
+          aria-label="Search parameters"
+          className="flex-1 min-w-[12rem] bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:border-cyan-600"
+        />
+        <button
+          type="button"
+          onClick={() => setWatchedOnly((v) => !v)}
+          aria-pressed={watchedOnly}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            watchedOnly
+              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+              : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200'
+          }`}
+        >
+          {watchedOnly ? 'Showing watched' : 'All parameters'}
+        </button>
+      </div>
 
-      {filtered.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">
-          {watchedOnly ? 'No watched parameters match your search.' : 'No parameters match your search.'}
-        </p>
+      {grouped.length === 0 ? (
+        <p className="text-sm text-gray-500">No parameters match your filters.</p>
       ) : (
-        <div className="flex flex-col gap-6">
-          {grouped.map(([category, categoryRecords]) => (
-            <div key={category} className="flex flex-col gap-3">
-              <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
-                {category}
-              </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {categoryRecords.map((record) => (
-                  <ParameterRow
-                    key={record.key}
-                    record={record}
-                    now={now}
-                    isWatched={isWatched(record.key)}
-                    onToggleWatch={handleToggleWatch}
-                  />
-                ))}
-              </div>
+        grouped.map(([category, items]) => (
+          <div key={category} className="flex flex-col gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {category}
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {items.map((record) => (
+                <ParameterRow
+                  key={record.key}
+                  record={record}
+                  now={now}
+                  isWatched={isWatched(record.key)}
+                  onToggleWatch={(r) => toggleWatch(r.key)}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ))
       )}
     </section>
   )
