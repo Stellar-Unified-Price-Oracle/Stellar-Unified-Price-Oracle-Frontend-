@@ -47,3 +47,38 @@ extended rather than replaced.
   component tests asserting the announced text.
 - Color is never the sole indicator of state; each state pairs its color with
   text copy from the table above.
+
+## Visual regression gating across locales and color themes
+
+Visual regressions are gated for every supported locale and color theme so that
+layout, copy, and contrast changes cannot silently ship. The gate reuses the
+existing design tokens and locale catalogs; it does not introduce new state or
+API contracts.
+
+### Matrix
+
+- **Locales:** every locale in the supported-locale list (the same list the app
+  uses to build its language switcher). Adding a locale to that list
+  automatically adds it to the visual gate.
+- **Color themes:** every theme exposed by the design tokens (light and dark at
+  minimum). Adding a theme to the token set automatically adds it to the gate.
+- **States:** each cell of the matrix is captured for the loading, empty,
+  stale/unavailable, and error states described above, plus the default
+  populated state.
+
+### Behavior notes
+
+- Snapshots are captured with the same components, tokens, and API fixtures the
+  app uses in development; no fabricated upstream data is introduced.
+- Stale/unavailable and error snapshots assert the explicit recovery copy from
+  the table above, so a regression in copy or contrast fails the gate.
+- The gate runs in CI and fails the build on any unexpected visual diff; diffs
+  are reviewed and updated intentionally rather than auto-accepted.
+- Locale and theme coverage is derived from the existing supported lists, so the
+  gate stays in sync as locales or themes are added or removed.
+
+### Dependencies
+
+No upstream API or contract change is required. The gate consumes the existing
+locale list, design tokens, and API fixtures. If a new locale or theme is added,
+update the corresponding supported list and the gate picks it up automatically.

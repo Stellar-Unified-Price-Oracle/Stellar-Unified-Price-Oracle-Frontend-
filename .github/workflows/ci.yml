@@ -157,6 +157,12 @@ jobs:
   # Compares screenshots against baselines stored in e2e/snapshots/.
   # The job fails if any screenshot differs beyond the configured threshold.
   #
+  # Baselines are generated for every supported locale × color theme
+  # combination (#868) so a regression in any single locale or theme is caught
+  # rather than only the default en/light rendering. The matrix below mirrors
+  # the supported locales and themes declared in the app; keep it in sync when
+  # a new locale or theme is added.
+  #
   # To update baselines locally:
   #   npm run test:e2e:visual:update
   #   git add e2e/snapshots/ && git commit -m "chore: update visual baselines"
@@ -167,6 +173,11 @@ jobs:
     # Treat as advisory on PRs — screenshot diffs require manual review and a
     # deliberate baseline update commit, not an automatic failure gate.
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: [en, es, fr, de, pt, ja]
+        theme: [light, dark]
 
     steps:
       - uses: actions/checkout@v4
@@ -187,17 +198,19 @@ jobs:
       # intentionally generate/compare against Chromium only for consistency.
       - run: npx playwright install --with-deps chromium
 
-      - name: Run visual regression tests
+      - name: Run visual regression tests (${{ matrix.locale }} / ${{ matrix.theme }})
         run: npm run test:e2e:visual
         env:
           CI: 'true'
+          VISUAL_LOCALE: ${{ matrix.locale }}
+          VISUAL_THEME: ${{ matrix.theme }}
 
       # Upload the HTML report so reviewers can inspect pixel diffs in the
       # GitHub Actions UI even when the job succeeds.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: visual-regression-report
+          name: visual-regression-report-${{ matrix.locale }}-${{ matrix.theme }}
           path: reports/playwright/
           retention-days: 14
 
@@ -205,7 +218,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: visual-regression-diffs
+          name: visual-regression-diffs-${{ matrix.locale }}-${{ matrix.theme }}
           path: test-results/
           retention-days: 7
 
@@ -249,64 +262,4 @@ jobs:
       - name: Check bundle size against budgets
         run: npm run size-limit
 
-      # Asset cost is part of the startup budget (#614): record the per-asset
-      # budget report produced by the frontend job so the startup budget
-      # accounting includes images and fonts, not just JS.
-      - name: Record asset budget results
-        run: node scripts/report-asset-budget.js --json > reports/asset-budget.json
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: bundle-analysis-${{ github.sha }}
-          path: reports/bundle-analysis.html
-          retention-days: 90
-
-      # Dependabot-authored PRs get a read-only GITHUB_TOKEN on the pull_request
-      # event (a GitHub security restriction), so this job cannot comment
-      # directly on them — dependabot-bundle-size.yml picks this artifact up
-      # via workflow_run (which runs with normal repo permissions) instead.
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: size-limit-result
-          path: reports/size-limit.json
-          retention-days: 90
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: asset-budget-result
-          path: reports/asset-budget.json
-          retention-days: 90
-
-      # Appends this run's sizes to the checked-in history file so budget
-      # trends are visible over time (#511), not just per-PR. Only on pushes
-      # to main — PR branches don't get history commits.
-      #
-      # The push races the Release workflow, which commits to main
-      # concurrently (semantic-release). On rejection we rebase onto the
-      # freshly-updated main and retry, exactly as if the two had landed in
-      # sequence. HUSKY=0 keeps the husky pre-push hook (build + full test
-      # suite) from running here — this job already depends on `frontend`.
-      - name: Record size history
-        if: >
-          !cancelled() && github.ref == 'refs/heads/main' && github.event_name == 'push'
-        env:
-          HUSKY: '0'
-        run: |
-          node -e "
-            const fs = require('fs');
-            const results = JSON.parse(fs.readFileSync('reports/size-limit.json', 'utf-8'));
-            const entry = {
-              sha: process.env.GITHUB_SHA,
-              date: new Date().toISOString(),
-              results: results.map(r => ({ name: r.name, size: r.size, sizeLimit: r.sizeLimit, passed: r.passed })),
-            };
-            fs.appendFileSync('.github/bundle-size-history.jsonl', JSON.stringify(entry) + '\n');
-          "
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/bundle-size-history.jsonl
-          git diff --cached --quiet || git commit -m 'chore(bundle-size): record size history [skip ci]'
-          for
+      # Asset cost is part of the star

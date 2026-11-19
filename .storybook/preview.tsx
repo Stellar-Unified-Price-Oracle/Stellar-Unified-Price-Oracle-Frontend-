@@ -1,37 +1,60 @@
-import type { Preview } from '@storybook/react-vite'
-import { withThemeByClassName } from '@storybook/addon-themes'
-import { MemoryRouter } from 'react-router-dom'
-import { PreferencesProvider } from '../src/preferences/PreferencesContext'
-import '../src/i18n'
-import '../src/index.css'
+import type { Preview } from '@storybook/react';
+import { withThemeByClassName } from '@storybook/addon-themes';
+import '../src/app/globals.css';
 
 const preview: Preview = {
   parameters: {
-    controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
-    viewport: {
-      options: {
-        mobile: { name: 'Mobile', styles: { width: '375px', height: '667px' } },
-        tablet: { name: 'Tablet', styles: { width: '768px', height: '1024px' } },
-        desktop: { name: 'Desktop', styles: { width: '1440px', height: '900px' } },
+    controls: {
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/i,
       },
     },
-    a11y: { test: 'todo' },
+    backgrounds: {
+      disable: true,
+    },
+    a11y: {
+      test: 'todo',
+    },
+  },
+  globalTypes: {
+    locale: {
+      description: 'Active locale for visual regression coverage',
+      defaultValue: 'en',
+      toolbar: {
+        icon: 'globe',
+        items: [
+          { value: 'en', title: 'English' },
+          { value: 'es', title: 'Español' },
+          { value: 'fr', title: 'Français' },
+          { value: 'de', title: 'Deutsch' },
+          { value: 'pt', title: 'Português' },
+          { value: 'ja', title: '日本語' },
+        ],
+        dynamicTitle: true,
+      },
+    },
+  },
+  initialGlobals: {
+    locale: 'en',
   },
   decorators: [
     withThemeByClassName({
-      themes: { light: 'light', dark: 'dark' },
-      defaultTheme: 'dark',
+      themes: {
+        light: 'light',
+        dark: 'dark',
+      },
+      defaultTheme: 'light',
     }),
-    (Story) => (
-      <MemoryRouter>
-        <PreferencesProvider>
-          <div className="bg-white dark:bg-gray-950 min-h-screen p-6">
-            <Story />
-          </div>
-        </PreferencesProvider>
-      </MemoryRouter>
-    ),
+    (Story, context) => {
+      const locale = (context.globals.locale as string) ?? 'en';
+      return (
+        <div lang={locale} data-locale={locale} className="min-h-screen bg-background text-foreground">
+          <Story />
+        </div>
+      );
+    },
   ],
-}
+};
 
-export default preview
+export default preview;
