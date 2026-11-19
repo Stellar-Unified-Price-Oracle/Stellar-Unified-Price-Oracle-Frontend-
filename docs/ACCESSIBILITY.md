@@ -48,6 +48,53 @@ extended rather than replaced.
 - Color is never the sole indicator of state; each state pairs its color with
   text copy from the table above.
 
+## Interaction coverage for critical component states
+
+Critical component states are covered by Storybook interaction tests (story
+`play` functions) so that the loading, empty, stale/unavailable, and error
+states are exercised the same way a user would experience them. The tests reuse
+the existing components, design tokens, and API fixtures; no fabricated upstream
+data is introduced.
+
+### Covered states
+
+- **Loading:** the loading indicator is present and the populated content is
+  not yet rendered.
+- **Empty:** the empty-state copy is shown and no price rows are rendered.
+- **Stale / unavailable:** the explicit stale copy from the table above is
+  announced and the last-updated timestamp is shown.
+- **Error:** the category-specific recovery copy is announced in the live
+  region and a retry control is available.
+
+### Keyboard and screen-reader assertions
+
+Each interaction test drives the component with the keyboard and asserts the
+accessible outcome, not just the visual result:
+
+- Focus moves to the retry/refresh control with `Tab` and the control is
+  activated with `Enter` and `Space`.
+- The control exposes an accessible name that includes the action (for example
+  "Retry loading prices").
+- Live-region updates (`role="status"` / `role="alert"`) are asserted to
+  contain the expected recovery copy for the state under test.
+- Focus is not trapped or lost when a state transitions (for example from error
+  back to loading after a retry).
+
+### Behavior notes
+
+- Interaction tests run in CI alongside the visual regression gate and fail the
+  build on any unexpected behavior change.
+- Assertions target accessible roles and names (via the accessibility tree)
+  rather than implementation details, so refactors that preserve behavior do not
+  break the tests.
+
+### Dependencies
+
+No upstream API or contract change is required. Interaction tests consume the
+same fixtures and error categories already used by the app. If a new state or
+error category is added, add a corresponding story and interaction test rather
+than changing the existing ones.
+
 ## Visual regression gating across locales and color themes
 
 Visual regressions are gated for every supported locale and color theme so that

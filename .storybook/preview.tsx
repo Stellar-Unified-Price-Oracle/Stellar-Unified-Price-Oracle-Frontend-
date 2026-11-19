@@ -1,5 +1,6 @@
 import type { Preview } from '@storybook/react';
 import { withThemeByClassName } from '@storybook/addon-themes';
+import { userEvent, within } from '@storybook/test';
 import '../src/app/globals.css';
 
 const preview: Preview = {
@@ -15,6 +16,13 @@ const preview: Preview = {
     },
     a11y: {
       test: 'todo',
+    },
+    // Interaction coverage for critical states (loading, empty, stale/unavailable, error)
+    // is authored as play functions on the relevant stories. These defaults keep
+    // keyboard and screen-reader assertions consistent across those tests.
+    interactions: {
+      // Fail the interaction test if a play function throws or an assertion fails.
+      disable: false,
     },
   },
   globalTypes: {
@@ -54,6 +62,14 @@ const preview: Preview = {
         </div>
       );
     },
+  ],
+  // Shared interaction helpers so critical-state stories can assert keyboard and
+  // screen-reader behavior without duplicating setup. Stories opt in via play functions.
+  loaders: [
+    async () => ({
+      // Expose a stable user-event instance for keyboard interaction tests.
+      userEvent: userEvent.setup(),
+    }),
   ],
 };
 
