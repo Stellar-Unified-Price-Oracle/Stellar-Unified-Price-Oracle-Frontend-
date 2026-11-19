@@ -12,6 +12,27 @@ local history and its time-series mirror. The dashboard says when browser
 storage is unavailable or saved data cannot be read, rather than treating
 either case as proof that no alerts fired.
 
+## Retention and compaction limits
+
+Long-term retention is bounded by explicit limits, and the UI states them
+rather than implying history is kept forever:
+
+- **Entry cap:** at most 500 history entries are retained. Once the cap is
+  reached, the oldest entries are compacted away (dropped) to make room for new
+  events. The dashboard surfaces that older events may be missing once the cap
+  is hit.
+- **Time-series mirror:** the mirrored series is compacted alongside the
+  history so it does not grow without bound; clearing history clears the mirror
+  too.
+- **Storage availability:** if browser storage is unavailable or saved data
+  cannot be read, the dashboard reports that state explicitly instead of
+  showing an empty history as if no alerts fired.
+
+These limits are the contract for retention. Anything older than the retained
+window is not recoverable from the browser and is not reconstructed or
+inferred. A longer or server-backed retention window would require a separate
+API contract and durable server-side event source.
+
 ## Export formats
 
 CSV and JSON exports contain the currently filtered history entries, not
