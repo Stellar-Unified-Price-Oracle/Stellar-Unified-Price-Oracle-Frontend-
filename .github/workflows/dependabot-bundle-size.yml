@@ -61,25 +61,59 @@ jobs:
               return
             }
 
+            // Separate budget categories (#864): initial/entry chunks vs.
+            // deferred (lazy-loaded) feature chunks. Each category is
+            // evaluated independently so a deferred-chunk regression cannot
+            // be masked by an under-budget initial bundle (and vice versa).
+            const categoryOf = (r) => {
+              if (r.category === 'initial' || r.category === 'deferred') return r.category
+              const name = String(r.name || '').toLowerCase()
+              if (/(lazy|deferred|async|chunk)/.test(name)) return 'deferred'
+              return 'initial'
+            }
+            const categoryLabel = { initial: 'Initial (entry)', deferred: 'Deferred (lazy)' }
+
             const fmt = (bytes) => `${(bytes / 1024).toFixed(2)} KB`
-            const rows = results.map((r) => {
+            const rowFor = (r) => {
               const status = r.passed === false ? '❌' : '✅'
               const limit = typeof r.sizeLimit === 'number' ? fmt(r.sizeLimit) : '—'
               return `| ${status} | ${r.name} | ${fmt(r.size)} | ${limit} |`
-            })
-            const anyFailed = results.some((r) => r.passed === false)
+            }
+
+            const groups = { initial: [], deferred: [] }
+            for (const r of results) groups[categoryOf(r)].push(r)
+
+            const failedCategories = Object.keys(groups).filter((cat) =>
+              groups[cat].some((r) => r.passed === false),
+            )
+            const anyFailed = failedCategories.length > 0
+
+            const sections = []
+            for (const cat of ['initial', 'deferred']) {
+              if (groups[cat].length === 0) continue
+              const catFailed = groups[cat].some((r) => r.passed === false)
+              sections.push(
+                `#### ${categoryLabel[cat]} chunks ${catFailed ? '❌' : '✅'}`,
+                '',
+                '| | Check | Size (gzip/brotli) | Budget |',
+                '|---|---|---|---|',
+                ...groups[cat].map(rowFor),
+                '',
+              )
+            }
+
+            const summary = anyFailed
+              ? `**A dependency in this PR pushed the ${failedCategories
+                  .map((c) => categoryLabel[c].toLowerCase())
+                  .join(' and ')} bundle over its size budget.** The \`bundle-analysis\` check will fail until it is addressed or the budget is deliberately raised.`
+              : 'All budgets are within limit.'
 
             const body = [
               '### 📦 Bundle size report',
               '',
-              anyFailed
-                ? '**A dependency in this PR pushed the bundle over its size budget.** The `bundle-analysis` check will fail until it is addressed or the budget is deliberately raised.'
-                : 'All budgets are within limit.',
+              summary,
               '',
-              '| | Check | Size (gzip/brotli) | Budget |',
-              '|---|---|---|---|',
-              ...rows,
-              '',
+              ...sections,
               `_Compared against the budgets in \`package.json\`'s \`size-limit\` config, for commit ${context.payload.workflow_run.head_sha.slice(0, 7)}._`,
             ].join('\n')
 
