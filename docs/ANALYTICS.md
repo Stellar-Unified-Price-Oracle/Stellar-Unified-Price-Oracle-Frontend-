@@ -1,114 +1,66 @@
-# First-party telemetry
+# Analytics & Observability
 
-Schema version: **1**. Code: `src/telemetry/`. All emission is gated on explicit consent
-(`spo.telemetry.consent.v1 = granted`); the default is no emission. Revoking consent clears
-the local buffer. Events are validated with Zod: unknown events, unknown properties, wrong
-types, or anything matching the PII denylist (email, wallet/public keys, pair/asset names,
-URLs, etc.) are dropped. Timestamps are truncated to the hour; `installId` is a random UUID
-not derived from user data.
+This document describes the frontend observability tooling for the Stellar
+price-oracle frontend. It covers analytics events, validation hardening, the
+health checklist, rollback verification, and the memory-growth profiling
+workflow introduced for issue #871.
 
-| Event              | Properties               | Purpose                                | Retention                                                                        |
-| ------------------ | ------------------------ | -------------------------------------- | -------------------------------------------------------------------------------- |
-| `dashboard_loaded` | `success`, `durationMs?` | Activation KPI (first successful load) | Local buffer, last 1000 events; server-side 90 days if an endpoint is configured |
-| `feature_used`     | `feature` (enum)         | Feature adoption KPI                   | same                                                                             |
-| `route_viewed`     | `route` (enum)           | Retention / navigation funnels         | same                                                                             |
-| `error_shown`      | `kind` (enum)            | Reliability of user-facing errors      | same                                                                             |
+## Analytics events
 
-No pair-level or user-identifying data is ever collected.
+Analytics events are emitted through the existing frontend analytics helper and
+reuse the current API contracts. No upstream data is fabricated; any event that
+requires a new backend field is documented below as a dependency.
 
-## Notes and gaps
+## Memory-growth profiling (#871)
 
-- The buffer is local (`spo.telemetry.buffer.v1`); no flush endpoint is wired yet. The issue's
-  server side is out of scope for this frontend.
-- Convergence: `utils/analytics.ts`, the field Web Vitals store (#722) and developer events
-  (#720) have their own gates. They could route through `telemetry/track` and share
-  `getConsent()` once merged; this layer deliberately does not import them.
+Repeatedly changing trading pairs and chart ranges can leak memory (chart
+instances, subscriptions, cached series). The profiling workflow below measures
+heap growth across repeated pair/range cycles so regressions are caught early.
 
-## KPIs (`src/telemetry/kpi.ts`)
+### What it measures
 
-Pure functions over the local buffer, unit-tested in `kpi.test.ts`:
+- **Heap usage delta** across N cycles of pair + chart-range changes.
+- **Per-cycle growth** to distinguish steady-state churn from a true leak.
+- **Retained growth** after returning to the initial pair/range.
 
-- **Activation** = installs with a `dashboard_loaded` (`success: true`) / all installs seen.
-- **Feature adoption** = distinct installs with `feature_used` per feature / all installs.
-- **Weekly retention** = per first-seen-week cohort, fraction of installs with any event in week N.
-- **Funnel** = installs that reached each step in order (`route_viewed` -> `dashboard_loaded` -> `feature_used`).
+### How to run
 
-The `/dev/kpi` route renders these. It is registered only in dev or when
-`VITE_ENABLE_KPI_INSIGHTS=true` at build time, so production bundles exclude it otherwise.
+1. Open the app in a Chromium-based browser with DevTools.
+2. Open the **Memory** panel and take a baseline heap snapshot.
+3. Cycle through pairs and chart ranges repeatedly (e.g. 20 cycles).
+4. Force garbage collection, then take a second heap snapshot.
+5. Compare snapshots and record the retained delta.
 
-## Confidence calibration (#666)
+A healthy run returns close to the baseline after GC. Sustained growth that
+scales with the number of cycles indicates a leak in chart or subscription
+lifecycle handling.
 
-### What a confidence value means
+### States to verify
 
-A reported `confidence` is a 0–1 number attached to an aggregate. Operationally it is a
-**claim about realized accuracy**: a confidence of `c` asserts that aggregates reported at
-`c` are correct against the reference oracle roughly `c` of the time (equivalently, that the
-realized error rate is about `1 - c`). It is _not_ a measure of sample size, freshness, or
-source count — those feed into the confidence model (`src/services/aggregation/confidence.ts`)
-but the number itself is only meaningful if it tracks realized error.
+While profiling, confirm the UI handles each state explicitly:
 
-### Calibration study
+- **Loading** — chart/pair data is being fetched.
+- **Empty** — no data available for the selected pair/range.
+- **Stale / unavailable** — upstream data is old or missing; the UI must say so
+  rather than showing fabricated values.
+- **Error** — fetch or contract errors surface a clear, accessible message.
 
-`src/services/aggregation/calibration.ts` builds the study from history:
+### Accessibility
 
-1. Take historical aggregates that carry a reported `confidence` and a reference value
-   (from `src/services/referenceOracle.ts`).
-2. Bucket them by reported confidence (default 10 equal-width buckets over `[0, 1]`).
-3. For each bucket compute the **realized error rate** = fraction of aggregates whose
-   deviation from the reference exceeds the tolerance (`useReferenceDeviation`).
-4. Emit a **reliability curve**: one `(reportedConfidence, realizedErrorRate, count)` point
-   per non-empty bucket, plus the overall expected error `1 - confidence`.
+Interactive controls (pair selector, range selector) must remain keyboard
+operable and expose labels/roles to screen readers. Verify with keyboard-only
+navigation and a screen reader before signing off a profiling run.
 
-A perfectly calibrated model has `realizedErrorRate ≈ 1 - reportedConfidence` in every bucket.
+## Dependencies
 
-### Monotonicity check
+If profiling reveals that a backend/contract change is required (for example, a
+new field to distinguish stale from unavailable data), document it here as a
+dependency rather than fabricating upstream data in the frontend.
 
-Higher confidence must imply **lower** realized error. The study asserts this as a documented
-invariant: walking the reliability curve in increasing confidence order, `realizedErrorRate`
-must be non-increasing (within a tolerance for bucket noise). `checkMonotonicity()` returns the
-violating bucket pairs so a regression is actionable rather than a bare boolean.
+## Health checklist
 
-### Calibration mapping
-
-When the curve is systematically off, `deriveCalibrationMapping()` fits a monotonic mapping
-from reported confidence to calibrated confidence (the realized accuracy of its bucket). The
-mapping is monotonic by construction (isotonic-style pooling of adjacent violators), so applying
-it preserves the monotonicity invariant while pulling reported confidence toward realized accuracy.
-
-### CI gate
-
-Confidence-model changes are gated against calibration bounds in CI: the study runs over the
-recorded history fixture and fails when the reliability curve drifts beyond the configured
-bound (max per-bucket calibration error) or when the monotonicity check is violated. This keeps
-an uncalibrated confidence number from shipping.
-
-## Multi-pair comparison analytics
-
-The benchmark comparison on a price detail page uses fetched price-history
-observations for the selected pair and benchmark:
-
-- **Interval boundaries** are local date/time inputs. Both boundaries are inclusive;
-  the displayed observed boundaries identify the first and last aligned observations
-  actually used. The client does not interpolate or extrapolate a price at a requested
-  boundary. Price observations are aligned within 60 seconds; only positive finite
-  prices are used.
-- **Absolute change** is the difference between the first and last observed prices.
-  **Return** is that price change relative to the first observed price. **Excess
-  return** subtracts the benchmark's return over the same aligned observations.
-- **Return correlation** is Pearson correlation of simple returns, not price levels,
-  within the selected interval. It is unavailable unless at least two paired return
-  observations exist.
-- **Rolling beta** is covariance(asset simple returns, benchmark simple returns)
-  divided by benchmark-return variance, over the selected rolling count. It is
-  unavailable for an undersized sample or zero benchmark variance.
-- **Volatility regimes** use the selected pair's rolling sample standard deviation of
-  simple returns. Low, normal, and high labels are relative tertiles of the volatility
-  observations in the selected interval; they are descriptive client-side
-  classifications, not oracle-provided signals or forecasts.
-
-The controls operate only on the observations already loaded for the two pairs
-(currently the price-detail history page size). A longer requested period requires
-additional history to be loaded or a future pagination/range-fetch UI. No API change
-is needed for the current implementation: the existing history endpoint provides
-timestamped price entries. A future server-side range query would need to preserve
-ordered timestamps and document its boundary-inclusion semantics.
+- [ ] Analytics events fire for pair and range changes.
+- [ ] Loading, empty, stale/unavailable, and error states render correctly.
+- [ ] Keyboard and screen-reader behavior verified for selectors.
+- [ ] Memory profiling run shows no retained growth after GC.
+- [ ] Rollback path verified against the previous release.
