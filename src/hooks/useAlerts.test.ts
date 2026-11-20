@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { usePriceContext } from '../context/PriceContext'
 import type { Alert, LivePriceEntry, PriceData } from '../types'
+import { computeAttribution } from '../utils/moveAttribution'
 import { getLimiter } from '../utils/rateLimit'
 import { useAlerts, AlertsProvider } from './useAlerts'
 
@@ -124,6 +125,23 @@ afterEach(() => {
 })
 
 describe('useAlerts', () => {
+  it('fires at the retained crossing price after the displayed price falls back', () => {
+    seedLegacyAlert()
+    const pair = 'BTC/USD'
+    const livePrices = livePricesMap(pair, 90)
+    const data = livePrices.get(pair)!.data
+    const records = [90, 110, 90].map(price =>
+      computeAttribution({ ...data, type: 'price_update', price }, {}, null),
+    )
+    vi.mocked(usePriceContext).mockReturnValue({
+      ...usePriceContext(),
+      livePrices,
+      attributionHistory: new Map([[pair, records]]),
+    })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    expect(result.current.alertHistory[0]?.price).toBe(110)
+  })
+
   it('starts with empty alerts', () => {
     const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
     expect(result.current.alerts).toHaveLength(0)
