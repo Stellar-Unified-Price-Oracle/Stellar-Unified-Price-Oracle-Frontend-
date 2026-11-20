@@ -10,6 +10,13 @@ export function initSentry() {
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
+    release: __APP_VERSION__,
+    initialScope: {
+      tags: {
+        version: __APP_VERSION__,
+        sha: __GIT_SHA__,
+      },
+    },
     beforeBreadcrumb(breadcrumb) {
       return scrubPersonalData(breadcrumb);
     },
