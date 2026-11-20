@@ -13,7 +13,6 @@
 import { memo, type ReactElement } from 'react'
 import type { GovernanceProposal, ProposalStatus, VoteTally } from '../types'
 import { SOURCE_COLORS } from '../utils/sourceColors'
-import { GovernanceActionGate } from './GovernanceActionGate'
 import type { GovernanceRole } from '../types/governancePermissions'
 import {
   STATUS_LABELS,
@@ -25,6 +24,9 @@ import {
   tallyTotal,
   voteShares,
 } from '../utils/governance'
+import { ProposalVotingRulesExplainer } from './ProposalVotingRulesExplainer'
+import { ProposedParameterDiff } from './ProposedParameterDiff'
+import { GovernanceActionGate } from './GovernanceActionGate'
 
 const STATUS_STYLES: Record<ProposalStatus, string> = {
   active: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
