@@ -20,7 +20,7 @@ export interface AuthUser {
   name: string
   email: string | null
   avatarUrl: string | null
-  provider: 'github' | 'google'
+  provider: 'github' | 'google' | 'freighter' | 'stellar'
 }
 
 const AUTH_BASE = `${config.apiUrl}/auth`
@@ -73,6 +73,17 @@ export async function exchangeCode(
   const res = await authFetch(`/callback/${provider}`, {
     method: 'POST',
     body: JSON.stringify({ code, codeVerifier, redirectUri }),
+  })
+  if (!res.ok) throw new Error(`sign-in failed: ${res.status}`)
+  const data = (await res.json()) as { user: AuthUser }
+  return data.user
+}
+
+/** Authenticates a Stellar wallet session using signed SEP-10 challenge XDR. */
+export async function authenticateWithWallet(signedXdr: string): Promise<AuthUser> {
+  const res = await authFetch('/wallet/sep10', {
+    method: 'POST',
+    body: JSON.stringify({ xdr: signedXdr }),
   })
   if (!res.ok) throw new Error(`sign-in failed: ${res.status}`)
   const data = (await res.json()) as { user: AuthUser }
