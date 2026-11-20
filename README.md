@@ -58,3 +58,6 @@ roll forward again.
 
 <!-- handsoff-issue-1029 -->
 - #1029: [Next phase] Share alert rules with teammates through a signed link
+
+<!-- handsoff-issue-1030 -->
+- #1030: [Epic] Stabilize main and kick off the next phase
