@@ -32,5 +32,8 @@ Confidence-model changes are gated against calibration bounds in CI. The gate re
 
 ## Handsoff notes
 
-<!-- handsoff-issue-951 -->
-- #951: [Stabilize] fr, es and ja locales are missing 48 translation keys
+<!-- handsoff-issue-956 -->
+- #956: [Stabilize] perf/mobileBenchmarks.ts fixture no longer matches the operator disclosure type
+
+<!-- handsoff-issue-957 -->
+- #957: [Stabilize] WebSocketClient no longer calls message handlers and drops sequence-ordering
