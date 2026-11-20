@@ -47,11 +47,13 @@
  */
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { ConnectionStatus } from '../api/websocket'
 import type { PriceData, PriceSyncState } from '../types'
 import { formatPriceWithPrecision } from '../utils/format'
 import { usePreferences } from '../preferences/PreferencesContext'
 import { useActiveSource } from '../hooks/useActiveSource'
 import type { ObservedSourceRange as ObservedSourceRangeData } from '../utils/uncertaintyBand'
+import { SubscriptionHealthBadge } from './SubscriptionHealthBadge'
 import { MetricHelp } from './MetricHelp'
 import { FreshnessBadge } from './FreshnessBadge'
 import { ObservedSourceRange } from './ObservedSourceRange'
@@ -83,6 +85,8 @@ interface PriceCardProps {
   /** Whether the price value is currently being updated over WebSocket (reserved for future flash animation). */
   isLive?: boolean
   /** When `true` the card is rendered at reduced opacity to indicate the data may be outdated. */
+  subscriptionStatus?: ConnectionStatus
+  isOfflineSnapshot?: boolean
   isStale?: boolean
   /** Optimistic update sync state (reserved for future visual indicators). */
   syncState?: PriceSyncState
@@ -108,6 +112,8 @@ interface PriceCardProps {
 export const PriceCard = memo(function PriceCard({
   price,
   onClick,
+  subscriptionStatus,
+  isOfflineSnapshot,
   isStale,
   hasAlert,
   onAlertClick,
@@ -182,6 +188,7 @@ export const PriceCard = memo(function PriceCard({
         </div>
 
         <div className="text-3xl font-bold text-white mb-3 font-mono tracking-tight">${formatPriceWithPrecision(price.price, preferences.pricePrecision)}</div>
+        {subscriptionStatus && <SubscriptionHealthBadge pair={assetPair} status={subscriptionStatus} isOfflineSnapshot={isOfflineSnapshot} />}
         <ObservedSourceRange range={observedSourceRange} compact showUnavailable={false} />
 
         {price.pairMetadata && <PairMetadataPanel pair={assetPair} metadata={price.pairMetadata} compact />}

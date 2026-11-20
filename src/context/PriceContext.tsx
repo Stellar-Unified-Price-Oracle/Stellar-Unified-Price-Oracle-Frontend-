@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { recordSubscriptionUpdate } from '../realtime/subscriptionHealth'
 import type { ConnectionStatus, ConnectionDiagnostics } from '../api/websocket'
 import { RealtimeClient } from '../api/realtimeClient'
 import { WsLeaderElection } from '../api/wsLeaderElection'
