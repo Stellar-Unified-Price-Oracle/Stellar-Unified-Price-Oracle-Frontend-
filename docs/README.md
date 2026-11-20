@@ -250,6 +250,13 @@ Accept-Version: 1.0.0
 
 This API documentation is licensed under MIT. The API itself and aggregated price data terms are defined in the service agreement.
 
+## 📂 Historical Reports & Audits
+
+Archived audit reports, migration summaries, and PR artifacts have been relocated to [`reports/`](./reports/):
+- **Audits & Security**: `SECURITY_ADVISORY.md`, `SECURITY_AUDIT_CHECKLIST.md`, `XSS_AUDIT_REPORT.md`, `XSS_AUDIT_SUMMARY.md`, `NPM_AUDIT_SUMMARY.md`
+- **Performance & Optimization**: `LAZY_LOADING_AUDIT.md`, `LAZY_LOADING_CHECKLIST.md`, `LAZY_LOADING_FINAL_REPORT.md`, `LAZY_LOADING_SUMMARY.md`
+- **Architecture & Setup**: `API_DOCUMENTATION_SUMMARY.md`, `DEVELOPER_API_GUIDE.md`, `DEPLOYMENT.md`, `ERROR_REPORTING_IMPLEMENTATION.md`, `MIGRATION_IMPLEMENTATION.md`, `STAGING_README.md`, `VERSIONING_IMPLEMENTATION.md`
+
 ---
 
 **Last Updated:** 2026-08-26  
