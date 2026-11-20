@@ -29,3 +29,8 @@ Confidence-model changes are gated against calibration bounds in CI. The gate re
 
 - the monotonicity check is violated, or
 - the calibration error (e.g. expected calibration error) exceeds the configured bound.
+
+## Handsoff notes
+
+<!-- handsoff-issue-924 -->
+- #924: [Stabilize] PriceDetail.tsx has 18 compile errors: missing imports and undefined `reference`, `benchmarkHistoryError`, `qualityAnnotations`
