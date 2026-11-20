@@ -1,10 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { usePriceContext } from '../context/PriceContext'
 import type { Alert, LivePriceEntry, PriceData } from '../types'
 import { computeAttribution } from '../utils/moveAttribution'
 import { getLimiter } from '../utils/rateLimit'
 import { useAlerts, AlertsProvider } from './useAlerts'
+
+const AlertHarness = ({ children }: { children: ReactNode }) => (
+  <PreferencesProvider>
+    <AlertsProvider>{children}</AlertsProvider>
+  </PreferencesProvider>
+)
 
 const { addToastMock } = vi.hoisted(() => ({ addToastMock: vi.fn() }))
 
@@ -138,12 +146,12 @@ describe('useAlerts', () => {
       livePrices,
       attributionHistory: new Map([[pair, records]]),
     })
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     expect(result.current.alertHistory[0]?.price).toBe(110)
   })
 
   it('starts with empty alerts', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     expect(result.current.alerts).toHaveLength(0)
     expect(result.current.activeCount).toBe(0)
   })
@@ -162,20 +170,20 @@ describe('useAlerts', () => {
       },
     ]
     localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     expect(result.current.alerts).toHaveLength(1)
     expect(result.current.activeCount).toBe(1)
   })
 
   it('disables an expired rule even when its price feed is unavailable', () => {
     seedLegacyAlert({ expiresAt: Date.now() - 1 })
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     expect(result.current.alerts[0].active).toBe(false)
     expect(result.current.alerts[0].expiresAt).toBeLessThan(Date.now())
   })
 
   it('adds an alert', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     act(() => {
       result.current.addAlert(
         makeAlertInput({ assetPair: 'ETH/USD', upperThreshold: 4000, lowerThreshold: 2000, triggerOnce: true }),
@@ -192,7 +200,7 @@ describe('useAlerts', () => {
   })
 
   it('persists to localStorage after add', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     act(() => {
       result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
     })
@@ -202,7 +210,7 @@ describe('useAlerts', () => {
   })
 
   it('updates an alert', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     let id: string
     act(() => {
       const alert = result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
@@ -217,7 +225,7 @@ describe('useAlerts', () => {
   })
 
   it('removes an alert', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     let id: string
     act(() => {
       const alert = result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
@@ -231,7 +239,7 @@ describe('useAlerts', () => {
   })
 
   it('filters alerts by pair', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     act(() => {
       result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
       result.current.addAlert(makeAlertInput({ assetPair: 'ETH/USD', upperThreshold: 4000 }))
@@ -243,7 +251,7 @@ describe('useAlerts', () => {
   })
 
   it('checks if pair has alerts', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     act(() => {
       result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000 }))
     })
@@ -252,7 +260,7 @@ describe('useAlerts', () => {
   })
 
   it('excludes inactive alerts from count', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     act(() => {
       result.current.addAlert(makeAlertInput({ assetPair: 'BTC/USD', upperThreshold: 60000, active: false }))
       result.current.addAlert(makeAlertInput({ assetPair: 'ETH/USD', upperThreshold: 4000 }))
@@ -261,7 +269,7 @@ describe('useAlerts', () => {
   })
 
   it('records why an active rule check was skipped when no price is available', () => {
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
 
     act(() => {
       result.current.addAlert(makeAlertInput({ upperThreshold: 100 }))
@@ -276,7 +284,7 @@ describe('useAlerts', () => {
   })
 
   it('notifies on fresh client-observed source participation changes only', () => {
-    const { rerender } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { rerender } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     const snapshot = (sources: string[], timestamp = Date.now()): PriceData => ({
       assetPair: 'BTC/USD',
       price: 100,
@@ -346,7 +354,7 @@ describe('useAlerts', () => {
       ...currentPriceContext,
       livePrices: livePricesMap('BTC/USD', 150),
     })
-    const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
 
     expect(result.current.alerts[0].active).toBe(false)
     expect(result.current.alerts[0].breachActive).toBe(true)
@@ -397,7 +405,7 @@ describe('useAlerts', () => {
 
   it('handles invalid localStorage data', () => {
     localStorage.setItem(STORAGE_KEY, 'invalid json')
-    const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+    const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
     expect(result.current.alerts).toHaveLength(0)
   })
 
@@ -405,7 +413,7 @@ describe('useAlerts', () => {
   describe('legacy alert migration (#485)', () => {
     it('attaches a conditionGroup to a legacy alert loaded from storage', () => {
       seedLegacyAlert()
-      const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+      const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
       expect(result.current.alerts[0].conditionGroup).not.toBeNull()
       expect(result.current.alerts[0].conditionGroup?.conditions.length).toBeGreaterThan(0)
     })
@@ -415,14 +423,14 @@ describe('useAlerts', () => {
       vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
         typeof usePriceContext
       >)
-      const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+      const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
       expect(result.current.alerts[0].fireCount).toBe(1)
       expect(result.current.alerts[0].lastTriggeredAt).not.toBeNull()
     })
 
     it('does not lose or alter the original threshold fields while migrating', () => {
       seedLegacyAlert({ upperThreshold: 100, lowerThreshold: 50, cooldownMinutes: 7 })
-      const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+      const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
       expect(result.current.alerts[0].upperThreshold).toBe(100)
       expect(result.current.alerts[0].lowerThreshold).toBe(50)
       expect(result.current.alerts[0].cooldownMinutes).toBe(7)
@@ -445,7 +453,7 @@ describe('useAlerts', () => {
       vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
         typeof usePriceContext
       >)
-      const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+      const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
 
       expect(result.current.alerts[0].escalationState?.firedStepIds).toContain('step-immediate')
       expect(result.current.alerts[0].escalationState?.firedStepIds).not.toContain('step-later')
@@ -471,7 +479,7 @@ describe('useAlerts', () => {
       vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
         typeof usePriceContext
       >)
-      const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+      const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
       expect(result.current.alerts[0].escalationState?.firedStepIds).toEqual(['step-immediate'])
 
       // Advance 16 minutes and force the evaluation effect to re-run by handing it a
@@ -497,7 +505,7 @@ describe('useAlerts', () => {
       vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
         typeof usePriceContext
       >)
-      const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+      const { result, rerender } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
       expect(result.current.alerts[0].escalationState).not.toBeNull()
 
       act(() => {
@@ -518,7 +526,7 @@ describe('useAlerts', () => {
       vi.mocked(usePriceContext).mockReturnValue({ livePrices: livePricesMap('BTC/USD', 150) } as ReturnType<
         typeof usePriceContext
       >)
-      const { result } = renderHook(() => useAlerts(), { wrapper: AlertsProvider })
+      const { result } = renderHook(() => useAlerts(), { wrapper: AlertHarness })
       expect(result.current.alerts[0].escalationState).toBeNull()
     })
   })
