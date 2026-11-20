@@ -9,7 +9,7 @@
  */
 import type { Alert, AlertHistoryEntry, EscalationStep } from '../types'
 import { AlertHistoryArraySchema } from '../api/schemas'
-import { readRaw, STORAGE_KEYS } from '../utils/storage'
+import { readRawResult, STORAGE_KEYS } from '../utils/storage'
 import { persistDurable } from '../utils/durableWrites'
 import { SERIES_IDS, timeSeries } from '../storage/timeseries'
 

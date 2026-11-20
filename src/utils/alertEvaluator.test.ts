@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { migrateLegacyAlertConditions } from '../types/alerts'
 import type { AlertCondition, ConditionGroup, PriceEvaluationState, AlertFormData } from '../types'
 import {
+  findFirstMatchingPrice,
   evaluateCondition,
   evaluateCompoundCondition,
   evaluateCompoundConditionWithTrace,

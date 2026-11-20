@@ -10,6 +10,7 @@ import type {
   EscalationStep,
   NotificationChannelId,
   PriceEvaluationState,
+  MoveAttribution,
 } from '../types'
 import { migrateLegacyAlertConditions } from '../types/alerts'
 import { usePriceContext } from '../context/PriceContext'
@@ -22,9 +23,9 @@ import { readRaw, STORAGE_KEYS } from '../utils/storage'
 import { persistDurable } from '../utils/durableWrites'
 import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
-import { evaluateCompoundConditionWithTrace } from '../utils/alertEvaluator'
+import { evaluateCompoundConditionWithTrace, findFirstMatchingPrice } from '../utils/alertEvaluator'
 import {
-  loadAlertHistorySnapshot,
+  loadAlertHistory,
   saveAlertHistoryDebounced,
   flushAlertHistory,
   buildTriggerHistoryEntry,
@@ -317,7 +318,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     importAlertHistoryToEngine()
   }, [])
 
-  const { livePrices, prices } = usePriceContext()
+  const previousHistory = useRef(EMPTY_ATTRIBUTION_HISTORY)
+  const { livePrices, prices, attributionHistory = EMPTY_ATTRIBUTION_HISTORY } = usePriceContext()
   const { addToast } = useToast()
 
   useEffect(() => {
@@ -379,6 +381,16 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     const firedEntries: AlertHistoryEntry[] = []
     const evaluationEntries: AlertEvaluationEntry[] = []
 
+    const unprocessedTicks = new Map<string, number[]>()
+    for (const [pair, records] of attributionHistory) {
+      const prior = previousHistory.current.get(pair)
+      if (prior === records) continue
+      const previous = prior?.[prior.length - 1]
+      const start = previous ? records.indexOf(previous) + 1 : 0
+      if (start < records.length) unprocessedTicks.set(pair, records.slice(start).map(record => record.price))
+    }
+    previousHistory.current = attributionHistory
+
     const newAlerts = alerts.map((alert) => {
       const livePriceData = livePrices.get(alert.assetPair)
       const groupSignature = JSON.stringify(
@@ -392,8 +404,9 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         ],
       )
       const evaluationKey = JSON.stringify([livePriceData?.data ?? null, groupSignature])
-      if (lastProcessedEvaluationRef.current.get(alert.id) === evaluationKey) return alert
+      if (lastProcessedEvaluationRef.current.get(alert.id) === evaluationKey && !unprocessedTicks.has(alert.assetPair)) return alert
       lastProcessedEvaluationRef.current.set(alert.id, evaluationKey)
+      let evaluatedPrice = livePriceData?.data.price ?? null
       const recordEvaluation = (
         outcome: AlertEvaluationEntry['outcome'],
         reason: AlertEvaluationEntry['reason'],
@@ -407,7 +420,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           alertId: alert.id,
           assetPair: alert.assetPair,
           evaluatedAt: now,
-          price: livePriceData?.data.price ?? null,
+          price: evaluatedPrice,
           outcome,
           reason,
           ...(conditions ? { conditions } : {}),
@@ -448,11 +461,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       }
 
       let currentPrice = livePriceData.data.price
-      const sampledPrices = (unprocessedTicks.get(alert.assetPair) ?? []).map((record) => record.price)
+      const sampledPrices = unprocessedTicks.get(alert.assetPair) ?? []
       let updatedAlert = { ...alert }
       let triggered = false
       let conditionTrace: AlertEvaluationEntry['conditions'] = []
 
+      let stateForPrice = (price: number): PriceEvaluationState => ({ price, nowMs: now })
       if (alert.percentageMode) {
         // ── Percentage-based alert evaluation (#307) ──────────────────────
         const window = alert.percentageWindow ?? '1hr'
@@ -476,24 +490,19 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         }
 
         const baseline = alert.percentageBaselinePrice
-        // #485 – compound evaluation against the alert's (possibly legacy-migrated) condition group
-        const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
-        const state: PriceEvaluationState = {
-          price: currentPrice,
-          percentageChange: { [window]: pctChange },
-          nowMs: Date.now(),
-        }
-        const evaluation = evaluateCompoundConditionWithTrace(group, state)
-        triggered = evaluation.matched
-        conditionTrace = evaluation.conditions
-      } else {
-        // ── Absolute threshold evaluation, via the compound evaluator (#485) ─
-        const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
-        const state: PriceEvaluationState = { price: currentPrice, nowMs: Date.now() }
-        const evaluation = evaluateCompoundConditionWithTrace(group, state)
-        triggered = evaluation.matched
-        conditionTrace = evaluation.conditions
+        stateForPrice = (price) => ({
+          price,
+          percentageChange: { [window]: baseline === 0 ? 0 : ((price - baseline) / baseline) * 100 },
+          nowMs: now,
+        })
       }
+
+      const group = updatedAlert.conditionGroup ?? migrateLegacyAlertConditions(updatedAlert)
+      currentPrice = findFirstMatchingPrice(group, sampledPrices, stateForPrice) ?? currentPrice
+      evaluatedPrice = currentPrice
+      const evaluation = evaluateCompoundConditionWithTrace(group, stateForPrice(currentPrice))
+      triggered = evaluation.matched
+      conditionTrace = evaluation.conditions
 
       const wasBreachActive = alert.breachActive ?? false
       if (triggered !== wasBreachActive) {
@@ -698,7 +707,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     if (evaluationEntries.length > 0) {
       setEvaluationTimeline((prev) => [...evaluationEntries].reverse().concat(prev).slice(0, EVALUATION_TIMELINE_LIMIT))
     }
-  }, [livePrices, alerts, addToast])
+  }, [livePrices, attributionHistory, alerts, addToast])
 
   // Request notification permissions
   useEffect(() => {
