@@ -17,6 +17,15 @@ describe('ConnectionBadge', () => {
     expect(screen.getByRole('status')).toHaveAttribute('aria-label', 'WebSocket Live')
   })
 
+  it('shows the fallback path and reason', () => {
+    render(<ConnectionBadge status="connected" diagnostics={{
+      retryCount: 0, lastConnectedAt: null, totalDisconnections: 0,
+      transport: 'sse', transportPath: ['ws', 'sse'], fallbackReason: 'websocket-retries-exhausted',
+    }} />)
+    expect(screen.getByText('WS → SSE')).toBeVisible()
+    expect(screen.getByText('WebSocket retries exhausted')).toBeVisible()
+  })
+
   it('renders connecting status', () => {
     render(<ConnectionBadge status="connecting" />)
     expect(screen.getByText('Connecting')).toBeInTheDocument()
