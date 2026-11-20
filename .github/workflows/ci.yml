@@ -259,7 +259,11 @@ jobs:
       - name: Record bundle size results
         run: npx size-limit --json --silent > reports/size-limit.json
 
-      - name: Check bundle size against budgets
-        run: npm run size-limit
+      # Enforce separate budgets for initial (entry) chunks and deferred
+      # (lazy-loaded) feature chunks (#864). Each category is checked
+      # independently against budgets.config.json so a regression in either
+      # fails CI on its own, without masking the other.
+      - name: Check initial chunk budgets
+        run: node scripts/check-bundle-budgets.js --category=initial
 
       # Asset cost is part of the star

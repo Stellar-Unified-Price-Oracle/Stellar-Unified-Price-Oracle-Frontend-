@@ -8,6 +8,9 @@
       "cssLimitKb": "Brotli size of CSS referenced by the initial chunks.",
       "assetLimitKb": "Brotli size of every image/font asset downloaded before first paint (above-the-fold images plus preloaded fonts). Counted toward the startup budget alongside JS/CSS so a single oversized asset cannot blow the startup budget (#614)."
     },
+    "deferredLoad": {
+      "semantics": "Separate budget category for deferred (lazy-loaded) feature chunks (#864). Initial and deferred chunks are budgeted independently so growth in one category cannot be masked by headroom in the other. `totalJsLimitKb` is the brotli size of every non-initial JS chunk (lazy routes plus their vendor subtrees); `chunkLimitKb` is the per-chunk ceiling for any single deferred chunk; `cssLimitKb` is the brotli size of CSS referenced only by deferred chunks. Each limit fails CI independently of the initial-load budgets."
+    },
     "vendorChunks": {
       "semantics": "Key = Rollup manualChunks name. `packages` is an exact allowlist of npm packages allowed inside the chunk (verified from the build's module map, not chunk names). A new dependency, transitive or not, must be added here explicitly. `mustBeLazy: true` fails the build if the chunk becomes statically reachable from the entry."
     },
@@ -31,6 +34,7 @@
     "invariants": [
       "Coverage: every emitted JS/CSS file must be classified (initial, vendor, or claimed by a lazy route) — no orphan chunks.",
       "Initial-load boundary: initial download = entry + statically reachable vendor chunks only; the lazy-route set is closed under this config.",
+      "Deferred-load boundary: deferred download = every non-initial JS/CSS chunk; it is budgeted separately from the initial load and fails independently.",
       "Vendor attribution: each vendor chunk is budgeted and its npm packages are verified against the allowlist.",
       "Asset coverage: every emitted image/font asset must be classified (above-the-fold or lazy) and must not exceed `assets.perAssetLimitKb`.",
       "Asset formats: every raster image must ship AVIF and WebP variants at each `assets.responsiveWidths` size.",
@@ -44,6 +48,11 @@
     "totalJsLimitKb": 78,
     "cssLimitKb": 6,
     "assetLimitKb": 300
+  },
+  "deferredLoad": {
+    "totalJsLimitKb": 120,
+    "chunkLimitKb": 95,
+    "cssLimitKb": 8
   },
   "interactionLatency": {
     "profile": "mid-range",
