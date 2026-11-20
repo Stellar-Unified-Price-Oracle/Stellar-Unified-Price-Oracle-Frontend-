@@ -279,6 +279,20 @@ describe('PriceProvider', () => {
   })
 
   it('applies websocket updates optimistically before REST confirmation', async () => {
+    let confirm!: () => void
+    vi.mocked(fetchPricesBatched).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          confirm = () =>
+            resolve({
+              assetPair: 'BTC/USD',
+              price: 50010,
+              timestamp: 1700000001000,
+              confidence: 0.99,
+              sources: ['chainlink'],
+            })
+        }),
+    )
     render(<TestConsumer />, { wrapper: Wrapper })
 
     act(() => {
@@ -292,38 +306,40 @@ describe('PriceProvider', () => {
       })
     })
 
-    it('reconciles live prices against REST when a backgrounded tab becomes visible', async () => {
-      render(<TestConsumer />, { wrapper: Wrapper })
-
-      act(() => {
-        messageHandler?.({
-          type: 'price_update',
-          assetPair: 'BTC/USD',
-          price: 50010,
-          timestamp: Date.now() - 60_000,
-          confidence: 0.99,
-          sources: ['chainlink'],
-        })
-      })
-      await waitFor(() => expect(screen.getByTestId('live-size')).toHaveTextContent('1'))
-
-      const hidden = vi.spyOn(document, 'hidden', 'get')
-      hidden.mockReturnValue(true)
-      act(() => document.dispatchEvent(new Event('visibilitychange')))
-      hidden.mockReturnValue(false)
-      act(() => document.dispatchEvent(new Event('visibilitychange')))
-
-      await waitFor(() => {
-        expect(mockRefetchPrices).toHaveBeenCalledTimes(1)
-        expect(screen.getByTestId('live-size')).toHaveTextContent('0')
-      })
-    })
-
-    expect(screen.getByTestId('btc-live-price').textContent).toBe('50010')
+    await waitFor(() => expect(screen.getByTestId('btc-live-price').textContent).toBe('50010'))
     expect(screen.getByTestId('btc-live-state').textContent).toBe('optimistic')
+    await waitFor(() => expect(fetchPricesBatched).toHaveBeenCalled())
+    await act(async () => confirm())
 
     await waitFor(() => {
       expect(screen.getByTestId('btc-live-state').textContent).toBe('confirmed')
+    })
+  })
+
+  it('reconciles live prices against REST when a backgrounded tab becomes visible', async () => {
+    render(<TestConsumer />, { wrapper: Wrapper })
+
+    act(() => {
+      messageHandler?.({
+        type: 'price_update',
+        assetPair: 'BTC/USD',
+        price: 50010,
+        timestamp: Date.now() - 60_000,
+        confidence: 0.99,
+        sources: ['chainlink'],
+      })
+    })
+    await waitFor(() => expect(screen.getByTestId('live-size')).toHaveTextContent('1'))
+
+    const hidden = vi.spyOn(document, 'hidden', 'get')
+    hidden.mockReturnValue(true)
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    hidden.mockReturnValue(false)
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+
+    await waitFor(() => {
+      expect(mockRefetchPrices).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('live-size')).toHaveTextContent('0')
     })
   })
 

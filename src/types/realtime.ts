@@ -30,3 +30,12 @@ export interface RealtimeSubscription {
   /** Tear down the underlying provider subscription. */
   unsubscribe: () => void;
 }
+
+export interface PriceResyncProgress {
+  status: 'syncing' | 'complete' | 'partial' | 'failed'
+  total: number
+  /** Number of refresh attempts that have settled, including failed attempts. */
+  completed: number
+  failed: number
+  startedAt: number
+}

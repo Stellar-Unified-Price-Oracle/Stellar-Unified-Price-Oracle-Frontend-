@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { checkAccessibility } from '../test/accessibility'
+import * as exportUtils from '../utils/export'
 import { AlertHistoryLog } from './AlertHistoryLog'
 
 vi.mock('../hooks/useAlerts', () => ({
@@ -63,6 +64,25 @@ vi.mock('../hooks/useAlerts', () => ({
 }))
 
 describe('AlertHistoryLog tick evidence', () => {
+  it('downloads filtered history from the CSV button', async () => {
+    const download = vi.spyOn(exportUtils, 'downloadFile').mockImplementation(() => {})
+    try {
+      const user = userEvent.setup()
+      render(<AlertHistoryLog />)
+      await user.type(screen.getByRole('searchbox'), 'BTC')
+      await user.click(screen.getByRole('button', { name: 'Export CSV' }))
+      expect(await screen.findByText('Alert history export is ready.')).toBeInTheDocument()
+      expect(download).toHaveBeenCalledWith(
+        expect.stringContaining('BTC/USD'),
+        expect.stringMatching(/\.csv$/),
+        'text/csv',
+      )
+      expect(download.mock.calls[0][0]).not.toContain('ETH/USD')
+    } finally {
+      download.mockRestore()
+    }
+  })
+
   it('reveals tick facts on demand and labels feed fields that are unavailable', () => {
     render(<AlertHistoryLog />)
 

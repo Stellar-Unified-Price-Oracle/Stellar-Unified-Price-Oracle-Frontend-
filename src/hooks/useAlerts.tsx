@@ -25,7 +25,8 @@ import { playAlertSound, unlockAudioContext } from '../utils/alertSound'
 import { loadSoundPreferences } from '../utils/soundPreferences'
 import { evaluateCompoundConditionWithTrace, findFirstMatchingPrice } from '../utils/alertEvaluator'
 import {
-  loadAlertHistory,
+  type AlertHistorySnapshot,
+  loadAlertHistorySnapshot,
   saveAlertHistoryDebounced,
   flushAlertHistory,
   buildTriggerHistoryEntry,
@@ -73,23 +74,20 @@ async function dispatchEmailChannel(
   currentPrice: number,
   body: string,
   kind: AlertNotificationKind = 'triggered',
-): Promise<void> {
-  if (!cfg.email.enabled || !cfg.email.address) return
-  try {
-    await fetch('/api/notifications/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: cfg.email.address,
-        subject: kind === 'recovered' ? 'Price Alert Recovered' : 'Price Alert Triggered',
-        message: body,
-        assetPair: alert.assetPair,
-        price: currentPrice,
-      }),
-    })
-  } catch {
-    // Best-effort; don't let a network error break the alert system
-  }
+): Promise<DeliverySendResult> {
+  if (!cfg.email.enabled || !cfg.email.address) return { ok: false, error: 'Email channel is not configured' }
+  const response = await fetch('/api/notifications/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: cfg.email.address,
+      subject: kind === 'recovered' ? 'Price Alert Recovered' : 'Price Alert Triggered',
+      message: body,
+      assetPair: alert.assetPair,
+      price: currentPrice,
+    }),
+  })
+  return { ok: response.ok, status: response.status }
 }
 
 async function dispatchWebhookChannel(
@@ -98,24 +96,21 @@ async function dispatchWebhookChannel(
   currentPrice: number,
   body: string,
   kind: AlertNotificationKind = 'triggered',
-): Promise<void> {
-  if (!cfg.webhook.enabled || !cfg.webhook.url) return
-  try {
-    await fetch(cfg.webhook.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: kind === 'recovered' ? 'alert_recovered' : 'alert_triggered',
-        assetPair: alert.assetPair,
-        price: currentPrice,
-        message: body,
-        alertId: alert.id,
-        timestamp: Date.now(),
-      }),
-    })
-  } catch {
-    // Best-effort
-  }
+): Promise<DeliverySendResult> {
+  if (!cfg.webhook.enabled || !cfg.webhook.url) return { ok: false, error: 'Webhook channel is not configured' }
+  const response = await fetch(cfg.webhook.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: kind === 'recovered' ? 'alert_recovered' : 'alert_triggered',
+      assetPair: alert.assetPair,
+      price: currentPrice,
+      message: body,
+      alertId: alert.id,
+      timestamp: Date.now(),
+    }),
+  })
+  return { ok: response.ok, status: response.status }
 }
 
 async function dispatchTelegramChannel(
@@ -277,7 +272,9 @@ function saveAlerts(alerts: Alert[]): void {
   persistDurable(STORAGE_KEYS.alerts, alerts)
 }
 
-const AlertsContext = createContext<AlertsContextType | null>(null)
+type AlertsContextValue = AlertsContextType & { alertHistoryStatus: AlertHistorySnapshot['status'] }
+
+const AlertsContext = createContext<AlertsContextValue | null>(null)
 const EMPTY_ATTRIBUTION_HISTORY = new Map<string, MoveAttribution[]>()
 
 /**
@@ -298,7 +295,8 @@ const EMPTY_ATTRIBUTION_HISTORY = new Map<string, MoveAttribution[]>()
  */
 export function AlertsProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>(loadAlerts)
-  const [history, setHistory] = useState<AlertHistoryEntry[]>(loadAlertHistory)
+  const [initialHistory] = useState(loadAlertHistorySnapshot)
+  const [history, setHistory] = useState<AlertHistoryEntry[]>(initialHistory.entries)
   const [evaluationTimeline, setEvaluationTimeline] = useState<AlertEvaluationEntry[]>([])
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const lastProcessedEvaluationRef = useRef(new Map<string, string>())
@@ -392,6 +390,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     previousHistory.current = attributionHistory
 
     const newAlerts = alerts.map((alert) => {
+      if (isAlertExpired(alert.expiresAt, now)) {
+        if (alert.active) changed = true
+        return alert.active ? { ...alert, active: false } : alert
+      }
       const livePriceData = livePrices.get(alert.assetPair)
       const groupSignature = JSON.stringify(
         alert.conditionGroup ?? [
@@ -463,8 +465,6 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       let currentPrice = livePriceData.data.price
       const sampledPrices = unprocessedTicks.get(alert.assetPair) ?? []
       let updatedAlert = { ...alert }
-      let triggered = false
-      let conditionTrace: AlertEvaluationEntry['conditions'] = []
 
       let stateForPrice = (price: number): PriceEvaluationState => ({ price, nowMs: now })
       if (alert.percentageMode) {
@@ -501,8 +501,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       currentPrice = findFirstMatchingPrice(group, sampledPrices, stateForPrice) ?? currentPrice
       evaluatedPrice = currentPrice
       const evaluation = evaluateCompoundConditionWithTrace(group, stateForPrice(currentPrice))
-      triggered = evaluation.matched
-      conditionTrace = evaluation.conditions
+      const triggered = evaluation.matched
+      const conditionTrace = evaluation.conditions
 
       const wasBreachActive = alert.breachActive ?? false
       if (triggered !== wasBreachActive) {
@@ -916,7 +916,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     clearAlertEventSeries()
   }, [])
 
-  const value: AlertsContextType = {
+  const value: AlertsContextValue = {
     alerts,
     addAlert,
     updateAlert,
@@ -932,6 +932,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     unsnoozeAlert,
     reEnableAlert,
     alertHistory: history,
+    alertHistoryStatus: initialHistory.status,
     evaluationTimeline,
     clearAlertHistory,
     alertCreateAllowed: alertRateLimit.allowed,
