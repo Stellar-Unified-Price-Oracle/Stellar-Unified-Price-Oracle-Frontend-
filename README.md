@@ -32,8 +32,8 @@ Confidence-model changes are gated against calibration bounds in CI. The gate re
 
 ## Handsoff notes
 
-<!-- handsoff-issue-943 -->
-- #943: [Stabilize] lib/realtime websocket fuzz test imports `MAX_FRAME_DEPTH`, which the module doesn't export
+<!-- handsoff-issue-956 -->
+- #956: [Stabilize] perf/mobileBenchmarks.ts fixture no longer matches the operator disclosure type
 
-<!-- handsoff-issue-945 -->
-- #945: [Stabilize] services/alerts/alertEvaluator.ts imports types that don't exist; two alert evaluators exist
+<!-- handsoff-issue-957 -->
+- #957: [Stabilize] WebSocketClient no longer calls message handlers and drops sequence-ordering
