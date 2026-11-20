@@ -55,3 +55,6 @@ roll forward again.
 
 <!-- handsoff-issue-957 -->
 - #957: [Stabilize] WebSocketClient no longer calls message handlers and drops sequence-ordering
+
+<!-- handsoff-issue-1018 -->
+- #1018: [Next phase] Compare two time windows for one pair
