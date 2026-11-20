@@ -1,4 +1,4 @@
-import type { Tick } from './types';
+import type { Tick } from '../types';
 
 export interface PriceAggregate {
   value: number;
