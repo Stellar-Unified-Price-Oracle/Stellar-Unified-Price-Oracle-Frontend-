@@ -1,4 +1,12 @@
-import type { Alert, AlertsContextType, LivePriceEntry, PriceData } from '../types'
+import type {
+  Alert,
+  AlertsContextType,
+  LivePriceEntry,
+  PriceData,
+  GovernanceProposal,
+  ParameterRecord,
+  PriceProof,
+} from '../types'
 
 /** The input type accepted by {@link AlertsContextType.addAlert}. */
 type AddAlertInput = Parameters<AlertsContextType['addAlert']>[0]
@@ -128,4 +136,69 @@ export function makeLivePriceMap(
     map.set(symbol, makeLivePriceEntry(overrides))
   }
   return map
+}
+
+/**
+ * Builds a {@link GovernanceProposal} with safe defaults.
+ */
+export function makeGovernanceProposal(
+  overrides: Partial<GovernanceProposal> = {},
+): GovernanceProposal {
+  return {
+    id: 'prop-1',
+    title: 'Test Proposal',
+    summary: 'A test governance proposal',
+    status: 'active',
+    createdAt: 1_700_000_000_000,
+    closesAt: 1_700_100_000_000,
+    tally: { yes: 100, no: 10, abstain: 5 },
+    quorum: 50,
+    totalVotingPower: 200,
+    category: 'parameters',
+    relatedSources: ['chainlink'],
+    ...overrides,
+  } as GovernanceProposal
+}
+
+/**
+ * Builds a {@link ParameterRecord} with safe defaults.
+ */
+export function makeParameterRecord(
+  overrides: Partial<ParameterRecord> = {},
+): ParameterRecord {
+  return {
+    key: 'aggregator.minSources',
+    label: 'Minimum Sources',
+    category: 'aggregation',
+    currentValue: '3',
+    owner: 'GBBD47IF6LWK7P7MDEV2O2USCWLMSSR2ECC63G3OOISD4ULL7XW74NO4',
+    lastChangedAt: 1_700_000_000_000,
+    history: [],
+    ...overrides,
+  }
+}
+
+/**
+ * Builds a {@link PriceProof} with safe defaults.
+ */
+export function makePriceProof(
+  overrides: Partial<PriceProof> = {},
+): PriceProof {
+  return {
+    record: {
+      assetPair: 'XLM/USD',
+      price: 0.12,
+      timestamp: 1_700_000_000_000,
+      confidence: 0.99,
+      sources: ['chainlink'],
+    },
+    contributions: [],
+    aggregateSignature: '0x1234abcd',
+    contractId: 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM',
+    ledgerSequence: 123456,
+    transactionHash: '0xabcdef1234567890',
+    network: 'testnet',
+    networkPassphrase: 'Test SDF Network ; September 2015',
+    ...overrides,
+  }
 }
