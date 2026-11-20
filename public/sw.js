@@ -8,6 +8,10 @@
 //   - A controlled update flow: new versions install and wait until the
 //     page explicitly asks them to activate (see PwaUpdateBanner.tsx),
 //     so users are never silently switched to a new build mid-session.
+//   - Periodic Background Sync price-alert evaluation (#1019): where the
+//     browser supports it (Chromium), alerts are fetched and evaluated here
+//     even with no tab open, and fired alerts are delivered via Web Push /
+//     notifications. Elsewhere the page keeps evaluating alerts as before.
 
 // Stamped by the production build (vite.config.ts, releaseManifestPlugin) from the
 // emitted asset list, so the cache is keyed to the files this worker ships and
@@ -26,6 +30,14 @@ const OFFLINE_URL = new URL('offline.html', SCOPE_URL).href
 // needs the network for its CSS and retry handler is not an offline document.
 const OFFLINE_ASSETS = ['offline.css', 'offline.js'].map((file) => new URL(file, SCOPE_URL).href)
 const SHELL_URLS = [SCOPE_URL.href, OFFLINE_URL, ...OFFLINE_ASSETS]
+
+// Periodic Background Sync (#1019). The page registers the sync tag and hands
+// the worker the alert config + price endpoint via postMessage; the worker
+// re-evaluates on each sync tick with no tab open. Unsupported browsers simply
+// never fire the event, so the existing tab-based evaluation keeps working.
+const ALERT_SYNC_TAG = 'price-alerts'
+const ALERT_CONFIG_CACHE = 'stellar-oracle-alert-config'
+const ALERT_CONFIG_URL = new URL('__alert-config__', SCOPE_URL).href
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(SHELL_URLS)))
@@ -54,7 +66,39 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting()
+    return
   }
+
+  // The page pushes the current alert config + price endpoint so the worker can
+  // evaluate alerts during background syncs. Persisted in a cache so it survives
+  // worker restarts between sync ticks.
+  if (event.data?.type === 'PRICE_ALERTS_CONFIG') {
+    event.waitUntil(saveAlertConfig(event.data.config))
+  }
+})
+
+// Periodic Background Sync handler: fetch prices and evaluate alerts with no
+// tab open. Only fires in browsers that support the API (Chromium).
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag !== ALERT_SYNC_TAG) return
+  event.waitUntil(evaluatePriceAlerts())
+})
+
+// Web Push delivery path: a push from the server can also trigger evaluation.
+self.addEventListener('push', (event) => {
+  event.waitUntil(evaluatePriceAlerts())
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = event.notification.data?.url || SCOPE_URL.href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => client.url.startsWith(SCOPE_URL.origin))
+      if (existing) return existing.focus()
+      return self.clients.openWindow(target)
+    }),
+  )
 })
 
 self.addEventListener('fetch', (event) => {
@@ -97,4 +141,65 @@ async function handleAsset(request) {
   } catch {
     return Response.error()
   }
+}
+
+async function saveAlertConfig(config) {
+  if (!config || typeof config !== 'object') return
+  const cache = await caches.open(ALERT_CONFIG_CACHE)
+  await cache.put(ALERT_CONFIG_URL, new Response(JSON.stringify(config), {
+    headers: { 'Content-Type': 'application/json' },
+  }))
+}
+
+async function loadAlertConfig() {
+  const cache = await caches.open(ALERT_CONFIG_CACHE)
+  const cached = await cache.match(ALERT_CONFIG_URL)
+  if (!cached) return null
+  try {
+    return await cached.json()
+  } catch {
+    return null
+  }
+}
+
+// Fetch current prices and evaluate the stored alerts. Fired alerts are
+// delivered via notifications (Web Push path) and posted to any open tabs so
+// the in-page alert list stays in sync. Degrades to a no-op when no config has
+// been handed over yet (e.g. unsupported browsers never reach this).
+async function evaluatePriceAlerts() {
+  const config = await loadAlertConfig()
+  if (!config || !config.priceEndpoint || !Array.isArray(config.alerts)) return
+
+  let prices
+  try {
+    const response = await fetch(config.priceEndpoint, { credentials: 'include' })
+    if (!response.ok) return
+    prices = await response.json()
+  } catch {
+    return
+  }
+
+  const fired = []
+  for (const alert of config.alerts) {
+    if (!alert || alert.triggered) continue
+    const price = prices?.[alert.asset]
+    if (typeof price !== 'number') continue
+    const hit = alert.direction === 'below' ? price <= alert.target : price >= alert.target
+    if (hit) fired.push({ ...alert, price })
+  }
+
+  if (fired.length === 0) return
+
+  await Promise.all(
+    fired.map((alert) =>
+      self.registration.showNotification('Price alert', {
+        body: `${alert.asset} is ${alert.direction === 'below' ? 'at or below' : 'at or above'} ${alert.target} (now ${alert.price})`,
+        tag: `price-alert-${alert.id}`,
+        data: { url: alert.url || SCOPE_URL.href },
+      }),
+    ),
+  )
+
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+  clients.forEach((client) => client.postMessage({ type: 'PRICE_ALERTS_FIRED', alerts: fired }))
 }
