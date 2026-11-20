@@ -10,6 +10,10 @@
  * - Sybil risk tier is shown verbatim as reported by the aggregator.
  * - Decay fraction is a display projection only — the aggregator's next
  *   reported score is authoritative.
+ *
+ * Note (#939): this panel is the canonical reputation leaderboard. The legacy
+ * `ReputationPanel` is a thin wrapper that delegates here, so the two do not
+ * duplicate rendering logic.
  */
 import { memo, type ReactElement } from 'react'
 import type { SourceReputationScore } from '../types'

@@ -4,11 +4,15 @@
  * Shows per-source reputation scores, decay state, and sybil-resistance
  * weights. Scores are verbatim from the API; the client computes no derived
  * reputation values.
+ *
+ * Note: this panel is the decay/sybil view of source reputation. It is
+ * distinct from `ReputationScorePanel`, which renders the aggregate
+ * reputation score breakdown; the two are intentionally kept separate.
  */
 import { memo, type ReactElement } from 'react'
 import { useSwr } from '../hooks/useSwr'
 import { fetchSourceReputations } from '../api/rest'
-import type { SourceReputation } from '../types'
+import type { SourceReputationScore } from '../types'
 import {
   reputationTier,
   REPUTATION_TIER_LABELS,
@@ -23,7 +27,7 @@ const TIER_COLOURS: Record<ReturnType<typeof reputationTier>, string> = {
 }
 
 interface SourceReputationRowProps {
-  rep: SourceReputation
+  rep: SourceReputationScore
 }
 
 const SourceReputationRow = memo(function SourceReputationRow({ rep }: SourceReputationRowProps): ReactElement {
@@ -70,7 +74,7 @@ const SourceReputationRow = memo(function SourceReputationRow({ rep }: SourceRep
 })
 
 export function ReputationPanel(): ReactElement {
-  const { data, loading, error, refetch } = useSwr(
+  const { data, loading, error, refetch } = useSwr<SourceReputationScore[]>(
     'governance/reputation',
     (signal) => fetchSourceReputations(signal),
     { refreshInterval: 120_000, staleTime: 60_000 },
