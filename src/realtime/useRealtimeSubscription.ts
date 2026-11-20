@@ -14,7 +14,6 @@ import type { RealtimeSubscriptionOptions } from '../types/realtime';
  */
 
 type Unsubscribe = () => void;
-type Resync = () => void;
 
 type SubscribeFn = (options: RealtimeSubscriptionOptions) => Unsubscribe;
 

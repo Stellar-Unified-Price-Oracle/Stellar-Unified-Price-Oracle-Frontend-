@@ -32,8 +32,8 @@ Confidence-model changes are gated against calibration bounds in CI. The gate re
 
 ## Handsoff notes
 
-<!-- handsoff-issue-964 -->
-- #964: [Stabilize] alertPlayground dry-run miscounts fires and breached time
+<!-- handsoff-issue-956 -->
+- #956: [Stabilize] perf/mobileBenchmarks.ts fixture no longer matches the operator disclosure type
 
-<!-- handsoff-issue-965 -->
-- #965: [Stabilize] Startup architecture: data stages from PriceContext are no longer recorded
+<!-- handsoff-issue-957 -->
+- #957: [Stabilize] WebSocketClient no longer calls message handlers and drops sequence-ordering

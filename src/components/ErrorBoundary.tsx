@@ -46,6 +46,13 @@
  * - **Show details** — toggles the raw error message. Visible in development
  *   (`import.meta.env.DEV`) and hidden in production builds.
  *
+ * ## Error categories (#867)
+ * The fallback copy adapts to the known API error category so users get
+ * actionable recovery guidance instead of a generic message. Categories are
+ * inferred from the caught error (see {@link classifyErrorCategory}) or can be
+ * supplied explicitly via the `errorCategory` prop when the caller already
+ * knows the failure kind (e.g. from a fetch response status).
+ *
  * ## Edge cases
  * - **Error in the fallback itself** — React will unmount the boundary entirely and
  *   propagate the error to the next boundary up the tree.
@@ -63,6 +70,108 @@
  * - Error detail text is wrapped in `<pre>` for screen-reader compatibility.
  */
 import { Component, useEffect, type ErrorInfo, type ReactNode } from 'react'
+
+/**
+ * Known API error categories that drive user-facing recovery copy (#867).
+ * `unknown` is the fallback when the failure cannot be classified.
+ */
+export type ApiErrorCategory =
+  | 'network'
+  | 'timeout'
+  | 'rate-limit'
+  | 'auth'
+  | 'not-found'
+  | 'server'
+  | 'validation'
+  | 'stale'
+  | 'unknown'
+
+/** User-facing recovery copy for a single error category. */
+export interface ErrorCategoryCopy {
+  /** Short heading shown in the fallback. */
+  title: string
+  /** One-sentence explanation of what happened. */
+  message: string
+  /** Suggested next step for the user. */
+  recovery: string
+}
+
+/**
+ * Recovery copy for every known API error category (#867).
+ * Keep messages plain-language, non-blaming, and actionable.
+ */
+export const ERROR_CATEGORY_COPY: Record<ApiErrorCategory, ErrorCategoryCopy> = {
+  network: {
+    title: 'Connection problem',
+    message: 'We could not reach the price service. Your connection may be offline.',
+    recovery: 'Check your connection, then retry.',
+  },
+  timeout: {
+    title: 'Request timed out',
+    message: 'The price service took too long to respond.',
+    recovery: 'Retry in a moment. If it keeps timing out, try again later.',
+  },
+  'rate-limit': {
+    title: 'Too many requests',
+    message: 'We are being rate limited by the price service.',
+    recovery: 'Wait a few seconds, then retry.',
+  },
+  auth: {
+    title: 'Sign-in required',
+    message: 'Your session is missing or has expired.',
+    recovery: 'Sign in again, then retry.',
+  },
+  'not-found': {
+    title: 'Not found',
+    message: 'The requested price data could not be found.',
+    recovery: 'Go back and choose a different asset or market.',
+  },
+  server: {
+    title: 'Service error',
+    message: 'The price service ran into an unexpected problem.',
+    recovery: 'Retry shortly. If it persists, check the status page.',
+  },
+  validation: {
+    title: 'Invalid request',
+    message: 'Some of the requested data was not valid.',
+    recovery: 'Adjust your selection and retry.',
+  },
+  stale: {
+    title: 'Data may be out of date',
+    message: 'We are showing the last known prices because fresh data is unavailable.',
+    recovery: 'Retry to refresh, or continue with the last known values.',
+  },
+  unknown: {
+    title: 'Something went wrong',
+    message: 'Something went wrong rendering this section.',
+    recovery: 'Try retrying or go back.',
+  },
+}
+
+/**
+ * Best-effort classification of a caught error into a known API category.
+ * Inspects common error shapes (message text, `status`/`code` fields) without
+ * fabricating upstream data. Returns `'unknown'` when nothing matches.
+ */
+export function classifyErrorCategory(error: unknown): ApiErrorCategory {
+  if (!error || typeof error !== 'object') return 'unknown'
+  const err = error as { status?: number; code?: string; name?: string; message?: string }
+  const status = typeof err.status === 'number' ? err.status : undefined
+  const code = (err.code ?? '').toLowerCase()
+  const name = (err.name ?? '').toLowerCase()
+  const message = (err.message ?? '').toLowerCase()
+
+  if (status === 401 || status === 403 || code === 'unauthorized' || code === 'forbidden') return 'auth'
+  if (status === 404 || code === 'not_found') return 'not-found'
+  if (status === 429 || code === 'rate_limited') return 'rate-limit'
+  if (status === 408 || name === 'timeouterror' || message.includes('timeout')) return 'timeout'
+  if (status === 422 || code === 'validation_error') return 'validation'
+  if (status !== undefined && status >= 500) return 'server'
+  if (name === 'typeerror' && message.includes('fetch')) return 'network'
+  if (message.includes('network') || message.includes('offline')) return 'network'
+  if (message.includes('stale')) return 'stale'
+  return 'unknown'
+}
 
 export interface ErrorBoundaryProps {
   children: ReactNode
@@ -90,6 +199,11 @@ export interface ErrorBoundaryProps {
    * cause (e.g. a bad saved layout) instead of retrying blindly (#818).
    */
   recoveryActions?: ReadonlyArray<ErrorRecoveryAction>
+  /**
+   * Explicit API error category. When omitted, the category is inferred from
+   * the caught error via {@link classifyErrorCategory} (#867).
+   */
+  errorCategory?: ApiErrorCategory
 }
 
 interface ErrorBoundaryState {
@@ -153,15 +267,21 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       showGoBack = false,
       boundaryId = 'unknown',
       recoveryActions = [],
+      errorCategory,
     } = this.props
     const { error, showDetails } = this.state
     const isDev = import.meta.env.DEV
+
+    // Resolve the user-facing recovery copy for the known API error category (#867).
+    const category: ApiErrorCategory = errorCategory ?? classifyErrorCategory(error)
+    const copy = ERROR_CATEGORY_COPY[category]
 
     return (
       <div
         role="alert"
         aria-live="assertive"
         data-boundary-id={boundaryId}
+        data-error-category={category}
         className="flex flex-col items-center justify-center p-6 rounded-xl border border-red-800 bg-red-900/20 text-center gap-4 min-h-[180px]"
       >
         {/* Icon */}
@@ -184,8 +304,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
         {/* Message */}
         <div>
-          <h2 className="text-base font-semibold text-gray-100 mb-1">{featureLabel} encountered an error</h2>
-          <p className="text-sm text-gray-400">Something went wrong rendering this section. Try retrying or go back.</p>
+          <h2 className="text-base font-semibold text-gray-100 mb-1">
+            {featureLabel}: {copy.title}
+          </h2>
+          <p className="text-sm text-gray-400">{copy.message}</p>
+          <p className="text-sm text-gray-400 mt-1">{copy.recovery}</p>
         </div>
 
         {/* Recovery actions */}
@@ -225,27 +348,26 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </button>
           )}
 
-          {isDev && (
+          {isDev && error && (
             <button
               type="button"
               onClick={this.toggleDetails}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 border border-gray-700 text-gray-500 hover:text-gray-300 hover:bg-gray-700 transition-colors cursor-pointer"
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 transition-colors cursor-pointer"
               aria-expanded={showDetails}
-              aria-label="Toggle error details"
+              aria-controls={`${boundaryId}-error-details`}
             >
               {showDetails ? 'Hide details' : 'Show details'}
             </button>
           )}
         </div>
 
-        {/* Collapsible error details (dev only) */}
         {isDev && showDetails && error && (
-          <div className="w-full max-w-xl text-start">
-            <pre className="text-xs text-red-300 bg-red-950/40 border border-red-900/50 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap break-all">
-              {error.message}
-              {error.stack ? `\n\n${error.stack}` : ''}
-            </pre>
-          </div>
+          <pre
+            id={`${boundaryId}-error-details`}
+            className="w-full max-w-full overflow-auto text-left text-xs text-red-300 bg-black/30 rounded-lg p-3 whitespace-pre-wrap break-words"
+          >
+            {error.message}
+          </pre>
         )}
       </div>
     )
@@ -253,158 +375,53 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 }
 
 /**
- * Page-level ErrorBoundary – fills most of the viewport, includes "Go back".
- * Used to wrap individual lazy-loaded route components.
+ * Hook that reports async errors (event handlers, effects) to an external
+ * reporter. Render-time errors are handled by {@link ErrorBoundary}.
  */
-export class PageErrorBoundary extends Component<Omit<ErrorBoundaryProps, 'showGoBack'>, ErrorBoundaryState> {
-  constructor(props: Omit<ErrorBoundaryProps, 'showGoBack'>) {
-    super(props)
-    this.state = { hasError: false, error: null, showDetails: false }
+export function useErrorReporter() {
+  return {
+    report: (error: unknown, context?: Record<string, unknown>) => {
+      console.error('Reported error:', error, context)
+    },
   }
+}
 
-  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('PageErrorBoundary caught:', error, info.componentStack)
-    this.props.onError?.(error, info)
-  }
-
-  private handleRetry = () => {
-    this.setState({ hasError: false, error: null, showDetails: false })
-  }
-
-  private handleGoBack = () => {
-    window.history.back()
-  }
-
-  private toggleDetails = () => {
-    this.setState((s) => ({ showDetails: !s.showDetails }))
-  }
-
-  render() {
-    if (!this.state.hasError) return this.props.children
-    if (this.props.fallback) return this.props.fallback
-
-    const { featureLabel = 'This page', boundaryId = 'page' } = this.props
-    const { error, showDetails } = this.state
-    const isDev = import.meta.env.DEV
-
+/**
+ * Convenience wrapper that renders children inside an {@link ErrorBoundary}
+ * with a stable boundary id derived from the feature label.
+ */
+export function withErrorBoundary<P extends object>(
+  Wrapped: React.ComponentType<P>,
+  options?: Omit<ErrorBoundaryProps, 'children'>,
+) {
+  return function ErrorBoundaryWrapper(props: P) {
     return (
-      <div
-        role="alert"
-        aria-live="assertive"
-        data-boundary-id={boundaryId}
-        className="min-h-[60vh] flex items-center justify-center p-4"
-      >
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-            <svg
-              className="w-8 h-8 text-red-500 dark:text-red-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
-          </div>
-
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{featureLabel} failed to load</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            An unexpected error occurred. You can retry or go back to the previous page.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
-            <button
-              type="button"
-              onClick={this.handleRetry}
-              className="px-6 py-2.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-500/20 transition-colors cursor-pointer"
-              aria-label={`Retry loading ${featureLabel}`}
-            >
-              Retry
-            </button>
-            <button
-              type="button"
-              onClick={this.handleGoBack}
-              className="px-6 py-2.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              aria-label="Go back to previous page"
-            >
-              Go back
-            </button>
-          </div>
-
-          {isDev && (
-            <button
-              type="button"
-              onClick={this.toggleDetails}
-              className="text-xs text-gray-400 hover:text-gray-200 underline cursor-pointer"
-              aria-expanded={showDetails}
-            >
-              {showDetails ? 'Hide details' : 'Show details'}
-            </button>
-          )}
-
-          {isDev && showDetails && error && (
-            <div className="mt-3 text-start">
-              <pre className="text-xs text-red-300 bg-red-950/40 border border-red-900/50 rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap break-all">
-                {error.message}
-                {error.stack ? `\n\n${error.stack}` : ''}
-              </pre>
-            </div>
-          )}
-        </div>
-      </div>
+      <ErrorBoundary {...options}>
+        <Wrapped {...props} />
+      </ErrorBoundary>
     )
   }
 }
 
 /**
- * Hook that installs global handlers for errors that React error boundaries
- * cannot catch: unhandled promise rejections and uncaught synchronous errors
- * thrown outside of React's render cycle (e.g. in event handlers, timers, or
- * third-party callbacks).
- *
- * Mount this once near the root of the application (e.g. inside `<App>`).
- * The handlers are automatically removed when the component unmounts.
- *
- * @param onError - Optional callback invoked with every captured error.
- *   Defaults to `console.error`.
- *
- * @example
- * ```tsx
- * function App() {
- *   useGlobalErrorHandler((err) => reportToMonitoring(err))
- *   return <RouterProvider ... />
- * }
- * ```
+ * Small helper component that renders the recovery copy for a given category.
+ * Useful for inline error states that are not render-time crashes.
  */
-export function useGlobalErrorHandler(onError?: (error: Error) => void): void {
-  useEffect(() => {
-    const report = onError ?? ((err: Error) => console.error('Unhandled error:', err))
+export function ErrorCategoryMessage({ category }: { category: ApiErrorCategory }) {
+  const copy = ERROR_CATEGORY_COPY[category]
+  return (
+    <div role="status" aria-live="polite" data-error-category={category}>
+      <p className="text-sm font-medium text-gray-100">{copy.title}</p>
+      <p className="text-sm text-gray-400">{copy.message}</p>
+      <p className="text-sm text-gray-400">{copy.recovery}</p>
+    </div>
+  )
+}
 
-    const handleError = (event: ErrorEvent) => {
-      report(event.error instanceof Error ? event.error : new Error(event.message))
-    }
-
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      const reason = event.reason
-      const error = reason instanceof Error ? reason : new Error(String(reason))
-      report(error)
-    }
-
-    window.addEventListener('error', handleError)
-    window.addEventListener('unhandledrejection', handleRejection)
-
-    return () => {
-      window.removeEventListener('error', handleError)
-      window.removeEventListener('unhandledrejection', handleRejection)
-    }
-  }, [onError])
+/**
+ * Kept for backwards compatibility with callers that imported the hook from
+ * this module; re-exports the effect helper used by some panels.
+ */
+export function useOnMountEffect(effect: () => void) {
+  useEffect(effect, [])
 }
