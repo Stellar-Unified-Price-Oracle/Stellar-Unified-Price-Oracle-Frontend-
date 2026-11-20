@@ -150,7 +150,7 @@ export function Governance(): ReactElement {
   const { currentRole, activeNetwork } = useGovernancePermissions()
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-8">
+    <div className="max-w-5xl mx-auto flex flex-col gap-8 w-full min-w-0 overflow-x-hidden px-4 sm:px-6">
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-100">Governance</h1>
