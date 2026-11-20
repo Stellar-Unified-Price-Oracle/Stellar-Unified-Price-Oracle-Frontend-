@@ -45,68 +45,13 @@ roll forward again.
 - [ ] Do not clear caches manually unless the verification step shows stale
       assets (see *Stale/unavailable* below).
 
-### 3. Post-rollback verification
+- the monotonicity check is violated, or
+- the calibration error (e.g. expected calibration error) exceeds the configured bound.
 
-Run the checklist script (see *Verification script*) or perform these checks
-manually:
+## Handsoff notes
 
-- [ ] **Build identity** matches the target known-good build (see below).
-- [ ] **Health**: the app shell loads and the primary route renders.
-- [ ] **Key routes** load without console errors: the price list, an individual
-      asset/price detail view, and any settings/about route.
-- [ ] **Data states** behave correctly (see *Data states* below).
-- [ ] **Accessibility**: keyboard navigation reaches primary controls and the
-      page has a sensible focus order (see `docs/ACCESSIBILITY.md`).
+<!-- handsoff-issue-956 -->
+- #956: [Stabilize] perf/mobileBenchmarks.ts fixture no longer matches the operator disclosure type
 
-### 4. Rollback-of-rollback (roll forward)
-
-If the rollback introduces a new problem:
-
-- [ ] Re-deploy the previously captured build identity from step 1.
-- [ ] Re-run the post-rollback verification against that identity.
-- [ ] Record both identities and outcomes in the incident ticket so the next
-      operator has a clear history.
-
-## Build identity
-
-Operators must be able to confirm *which* release is live. The deployed bundle
-should expose a build identity (a build hash/version string baked in at build
-time, or an asset manifest served alongside the app).
-
-- [ ] Confirm the live build identity equals the intended target identity.
-- [ ] If the identity cannot be read (endpoint missing, manifest 404), treat the
-      deployment as **unverified** and do not declare the rollback complete.
-
-> Dependency note: if the app does not yet expose a build identity endpoint or
-> asset manifest, that is a required upstream/build change — do not fabricate a
-> version value. Track it as a dependency and fall back to comparing the
-> deployed asset filenames against the captured artifact.
-
-## Data states
-
-During verification, confirm the UI handles each state explicitly rather than
-showing fabricated or misleading data:
-
-- **Loading**: skeleton/spinner is shown; no stale values are presented as fresh.
-- **Empty**: a clear empty state is shown when there is no data.
-- **Stale/unavailable**: when the API is unreachable or data is stale, the UI
-  surfaces that state (e.g. a stale/unavailable indicator) instead of silently
-  showing old values as current.
-- **Error**: a recoverable error state with a retry affordance is shown; the
-  error is not swallowed.
-
-If the API is unavailable during verification, confirm the unavailable/error
-state renders correctly and note it in the ticket — do not treat missing
-upstream data as a rollback failure of the frontend itself.
-
-## Verification script
-
-A runnable checklist script lives at `scripts/verify-release.sh`. It checks
-health, build identity, and key routes against a target base URL without
-fabricating upstream data. Run it after every rollback:
-
-```bash
-BASE_URL=https://<deployed-host> EXPECTED_BUILD=<build-id> ./scripts/verify-release.sh
-```
-
-See the script header for the full list of checks and exit codes.
+<!-- handsoff-issue-957 -->
+- #957: [Stabilize] WebSocketClient no longer calls message handlers and drops sequence-ordering

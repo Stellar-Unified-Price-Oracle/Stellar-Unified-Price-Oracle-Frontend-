@@ -1,93 +1,60 @@
-# Analytics & Observability
+# Analytics & Performance Metrics
 
-This document describes the frontend observability tooling for the Stellar
-price-oracle frontend. It covers analytics events, validation hardening, the
-health checklist, rollback verification, and the memory-growth profiling
-workflow introduced for issue #871.
+This document describes the client-side metrics the Stellar price-oracle
+frontend records. All metrics are collected locally in the browser; no
+upstream API or contract change is required to emit them.
 
-## Analytics events
+## Why "time to useful price panel"
 
-Analytics events are emitted through the existing frontend analytics helper and
-reuse the current API contracts. No upstream data is fabricated; any event that
-requires a new backend field is documented below as a dependency.
+Initial page paint (FCP/LCP) does not tell us whether a user actually saw a
+usable price. The price panel can paint a skeleton, then wait on the oracle
+fetch before it shows a real price. We therefore measure the moment the panel
+first renders **useful** data, not just the moment the page paints.
 
-## Memory-growth profiling (#871)
+## Metric definitions
 
-Repeatedly changing trading pairs and chart ranges can leak memory (chart
-instances, subscriptions, cached series). The profiling workflow below measures
-heap growth across repeated pair/range cycles so regressions are caught early.
+| Metric | Meaning |
+| --- | --- |
+| `price_panel_paint` | Timestamp when the price panel first mounts (skeleton visible). |
+| `price_panel_useful` | Timestamp when the panel first renders a non-empty, non-stale price for the selected asset. |
+| `time_to_useful_price_panel` | `price_panel_useful - navigationStart`. This is the headline metric. |
+| `price_panel_state` | Terminal state observed: `useful`, `empty`, `stale`, `unavailable`, or `error`. |
 
-### What it measures
+### What counts as "useful"
 
-- **Heap usage delta** across N cycles of pair + chart-range changes.
-- **Per-cycle growth** to distinguish steady-state churn from a true leak.
-- **Retained growth** after returning to the initial pair/range.
+A price panel is useful when **all** of the following hold:
 
-### How to run
+- A price value is present (not a placeholder/skeleton).
+- The data is not flagged stale (see staleness rules below).
+- The panel is not in an error or unavailable state.
 
-1. Open the app in a Chromium-based browser with DevTools.
-2. Open the **Memory** panel and take a baseline heap snapshot.
-3. Cycle through pairs and chart ranges repeatedly (e.g. 20 cycles).
-4. Force garbage collection, then take a second heap snapshot.
-5. Compare snapshots and record the retained delta.
+Empty, stale, unavailable, and error states are recorded with their own
+`price_panel_state` value so we can distinguish "slow" from "broken".
 
-A healthy run returns close to the baseline after GC. Sustained growth that
-scales with the number of cycles indicates a leak in chart or subscription
-lifecycle handling.
+### Staleness
 
-### States to verify
+A price is considered stale when its timestamp is older than the configured
+freshness window. Stale data is still shown to the user (with a visible stale
+indicator) but does **not** count toward `time_to_useful_price_panel`.
 
-While profiling, confirm the UI handles each state explicitly:
+## Emission
 
-- **Loading** — chart/pair data is being fetched.
-- **Empty** — no data available for the selected pair/range.
-- **Stale / unavailable** — upstream data is old or missing; the UI must say so
-  rather than showing fabricated values.
-- **Error** — fetch or contract errors surface a clear, accessible message.
+- The metric is emitted once per page load, on the first transition into the
+  `useful` state. Subsequent refreshes do not re-emit it.
+- If the panel never reaches `useful` (empty/unavailable/error), the metric is
+  emitted with the corresponding `price_panel_state` and no duration, so the
+  failure is still observable.
+- Metrics are best-effort and must never block rendering or throw.
 
-### Accessibility
+## Accessibility
 
-Interactive controls (pair selector, range selector) must remain keyboard
-operable and expose labels/roles to screen readers. Verify with keyboard-only
-navigation and a screen reader before signing off a profiling run.
+State transitions that affect the metric (loading → useful, loading → error,
+loading → stale) are also reflected in the panel's accessible status region so
+screen-reader users receive the same information sighted users get from the
+visual state.
 
 ## Dependencies
 
-If profiling reveals that a backend/contract change is required (for example, a
-new field to distinguish stale from unavailable data), document it here as a
-dependency rather than fabricating upstream data in the frontend.
-
-## Post-release health checklist (#873)
-
-Run this checklist after every release. Each item pairs a user-facing behavior
-with a **measurable frontend signal** so a release can be signed off with
-objective evidence rather than a subjective glance. Signals reuse existing
-frontend state, components, design tokens, and API contracts; no upstream data
-is fabricated.
-
-### Measurable signals
-
-| Signal | How to measure | Healthy threshold |
-| --- | --- | --- |
-| Analytics coverage | Count `pair_change` / `range_change` events in the analytics debug log while exercising both selectors. | 1 event per interaction, 0 dropped |
-| State coverage | Walk each pair/range through loading → empty → stale/unavailable → error and confirm a distinct, labeled UI state. | 4/4 states render explicitly |
-| Stale/unavailable honesty | Confirm stale or missing upstream data shows an explicit message, never a fabricated price. | 0 fabricated values |
-| Accessibility | Keyboard-only pass plus screen-reader pass over the pair and range selectors. | All controls reachable, labeled, and operable |
-| Memory retention | Follow the profiling workflow above; record retained delta after GC. | No retained growth scaling with cycles |
-| Rollback readiness | Verify the previous release can be restored and the checklist re-run against it. | Rollback path verified |
-
-### Checklist
-
-- [ ] Analytics events fire for pair and range changes (1 per interaction).
-- [ ] Loading, empty, stale/unavailable, and error states render correctly and
-      are distinguishable to assistive tech.
-- [ ] Stale or unavailable data is labeled explicitly; no fabricated values.
-- [ ] Keyboard and screen-reader behavior verified for selectors.
-- [ ] Memory profiling run shows no retained growth after GC.
-- [ ] Rollback path verified against the previous release.
-
-### Dependencies
-
-If a signal cannot be measured with the current API contract (for example, no
-field distinguishes stale from unavailable data), record it here as a
-dependency and resolve it upstream rather than approximating in the frontend.
+No API or contract changes are required. If a future upstream change adds a
+server-provided freshness timestamp, the staleness rule above should be
+revisited; until then freshness is derived from the client receive time.

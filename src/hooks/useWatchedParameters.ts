@@ -22,6 +22,7 @@ export interface UseWatchedParametersReturn {
   watchedKeys: ReadonlySet<string>
   isWatched: (key: string) => boolean
   toggleWatch: (record: ParameterRecord) => void
+  updateWatchedKeys: (newSet: Set<string>) => void
   unacknowledgedChanges: WatchedParameterChange[]
   dismissChange: (key: string) => void
   dismissAllChanges: () => void
@@ -122,6 +123,7 @@ export function useWatchedParameters(
     watchedKeys,
     isWatched,
     toggleWatch,
+    updateWatchedKeys,
     unacknowledgedChanges,
     dismissChange,
     dismissAllChanges,

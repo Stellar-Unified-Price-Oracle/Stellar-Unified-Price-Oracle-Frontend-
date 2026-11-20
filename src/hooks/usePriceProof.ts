@@ -1,7 +1,7 @@
 import { fetchPriceProof } from '../api/rest'
 import type { PriceProof } from '../types'
-import { useSwr } from './useSwr'
 import { stampProofNetwork } from '../wallet/networkGuard'
+import { useSwr } from './useSwr'
 
 /** Return value of {@link usePriceProof}. */
 export interface UsePriceProofResult {

@@ -15,3 +15,21 @@ export function maskSecret(value: string, visible = 4): string {
   // `slice(-0)` is `slice(0)`, which would expose the whole value when visible is 0.
   return `${MASK}${value.slice(value.length - visible)}`
 }
+
+/**
+ * Summarizes a notification condition into a short, human-readable label.
+ *
+ * Accepts either a plain string or a structured condition object and returns
+ * a compact description suitable for rendering in the channels modal.
+ */
+export function summarizeCondition(
+  condition: string | { field?: string; operator?: string; value?: unknown } | null | undefined,
+): string {
+  if (condition == null) return ''
+  if (typeof condition === 'string') return condition
+  const { field, operator, value } = condition
+  const parts = [field, operator, value]
+    .filter((part) => part !== undefined && part !== null && part !== '')
+    .map((part) => String(part))
+  return parts.join(' ')
+}

@@ -1,418 +1,131 @@
-# Accessibility Guidelines
-
-This document outlines the accessibility features and guidelines for the Stellar Unified Price Oracle Frontend, with a focus on supporting users with visual impairments via screen reader announcements and ARIA live regions.
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [ARIA Live Regions](#aria-live-regions)
-3. [Announcement System](#announcement-system)
-4. [Using Announcer Hooks](#using-announcer-hooks)
-5. [Configuration & Frequency Control](#configuration--frequency-control)
-6. [Best Practices](#best-practices)
-7. [Testing Accessibility](#testing-accessibility)
-8. [Post-Release Health Checklist](#post-release-health-checklist)
-9. [Resources](#resources)
-
----
-
-## Overview
-
-The application uses **ARIA live regions** and a centralized **announcement registry** to communicate dynamic content changes to screen readers. This ensures visually impaired users don't miss critical information like:
-
-- Real-time price updates
-- Price alert firings
-- WebSocket connection status changes
-- Toast notifications
-- Chart data changes
-
-### Key Components
-
-| Component | Purpose | Live Region |
-|-----------|---------|------------|
-| `LiveRegionContainer` | Renders hidden ARIA live regions for announcements | Both polite & assertive |
-| `useAnnounce()` | Core hook for announcing messages | Registry-based |
-| `usePriceAnnouncer()` | Announces significant price changes | Polite |
-| `useAlertAnnouncer()` | Announces alert firings | Assertive |
-| `useChartAnnouncer()` | Announces chart data updates | Polite |
-| `useA11yConfig()` | Centralized accessibility configuration | N/A |
-
----
-
-## ARIA Live Regions
-
-### What Are ARIA Live Regions?
-
-ARIA live regions are dynamic areas of the page that screen readers monitor for changes. When content in a live region updates, the screen reader announces the new content to the user.
-
-### Polite vs Assertive
-
-- **`aria-live="polite"`** — waits for a pause in speech before announcing. Use for non-urgent updates (prices, charts).
-- **`aria-live="assertive"`** — interrupts current speech immediately. Use for urgent updates (alerts, errors, rate limits).
-
-### LiveRegionContainer
-
-Place this component once at the app shell level (e.g., in `Layout.tsx`):
-
-```tsx
-import { LiveRegionContainer } from '../components/LiveRegionContainer'
-
-function Layout() {
-  return (
-    <div>
-      <LiveRegionContainer /> {/* Renders hidden ARIA regions */}
-      {/* Rest of layout */}
-    </div>
-  )
-}
-```
-
-This component creates two hidden regions:
-- `aria-live="polite"` — status announcements (prices, charts, data updates)
-- `aria-live="assertive"` — alert announcements (alerts, errors, warnings)
-
----
-
-## Announcement System
-
-### Core Flow
-
-```
-Component wants to announce
-       ↓
-Call useAnnounce() hook
-       ↓
-announce(message, priority)
-       ↓
-AnnouncementRegistry
-├─ Check deduplication
-├─ Store in history
-└─ Notify all subscribers
-       ↓
-LiveRegionContainer subscribers
-├─ Update polite region
-└─ Update assertive region
-       ↓
-Screen reader announces
-```
-
-### Deduplication
-
-To prevent announcement spam, the system deduplicates identical messages within a configurable time window:
-
-```tsx
-// Won't announce "BTC updated" twice within 5 seconds
-const { announce } = useAnnounce({ deduplicationMs: 5000 })
-
-announce('BTC updated to $70,000')
-announce('BTC updated to $70,000')  // Deduplicated
-```
-
----
-
-## Using Announcer Hooks
-
-### usePriceAnnouncer
-
-Announces significant price changes:
-
-```tsx
-import { usePriceAnnouncer } from '../hooks/usePriceAnnouncer'
-import { usePriceContext } from '../context/PriceContext'
-
-function Dashboard() {
-  const prices = usePriceContext().prices
-
-  // Announce prices that change 1%+ with 5s dedup
-  usePriceAnnouncer(prices, {
-    minPercentageChange: 1,
-    deduplicationMs: 5000,
-    maxAnnouncementsPerBatch: 3,
-  })
-
-  return <PriceTable prices={prices} />
-}
-```
-
-**Configuration:**
-- `minPercentageChange` — only announce if price changed by at least this %
-- `deduplicationMs` — wait this long before announcing same price again
-- `maxAnnouncementsPerBatch` — limit announcements per render (prevents spam)
-
-**Related Hooks:**
-- `usePriceDataAnnouncer()` — announce new/filtered data load
-- `usePriceAlertAnnouncer()` — announce individual pair updates
-
-### useAlertAnnouncer
-
-Announces alert firings immediately:
-
-```tsx
-import { useAlertAnnouncer } from '../hooks/useAlertAnnouncer'
-import { useAlerts } from '../hooks/useAlerts'
-
-function AlertPanel() {
-  const { alerts } = useAlerts()
-
-  // Announce triggered alerts with assertive priority
-  useAlertAnnouncer(alerts, {
-    deduplicationMs: 3000,
-    announceSnooze: false,
-  })
-
-  return <AlertList alerts={alerts} />
-}
-```
-
-**Related Hooks:**
-- `useIndividualAlertAnnouncer()` — announce single alert status
-- `useAlertSummaryAnnouncer()` — announce alert statistics
-
-### useChartAnnouncer
-
-Announces chart data and range updates:
-
-```tsx
-import { useChartAnnouncer } from '../hooks/useChartAnnouncer'
-
-function PriceChart() {
-  const range = {
-    high: 75000,
-    low: 70000,
-    current: 72500,
-  }
-
-  // Announce if range changed 1%+
-  useChartAnnouncer(range, {
-    minRangeChangePercent: 1,
-    deduplicationMs: 5000,
-  })
-
-  return <Chart range={range} />
-}
-```
-
-**Related Hooks:**
-- `useChartDataTableAnnouncer()` — announce table data updates
-- `useChartStatisticsAnnouncer()` — announce summary statistics
-
-### useAnnounce (Core)
-
-Direct hook for custom announcements:
-
-```tsx
-import { useAnnounce } from '../hooks/useAnnounce'
-
-function CustomComponent() {
-  const { announce, subscribe, getHistory } = useAnnounce()
-
-  // Announce a message
-  announce('Price updated', 'polite')
-
-  // Announce urgent message
-  announce('Connection lost!', 'assertive')
-
-  // Subscribe to announcements
-  useEffect(() => {
-    const unsubscribe = subscribe((announcement) => {
-      console.log('Announced:', announcement.message)
-    })
-    return unsubscribe
-  }, [])
-
-  // Get history
-  const history = getHistory()
-  return <div>{history.length} announcements made</div>
-}
-```
-
----
-
-## Configuration & Frequency Control
-
-### Accessibility Presets
-
-Control announcement frequency globally with presets:
-
-```tsx
-import {
-  useA11yConfig,
-  DEFAULT_A11Y_CONFIG,
-  A11Y_LOW_FREQUENCY,
-  A11Y_HIGH_FREQUENCY,
-} from '../hooks/useA11yConfig'
-
-function AccessibilitySettings() {
-  const { config, setPreset } = useA11yConfig()
-
-  return (
-    <div>
-      <label>
-        <input
-          type="radio"
-          onChange={() => setPreset('default')}
-        />
-        Default Announcements
-      </label>
-      <label>
-        <input
-          type="radio"
-          onChange={() => setPreset('low-frequency')}
-        />
-        Low Frequency (fewer announcements, good for busy markets)
-      </label>
-      <label>
-        <input
-          type="radio"
-          onChange={() => setPreset('high-frequency')}
-        />
-        High Frequency (all announcements, verbose)
-      </label>
-    </div>
-  )
-}
-```
-
-### Preset Comparison
-
-| Preset | Min Price Change | Dedup Window | Max/Batch | Use Case |
-|--------|------------------|--------------|-----------|----------|
-| **Default** | 1% | 5s | 3 | Balanced, standard use |
-| **Low Frequency** | 5% | 15s | 1 | Noisy markets, reduce spam |
-| **High Frequency** | 0.1% | 1s | 10 | Detailed monitoring |
-
-### Custom Configuration
-
-```tsx
-import { setA11yConfig, DEFAULT_A11Y_CONFIG } from '../hooks/useA11yConfig'
-
-// Customize specific settings
-setA11yConfig({
-  ...DEFAULT_A11Y_CONFIG,
-  price: {
-    ...DEFAULT_A11Y_CONFIG.price,
-    minPercentageChange: 2,  // 2% minimum
-  },
-  alert: {
-    ...DEFAULT_A11Y_CONFIG.alert,
-    deduplicationMs: 10000,  // 10 second dedup
-  },
-})
-```
-
----
-
-## Best Practices
-
-### ✅ Do
-
-1. **Use appropriate priority levels:**
-   ```tsx
-   // Urgent (alert firing, rate limit)
-   announce('Alert: BTC dropped 10%', 'assertive')
-
-   // Normal (price update, status change)
-   announce('BTC updated to $70,000', 'polite')
-   ```
-
-2. **Avoid duplicate announcements:**
-   - Use deduplication windows
-   - Debounce rapid updates
-   - Batch related announcements
-
-3. **Provide context:**
-   ```tsx
-   // ❌ Bad: no context
-   announce('Updated')
-
-   // ✅ Good: clear context
-   announce('BTC price updated to $70,000, up 2.5%')
-   ```
-
-4. **Respect user preferences:**
-   - Honor `prefers-reduced-motion`
-   - Provide frequency presets
-   - Allow disabling announcements
-
-### ❌ Don't
-
-1. **Don't announce every update** — use thresholds and deduplication
-2. **Don't use assertive for non-urgent** — reserve for alerts/errors
-3. **Don't announce on initial load** — only on changes
-4. **Don't nest live regions** — one polite, one assertive
-
----
-
-## Testing Accessibility
-
-### Manual Testing
-
-1. **Screen reader testing:**
-   - macOS: VoiceOver (Cmd+F5)
-   - Windows: NVDA (free) or JAWS
-   - Linux: Orca
-
-2. **Keyboard navigation:**
-   - Tab through all interactive elements
-   - Verify focus indicators are visible
-   - Test with `prefers-reduced-motion` enabled
-
-3. **Automated testing:**
-   ```bash
-   npm run test:a11y
-   ```
-
-### Component Tests
-
-```tsx
-import { render, screen } from '@testing-library/react'
-import { LiveRegionContainer } from '../components/LiveRegionContainer'
-
-test('announces price updates politely', () => {
-  render(<LiveRegionContainer />)
-  const politeRegion = screen.getByRole('status')
-  expect(politeRegion).toHaveAttribute('aria-live', 'polite')
-})
-```
-
----
-
-## Post-Release Health Checklist
-
-Use this checklist after every release to verify the frontend is healthy and that accessibility signals remain measurable. Each signal lists a **target**, **how to measure**, and the **expected behavior when data is unavailable or stale**.
-
-### Measurable Frontend Signals
-
-| Signal | Target | How to Measure | Stale / Unavailable Behavior |
-|--------|--------|----------------|------------------------------|
-| Live region presence | 2 regions (polite + assertive) | Inspect DOM for `[aria-live]`; assert in component test | If missing, treat as release blocker |
-| Announcement dedup | 0 duplicate announcements within window | `getHistory()` length vs. unique messages | Registry returns empty history → show "no announcements" state |
-| Price freshness | Last update < 60s | Compare `updatedAt` to `Date.now()` | Show explicit "stale data" badge; do not announce stale prices |
-| WebSocket status | `connected` | Connection status indicator | Show "disconnected" state; announce assertively |
-| Error rate | < 1% of requests | Frontend error boundary + API error logs | Surface error state with retry; never fabricate prices |
-| Keyboard reachability | 100% of interactive elements | Tab-order audit | N/A — always required |
-| Reduced motion | Respected | Toggle OS setting; verify animations disabled | N/A — always required |
-
-### Checklist
-
-- [ ] `LiveRegionContainer` renders both polite and assertive regions.
-- [ ] Price announcements respect the configured `minPercentageChange` and dedup window.
-- [ ] Stale prices (> 60s) display an explicit stale badge and are not announced as fresh.
-- [ ] Unavailable data shows an empty/error state with a retry affordance — no fabricated values.
-- [ ] WebSocket disconnects are announced assertively and reflected in the status indicator.
-- [ ] All interactive controls are reachable and operable via keyboard with visible focus.
-- [ ] `prefers-reduced-motion` disables non-essential animation.
-- [ ] Automated a11y tests pass (`npm run test:a11y`).
+# Accessibility
+
+This document describes the accessibility guarantees of the Stellar price-oracle
+frontend and the user-facing recovery copy shown for each known API error
+category.
+
+## Recovery copy for API error categories
+
+Every API failure surfaced to the user maps to a known category. Each category
+has explicit, plain-language recovery copy and an announced live-region message
+so screen-reader users receive the same guidance as sighted users.
+
+| Category | Trigger | User-facing recovery copy |
+| --- | --- | --- |
+| Network | Request could not reach the API (offline, DNS, CORS) | "We couldn't reach the price service. Check your connection and try again." |
+| Timeout | Request exceeded the client timeout | "The price service took too long to respond. Please try again." |
+| Rate limit | HTTP 429 | "Too many requests. Please wait a moment before refreshing." |
+| Auth | HTTP 401 / 403 | "You don't have access to this data. Sign in again or contact your administrator." |
+| Not found | HTTP 404 | "We couldn't find prices for that asset. Check the asset code and try again." |
+| Validation | HTTP 400 / 422 | "Some of the details look invalid. Review your input and try again." |
+| Server error | HTTP 5xx | "The price service is having trouble right now. Please try again shortly." |
+| Stale / unavailable | Cached data older than the freshness window, or no data | "Prices may be out of date. Refresh to get the latest values." |
+
+### Behavior notes
+
+- Recovery copy is rendered in a `role="status"` / `role="alert"` live region so
+  it is announced without moving focus.
+- Stale and unavailable states are explicit: the panel never presents cached
+  values as fresh, and the timestamp of the last successful update is shown.
+- Retry controls are real `<button>` elements, reachable by keyboard and
+  operable with Enter/Space, with an accessible name that includes the action.
+- Loading, empty, stale/unavailable, and error states each have distinct copy so
+  users are never left without guidance.
 
 ### Dependencies
 
-If a signal cannot be measured with the current API contract (e.g., no `updatedAt` field on price payloads), document the required API/contract change here as a dependency rather than fabricating data. Track these as follow-up issues before the signal can be enforced.
+No upstream API or contract change is required. Categories are derived from the
+HTTP status and transport outcome already returned by the existing API client.
+If the API later adds structured error codes, the mapping above should be
+extended rather than replaced.
 
----
+## Keyboard and screen-reader coverage
 
-## Resources
+- All interactive controls (refresh, retry, asset selection) are focusable in a
+  logical order and expose visible focus styles from the design tokens.
+- Live-region updates for loading, stale, and error states are covered by
+  component tests asserting the announced text.
+- Color is never the sole indicator of state; each state pairs its color with
+  text copy from the table above.
 
-- [WAI-ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/)
-- [MDN: ARIA live regions](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Live_Regions)
-- [WebAIM: Screen Reader Testing](https://webaim.org/articles/screenreader_testing/)
-- [Deque: Accessibility Testing](https://www.deque.com/axe/)
+## Interaction coverage for critical component states
+
+Critical component states are covered by Storybook interaction tests (story
+`play` functions) so that the loading, empty, stale/unavailable, and error
+states are exercised the same way a user would experience them. The tests reuse
+the existing components, design tokens, and API fixtures; no fabricated upstream
+data is introduced.
+
+### Covered states
+
+- **Loading:** the loading indicator is present and the populated content is
+  not yet rendered.
+- **Empty:** the empty-state copy is shown and no price rows are rendered.
+- **Stale / unavailable:** the explicit stale copy from the table above is
+  announced and the last-updated timestamp is shown.
+- **Error:** the category-specific recovery copy is announced in the live
+  region and a retry control is available.
+
+### Keyboard and screen-reader assertions
+
+Each interaction test drives the component with the keyboard and asserts the
+accessible outcome, not just the visual result:
+
+- Focus moves to the retry/refresh control with `Tab` and the control is
+  activated with `Enter` and `Space`.
+- The control exposes an accessible name that includes the action (for example
+  "Retry loading prices").
+- Live-region updates (`role="status"` / `role="alert"`) are asserted to
+  contain the expected recovery copy for the state under test.
+- Focus is not trapped or lost when a state transitions (for example from error
+  back to loading after a retry).
+
+### Behavior notes
+
+- Interaction tests run in CI alongside the visual regression gate and fail the
+  build on any unexpected behavior change.
+- Assertions target accessible roles and names (via the accessibility tree)
+  rather than implementation details, so refactors that preserve behavior do not
+  break the tests.
+
+### Dependencies
+
+No upstream API or contract change is required. Interaction tests consume the
+same fixtures and error categories already used by the app. If a new state or
+error category is added, add a corresponding story and interaction test rather
+than changing the existing ones.
+
+## Visual regression gating across locales and color themes
+
+Visual regressions are gated for every supported locale and color theme so that
+layout, copy, and contrast changes cannot silently ship. The gate reuses the
+existing design tokens and locale catalogs; it does not introduce new state or
+API contracts.
+
+### Matrix
+
+- **Locales:** every locale in the supported-locale list (the same list the app
+  uses to build its language switcher). Adding a locale to that list
+  automatically adds it to the visual gate.
+- **Color themes:** every theme exposed by the design tokens (light and dark at
+  minimum). Adding a theme to the token set automatically adds it to the gate.
+- **States:** each cell of the matrix is captured for the loading, empty,
+  stale/unavailable, and error states described above, plus the default
+  populated state.
+
+### Behavior notes
+
+- Snapshots are captured with the same components, tokens, and API fixtures the
+  app uses in development; no fabricated upstream data is introduced.
+- Stale/unavailable and error snapshots assert the explicit recovery copy from
+  the table above, so a regression in copy or contrast fails the gate.
+- The gate runs in CI and fails the build on any unexpected visual diff; diffs
+  are reviewed and updated intentionally rather than auto-accepted.
+- Locale and theme coverage is derived from the existing supported lists, so the
+  gate stays in sync as locales or themes are added or removed.
+
+### Dependencies
+
+No upstream API or contract change is required. The gate consumes the existing
+locale list, design tokens, and API fixtures. If a new locale or theme is added,
+update the corresponding supported list and the gate picks it up automatically.
