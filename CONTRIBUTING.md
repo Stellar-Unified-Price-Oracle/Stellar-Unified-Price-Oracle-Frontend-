@@ -16,7 +16,8 @@ to get set up, the workflow we use for changes, and the standards we hold code t
 7. [Coding Standards](#coding-standards)
 8. [Testing Requirements](#testing-requirements)
 9. [Documentation Requirements](#documentation-requirements)
-10. [PR Review Checklist](#pr-review-checklist)
+10. [Adding a New Oracle Source](#adding-a-new-oracle-source)
+11. [PR Review Checklist](#pr-review-checklist)
 
 ---
 
@@ -246,147 +247,104 @@ pushing. The pre-push hook will catch remaining issues.
 
 ### TypeScript
 
-- Strict mode is enabled — `noImplicitAny`, `strictNullChecks`, etc.
-- Prefer `type` over `interface` for local prop types; use `interface` for public
-  API contracts.
-- Never use `any`; use `unknown` and narrow it.
-- Export types with `export type` (erasable at compile time).
+- Strict mode is enabled — `noImplicitAny`, `strictNullChecks`, and
+  `noUnusedLocals` are all on. Do not use `any`; prefer `unknown` and narrow.
+- Export types from the module that owns them. Shared domain types live in
+  `src/types/`.
+- Prefer discriminated unions over optional-field soup for state machines.
 
 ### React
 
-- Use named exports for all components and hooks.
-- Wrap components that re-render frequently with `memo()`.
-- Follow the memoization convention in `AGENTS.md`:
-  - Use `useCallback` when passing a function to a `memo()` component or into a
-    `useEffect` dependency array.
-  - Do **not** wrap event handlers on host elements (`onClick` on `<button>`).
-- No class components except `ErrorBoundary` (class is required for error boundaries).
-- All user-visible strings come from `react-i18next`. No hardcoded English in JSX.
+- Function components only. No class components.
+- Keep components small and focused; extract hooks for reusable logic.
+- Co-locate tests next to the file under test (`Foo.tsx` → `Foo.test.tsx`).
 
 ### Styling
 
-- Tailwind utility classes only — no CSS modules, no inline `style` objects.
-- Follow the dark-theme-first pattern: default classes target dark backgrounds;
-  add `dark:` variants only where the light theme differs.
-- No magic numbers in CSS — use Tailwind's scale or CSS variables.
-
-### Storage
-
-- All `localStorage` access goes through `src/utils/storage.ts`.
-- No tokens, secrets, or PII in `localStorage` or `IndexedDB`.
-- Add new keys to `STORAGE_KEYS` and update `docs/storage-security-audit.md`.
-
-### General
-
-- No semicolons.
-- Single quotes for strings.
-- 2-space indentation.
-- Maximum line length: 100 characters (Prettier default is 100).
-- Remove unused imports before committing.
+- Tailwind utility classes, composed with `clsx` / `tailwind-merge` via the `cn`
+  helper. No inline `style` objects except for dynamic values that cannot be
+  expressed as classes.
 
 ---
 
 ## Testing Requirements
 
-Every change to `src/` must be covered by tests unless the change is purely
-documentation or styling with no logic.
-
-### Unit tests (Vitest)
-
-- Co-located next to the file under test: `Foo.test.tsx` beside `Foo.tsx`.
-- Use `@testing-library/react` for component tests.
-- Test behaviour, not implementation — query by role, label, or text rather than
-  by CSS class or internal component state.
-- Every new utility function needs at least one happy-path test and one error/edge
-  case test.
-- Run with `npm run test:run` (CI mode) and ensure zero failures.
-
-### Coverage expectations
-
-| Area                                 | Expectation                                               |
-| ------------------------------------ | --------------------------------------------------------- |
-| New utility functions (`src/utils/`) | 100 % branch coverage                                     |
-| New hooks (`src/hooks/`)             | Happy path + error path                                   |
-| New components                       | Render test, key interactions, empty/error/loading states |
-| Bug fixes                            | Regression test that would have caught the bug            |
-
-### E2E tests (Playwright)
-
-E2E tests live in `e2e/`. They run against a production build (`dist/`). Add an
-E2E test when:
-
-- You change a critical user flow (price alert creation, export, WebSocket reconnect).
-- A bug was only visible in E2E and not in unit tests.
-
-Run locally with:
-
-```bash
-npm run build
-npm run test:e2e
-```
-
-Playwright tests run on Chromium, Firefox, and WebKit in CI.
-
-### Snapshot tests
-
-Snapshot files (`__snapshots__/`) are committed. When a snapshot legitimately
-changes (e.g. you changed the component's markup), update it with:
-
-```bash
-npx vitest run --update-snapshots
-```
-
-Review the diff in the PR to confirm the change is intentional.
+- Every bug fix ships with a regression test that fails before the fix.
+- Every new feature ships with unit tests for its logic and, where it renders UI,
+  a component test.
+- Run `npm run test:run` locally before pushing. CI runs the same suite.
+- Do not lower coverage thresholds to make a PR pass.
 
 ---
 
 ## Documentation Requirements
 
-| Type of change        | Documentation required                                                                        |
-| --------------------- | --------------------------------------------------------------------------------------------- |
-| New component         | JSDoc file header with `@example`, props table, edge cases, and accessibility notes           |
-| New hook              | JSDoc comment on the exported function with `@param`, `@returns`, and at least one `@example` |
-| New utility function  | JSDoc comment, parameter descriptions, and error conditions                                   |
-| New localStorage key  | Add to `STORAGE_KEYS`, update `docs/storage-security-audit.md`                                |
-| Architecture decision | Create `docs/adr/ADR-NNN-short-title.md` using the template in that directory                 |
-| Breaking change       | Note in the PR description and update `README.md` if it affects Quick Start                   |
+- User-facing behaviour changes update the relevant docs under `docs/`.
+- New environment variables are added to `.env.example` and documented.
+- Public API or type changes are reflected in the type definitions and any
+  consuming docs.
 
-The component reference lives in `docs/components.md`. Update the props table and
-hierarchy diagram when you add or rename a component.
+---
+
+## Adding a New Oracle Source
+
+Adding a source (e.g. a fifth price feed) touches several registries. Follow the
+steps below in order; the registry-completeness test will fail until every registry
+knows about the new source.
+
+### Step-by-step
+
+1. **Add the source identifier to the type union.** Extend the `OracleSource`
+   union in `src/types/` with the new source key. This is the single source of
+truth other modules derive from.
+
+2. **Register the source in the source registry.** Add an entry to the source
+   registry (id, display name, upstream endpoint, and any per-source metadata).
+   Every consumer reads from this registry — do not hard-code the source elsewhere.
+
+3. **Update the response schema.** Add the new source to the price-response schema
+   (Zod / validator) so incoming payloads are validated and typed.
+
+4. **Wire up aggregation.** Include the new source in the aggregation logic so its
+   price contributes to the unified price and its weight/median is computed.
+
+5. **Add a colour token.** Add a distinct colour for the source in the colour map
+   used by charts and badges, so it renders consistently across the UI.
+
+6. **Update docs.** Document the new source in the relevant docs under `docs/`
+   (supported sources, endpoints, and any caveats).
+
+7. **Add tests.** Add unit tests for the new source's aggregation contribution and
+   a component test if it renders in the UI. The registry-completeness test
+   (`src/**/registry-completeness.test.ts`) must pass — it asserts every source in
+   the type union appears in every registry (source registry, schema, aggregation,
+   colour map).
+
+### Checklist
+
+- [ ] Source added to the `OracleSource` type union
+- [ ] Source added to the source registry
+- [ ] Source added to the response schema / validator
+- [ ] Source included in aggregation logic
+- [ ] Colour token added to the colour map
+- [ ] Docs updated under `docs/`
+- [ ] Unit tests added for aggregation contribution
+- [ ] Registry-completeness test passes (`npm run test:run`)
+- [ ] `npm run typecheck && npm run lint && npm run build` all pass
 
 ---
 
 ## PR Review Checklist
 
-### For PR authors
+Before marking a PR ready for review, confirm:
 
-Before marking your PR ready for review, confirm:
-
-- [ ] `npm run typecheck` — zero errors
-- [ ] `npm run lint` — zero errors
-- [ ] `npm run build` — build succeeds
-- [ ] `npm run test:run` — all tests pass
-- [ ] New code has tests (see Testing Requirements)
-- [ ] New components have JSDoc headers
-- [ ] New `localStorage` keys are in `STORAGE_KEYS` and `storage-security-audit.md`
-- [ ] No hardcoded English strings (use i18n keys)
-- [ ] No direct `localStorage` calls outside `storage.ts`
-- [ ] No secrets, tokens, or PII in source or storage
-- [ ] PR description has a summary, testing notes, and screenshots (if UI changed)
-- [ ] PR title follows Conventional Commits format
-
-### For reviewers
-
-When reviewing a PR, check:
-
-- [ ] The change solves the stated problem without unnecessary scope creep
-- [ ] TypeScript types are accurate — no `as any`, no unchecked casts
-- [ ] `memo()` / `useCallback` / `useMemo` are used correctly per `AGENTS.md`
-- [ ] Error states are handled (network failures, empty data, type mismatches)
-- [ ] Accessibility: interactive elements have labels, keyboard paths work, no
-      colour-only indicators
-- [ ] Tests cover the new behaviour and realistic failure modes
-- [ ] Storage changes follow the security policy
-- [ ] No new open-range dependencies (`^` / `~`) for security-sensitive packages;
-      prefer exact pinning
-- [ ] The bundle size budget is not broken (`npm run size-limit`)
+- [ ] Branch is up to date with `main`
+- [ ] `npm run typecheck` passes with zero errors
+- [ ] `npm run lint` passes with zero warnings
+- [ ] `npm run build` succeeds
+- [ ] `npm run test:run` passes
+- [ ] New/changed behaviour is covered by tests
+- [ ] Docs updated where behaviour changed
+- [ ] PR description explains the change and how it was tested
+- [ ] Screenshots/recordings attached for UI changes
+- [ ] No unrelated changes bundled in
