@@ -64,7 +64,7 @@ export const ProposedParameterDiff = memo(function ProposedParameterDiff({
   return (
     <section
       aria-label={`Proposed parameter changes for ${proposalId}`}
-      className="flex flex-col gap-3 rounded-xl border border-gray-800 bg-gray-950/60 p-4"
+      className={`flex flex-col rounded-xl border border-gray-800 bg-gray-950/60 ${compact ? 'gap-2 p-2' : 'gap-3 p-4'}`}
     >
       {/* ── Header Toolbar ── */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800/80 pb-3">
