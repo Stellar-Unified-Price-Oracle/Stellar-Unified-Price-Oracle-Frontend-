@@ -55,3 +55,6 @@ roll forward again.
 
 <!-- handsoff-issue-957 -->
 - #957: [Stabilize] WebSocketClient no longer calls message handlers and drops sequence-ordering
+
+<!-- handsoff-issue-1029 -->
+- #1029: [Next phase] Share alert rules with teammates through a signed link
