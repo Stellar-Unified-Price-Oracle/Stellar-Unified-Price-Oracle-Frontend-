@@ -8,6 +8,12 @@ import {
   mockOnChainPrice,
   mockPriceProof,
   mockGovernanceProposals,
+  mockSourceReputations,
+  mockTreasury,
+  mockDisputes,
+  mockOperatorDisclosures,
+  mockGovernanceEvents,
+  mockParameterHistory,
 } from './data'
 
 export const handlers = [
@@ -57,6 +63,18 @@ export const handlers = [
   }),
 
   http.get('/api/governance/proposals', () => HttpResponse.json(mockGovernanceProposals())),
+
+  http.get('/api/governance/source-reputations', () => HttpResponse.json(mockSourceReputations())),
+
+  http.get('/api/governance/treasury', () => HttpResponse.json(mockTreasury())),
+
+  http.get('/api/governance/disputes', () => HttpResponse.json(mockDisputes())),
+
+  http.get('/api/governance/operator-disclosures', () => HttpResponse.json(mockOperatorDisclosures())),
+
+  http.get('/api/governance/events', () => HttpResponse.json(mockGovernanceEvents())),
+
+  http.get('/api/governance/parameters/history', () => HttpResponse.json(mockParameterHistory())),
 
   http.get('/health', () => HttpResponse.json({ status: 'ok', uptime: Math.floor(Math.random() * 86400) })),
 
