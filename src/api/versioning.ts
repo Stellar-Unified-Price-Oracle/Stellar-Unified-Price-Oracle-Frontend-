@@ -277,9 +277,9 @@ export interface ChangelogEntry {
 }
 
 /**
- * Build the schema changelog: one entry per supported version, each recording
- * the compatibility verdict relative to the previous version. The first version
- * is the baseline and is always compatible.
+ * Build the changelog from the supported versions: each version records the
+ * verdict of the change that introduced it (the first version is trivially
+ * compatible).
  */
 export function buildChangelog(
   versions: FeedSchemaVersion[] = SUPPORTED_FEED_SCHEMAS,
@@ -295,25 +295,4 @@ export function buildChangelog(
       changes: verdict.changes,
     };
   });
-}
-
-/** Render the changelog as markdown for committing to the repo. */
-export function renderChangelog(
-  entries: ChangelogEntry[] = buildChangelog(),
-): string {
-  const lines: string[] = ['# Feed schema changelog', ''];
-  for (const entry of entries) {
-    const verdict = entry.compatible ? 'compatible' : 'BREAKING';
-    lines.push(`## ${entry.version} — ${verdict}`);
-    if (entry.changes.length === 0) {
-      lines.push('', '_No changes._', '');
-      continue;
-    }
-    lines.push('');
-    for (const change of entry.changes) {
-      lines.push(`- \`${change.path}\` (${change.kind}): ${change.detail}`);
-    }
-    lines.push('');
-  }
-  return lines.join('\n');
 }
