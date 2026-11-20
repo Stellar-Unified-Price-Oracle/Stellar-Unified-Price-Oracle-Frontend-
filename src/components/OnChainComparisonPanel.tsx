@@ -14,6 +14,8 @@ import { useOnChainComparison } from '../hooks/useOnChainComparison'
 import { formatPrice, timeAgo, formatTimestamp } from '../utils/format'
 import { shortenAccount } from '../lib/stellarAssets'
 import type { DivergenceStatus } from '../types/onchain'
+import type { OracleNetwork } from '../lib/contractRegistry'
+import type { StellarNetwork } from '../lib/onChainClient'
 import { MetricHelp } from './MetricHelp'
 import { VerifiableLedgerLink } from './VerifiableLedgerLink'
 
@@ -21,6 +23,22 @@ const STATUS_STYLES: Record<DivergenceStatus, { badge: string; label: string }> 
   'in-sync': { badge: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'In sync' },
   warning: { badge: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', label: 'Diverging' },
   breached: { badge: 'bg-red-500/20 text-red-400 border-red-500/30', label: 'Threshold breached' },
+}
+
+/**
+ * Explicit, exhaustive mapping from the network registry's `OracleNetwork`
+ * identifiers to the on-chain client's `StellarNetwork` identifiers. Keeping
+ * this as a single typed map guarantees the two enums stay in lockstep: adding
+ * a network to either side without updating this map is a compile error.
+ */
+const ORACLE_TO_STELLAR_NETWORK: Record<OracleNetwork, StellarNetwork> = {
+  mainnet: 'mainnet',
+  testnet: 'testnet',
+  futurenet: 'futurenet',
+}
+
+function toStellarNetwork(network: OracleNetwork): StellarNetwork {
+  return ORACLE_TO_STELLAR_NETWORK[network]
 }
 
 function divergenceAnnouncement(pair: string, status: DivergenceStatus, percentageDelta: number): string {
@@ -115,7 +133,7 @@ export function OnChainComparisonPanel({ pair, offChainPrice, thresholdPercent }
             <VerifiableLedgerLink
               claimType="contract"
               identifier={registryEntry.contractId}
-              network={registryEntry.network}
+              network={toStellarNetwork(registryEntry.network)}
               label={shortenAccount(registryEntry.contractId)}
               title={`Verify oracle contract ${registryEntry.contractId} on ${registryEntry.network}`}
             />
@@ -131,7 +149,7 @@ export function OnChainComparisonPanel({ pair, offChainPrice, thresholdPercent }
               <VerifiableLedgerLink
                 claimType="ledger"
                 identifier={onChainLedger}
-                network={registryEntry.network}
+                network={toStellarNetwork(registryEntry.network)}
                 label={onChainLedger.toLocaleString()}
                 title={`Verify on-chain ledger #${onChainLedger} on ${registryEntry.network}`}
               />

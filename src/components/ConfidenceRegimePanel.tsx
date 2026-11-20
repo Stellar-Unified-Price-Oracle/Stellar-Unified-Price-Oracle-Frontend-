@@ -44,11 +44,11 @@ export const ConfidenceRegimePanel = memo(function ConfidenceRegimePanel({ histo
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-left text-xs">
+          <table className="w-full min-w-[520px] text-start text-xs">
             <caption className="sr-only">Mean reported confidence by asset and relative volatility regime</caption>
             <thead>
               <tr className="text-gray-400 border-b border-gray-800">
-                <th scope="col" className="py-2 pr-4 font-medium">
+                <th scope="col" className="py-2 pe-4 font-medium">
                   Asset
                 </th>
                 {summaries[0].regimes.map(({ regime }) => (
@@ -61,7 +61,7 @@ export const ConfidenceRegimePanel = memo(function ConfidenceRegimePanel({ histo
             <tbody>
               {summaries.map(({ assetPair, regimes }) => (
                 <tr key={assetPair} className="border-b border-gray-800/70 last:border-0">
-                  <th scope="row" className="py-2 pr-4 font-medium text-gray-200">
+                  <th scope="row" className="py-2 pe-4 font-medium text-gray-200">
                     {assetPair}
                   </th>
                   {regimes.map(({ regime, sampleCount, meanConfidence }) => (
