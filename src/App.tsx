@@ -1,4 +1,4 @@
-import { lazy, useEffect, useRef, type ReactElement } from 'react'
+import { lazy, useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Layout } from './components/Layout'
@@ -152,7 +152,7 @@ export function AppContent(): ReactElement {
               path="/portfolio"
               element={
                 <RouteSuspense fallback={<DashboardSkeleton />}>
-                  <Portfolio />
+                  <LazyPortfolio />
                 </RouteSuspense>
               }
             />
@@ -185,14 +185,6 @@ export function AppContent(): ReactElement {
             <Route path="/moderation" element={<Moderation />} />
             <Route path="/transparency" element={<Transparency />} />
             <Route path="/roadmap" element={<Roadmap />} />
-            <Route
-              path="/portfolio"
-              element={
-                <RouteSuspense fallback={<DashboardSkeleton />}>
-                  <LazyPortfolio />
-                </RouteSuspense>
-              }
-            />
             <Route path="/developer-insights" element={<DeveloperInsights />} />
             <Route
               path="/security"
@@ -210,17 +202,6 @@ export function AppContent(): ReactElement {
                 </RouteSuspense>
               }
             />
-            {KpiInsights && (
-              <Route
-                path="/dev/kpi"
-                element={
-                  <RouteSuspense fallback={<DashboardSkeleton />}>
-                    <KpiInsights />
-                  </RouteSuspense>
-                }
-              />
-            )}
-            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route
               path="*"
               element={
@@ -236,38 +217,38 @@ export function AppContent(): ReactElement {
   )
 }
 
-export default function App(): ReactElement {
+export function App(): ReactElement {
   useWebVitals()
   usePerformanceMonitor()
   useInitApiVersion()
-  initAnalytics()
+
+  useEffect(() => {
+    initAnalytics()
+  }, [])
 
   return (
-    <BrowserRouter basename={BASENAME}>
-      <QueryClientProvider client={queryClient}>
-        <ErrorReporterProvider>
-          <PreferencesProvider>
-            <ToastProvider>
+    <QueryClientProvider client={queryClient}>
+      <ErrorReporterProvider>
+        <PreferencesProvider>
+          <ToastProvider>
+            <WalletProvider>
               <AuthProvider>
-                <WalletProvider>
-                  <PriceProvider>
-                    <KeyboardShortcutsProvider>
-                      {/* Registry first: the palette provider registers app-wide
-                          commands and renders the palette that reads them. */}
-                      <CommandRegistryProvider>
-                        <CommandPaletteProvider>
+                <PriceProvider>
+                  <CommandRegistryProvider>
+                    <CommandPaletteProvider>
+                      <KeyboardShortcutsProvider>
+                        <BrowserRouter basename={BASENAME}>
                           <AppContent />
-                          {import.meta.env.DEV && <PerformanceOverlay />}
-                        </CommandPaletteProvider>
-                      </CommandRegistryProvider>
-                    </KeyboardShortcutsProvider>
-                  </PriceProvider>
-                </WalletProvider>
+                        </BrowserRouter>
+                      </KeyboardShortcutsProvider>
+                    </CommandPaletteProvider>
+                  </CommandRegistryProvider>
+                </PriceProvider>
               </AuthProvider>
-            </ToastProvider>
-          </PreferencesProvider>
-        </ErrorReporterProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+            </WalletProvider>
+          </ToastProvider>
+        </PreferencesProvider>
+      </ErrorReporterProvider>
+    </QueryClientProvider>
   )
 }

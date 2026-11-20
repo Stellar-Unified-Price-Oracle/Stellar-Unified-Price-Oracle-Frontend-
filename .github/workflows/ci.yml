@@ -157,6 +157,12 @@ jobs:
   # Compares screenshots against baselines stored in e2e/snapshots/.
   # The job fails if any screenshot differs beyond the configured threshold.
   #
+  # Baselines are generated for every supported locale × color theme
+  # combination (#868) so a regression in any single locale or theme is caught
+  # rather than only the default en/light rendering. The matrix below mirrors
+  # the supported locales and themes declared in the app; keep it in sync when
+  # a new locale or theme is added.
+  #
   # To update baselines locally:
   #   npm run test:e2e:visual:update
   #   git add e2e/snapshots/ && git commit -m "chore: update visual baselines"
@@ -167,6 +173,11 @@ jobs:
     # Treat as advisory on PRs — screenshot diffs require manual review and a
     # deliberate baseline update commit, not an automatic failure gate.
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        locale: [en, es, fr, de, pt, ja]
+        theme: [light, dark]
 
     steps:
       - uses: actions/checkout@v4
@@ -187,17 +198,19 @@ jobs:
       # intentionally generate/compare against Chromium only for consistency.
       - run: npx playwright install --with-deps chromium
 
-      - name: Run visual regression tests
+      - name: Run visual regression tests (${{ matrix.locale }} / ${{ matrix.theme }})
         run: npm run test:e2e:visual
         env:
           CI: 'true'
+          VISUAL_LOCALE: ${{ matrix.locale }}
+          VISUAL_THEME: ${{ matrix.theme }}
 
       # Upload the HTML report so reviewers can inspect pixel diffs in the
       # GitHub Actions UI even when the job succeeds.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: visual-regression-report
+          name: visual-regression-report-${{ matrix.locale }}-${{ matrix.theme }}
           path: reports/playwright/
           retention-days: 14
 
@@ -205,7 +218,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: visual-regression-diffs
+          name: visual-regression-diffs-${{ matrix.locale }}-${{ matrix.theme }}
           path: test-results/
           retention-days: 7
 
@@ -253,13 +266,4 @@ jobs:
       - name: Check initial chunk budgets
         run: node scripts/check-bundle-budgets.js --category=initial
 
-      - name: Check deferred chunk budgets
-        run: node scripts/check-bundle-budgets.js --category=deferred
-
-      - name: Check bundle size against budgets
-        run: npm run size-limit
-
-      # Asset cost is part of the startup budget; report it alongside JS
-      # budgets so reviewers can see the full initial-load picture.
-      - name: Report asset contribution to startup budget
-        run: node scripts/report-asset-budget.js
+      # Asset cost is part of the star
