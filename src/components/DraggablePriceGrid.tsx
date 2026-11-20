@@ -1,5 +1,6 @@
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { ConnectionStatus } from '../api/websocket'
 import { useDragSort } from '../hooks/useDragSort'
 import type { PriceData } from '../types'
 import type { ObservedSourceRange } from '../utils/uncertaintyBand'
@@ -10,6 +11,8 @@ import { PriceCard } from './PriceCard'
 interface DraggablePriceGridProps {
   items: PriceData[]
   livePairs: Set<string>
+  subscriptionStatus?: ConnectionStatus
+  isOfflineSnapshot?: boolean
   isStale?: boolean
   hasAlertFn: (pair: string) => boolean
   onCardClick: (pair: string) => void
@@ -30,6 +33,8 @@ interface DraggablePriceGridProps {
 export const DraggablePriceGrid = memo(function DraggablePriceGrid({
   items,
   livePairs,
+  subscriptionStatus,
+  isOfflineSnapshot,
   isStale,
   hasAlertFn,
   onCardClick,

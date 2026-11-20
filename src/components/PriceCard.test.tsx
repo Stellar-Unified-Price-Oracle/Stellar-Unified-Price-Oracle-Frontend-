@@ -185,3 +185,12 @@ describe('snapshots', () => {
     expect(container.firstChild).toMatchSnapshot()
   })
 })
+
+describe('subscription health', () => {
+  it('shows subscription health and switches to the offline snapshot label', () => {
+    const { rerender } = render(<PriceCard price={mockPrice} subscriptionStatus="connected" />, { wrapper })
+    expect(screen.getByLabelText('BTC/USD subscription health: Waiting for updates')).toBeVisible()
+    rerender(<PriceCard price={mockPrice} subscriptionStatus="disconnected" isOfflineSnapshot />)
+    expect(screen.getByLabelText('BTC/USD subscription health: Offline snapshot')).toBeVisible()
+  })
+})

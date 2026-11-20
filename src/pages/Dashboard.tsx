@@ -284,6 +284,8 @@ export function Dashboard() {
     [merged, attributionHistory],
   )
 
+  const livePairs = useMemo(() => new Set(livePrices.keys()), [livePrices])
+  const handleReorder = useCallback((pairs: string[]) => updatePreference('cardOrder', pairs), [updatePreference])
   const handleCardClick = useCallback(
     (pair: string) => {
       if (selectMode) {
@@ -761,7 +763,7 @@ export function Dashboard() {
           onRefresh={refetchPrices}
         />
       )}
-      {resolveOfflineDataState({ hasLivePrices: prices.length > 0, hasSnapshot: isOfflineSnapshot }) ===
+      {resolveOfflineDataState({ hasLivePrices: prices.length > 0, hasSnapshot: isOfflineSnapshot ?? false }) ===
         'unavailable' &&
         !pricesLoading && <OfflineUnavailableNotice onRetry={refetchPrices} />}
 
@@ -798,7 +800,7 @@ export function Dashboard() {
           >
             <LazyPriceTable
               items={filtered}
-              livePairs={new Set(livePrices.keys())}
+              livePairs={livePairs}
               isStale={pricesValidating}
               onRowClick={handleCardClick}
               onAlertClick={handleAlertClick}
@@ -825,14 +827,14 @@ export function Dashboard() {
           <DraggablePriceGrid
             items={filtered}
             observedSourceRanges={observedSourceRanges}
-            livePairs={new Set(livePrices.keys())}
+            livePairs={livePairs}
             isStale={pricesValidating}
             hasAlertFn={hasAlertsForPair}
             onCardClick={handleCardClick}
             onAlertClick={handleAlertClick}
             selectMode={selectMode}
             selected={selected}
-            onReorder={(orderedPairs) => updatePreference('cardOrder', orderedPairs)}
+            onReorder={handleReorder}
             density={preferences.density}
             subscriptionStatus={wsStatus}
             isOfflineSnapshot={isOfflineSnapshot}
