@@ -74,7 +74,7 @@ const TreasuryRow = memo(function TreasuryRow({ entry }: TreasuryRowProps): Reac
 })
 
 export function TreasuryPanel(): ReactElement {
-  const { data, loading, error, refetch } = useSwr(
+  const { data, loading, error, refetch } = useSwr<TreasuryEntry[]>(
     'governance/treasury',
     (signal) => fetchTreasury(signal),
     { refreshInterval: 120_000, staleTime: 60_000 },

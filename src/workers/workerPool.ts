@@ -24,6 +24,15 @@
 
 import { wrap, type Remote } from 'comlink'
 
+/**
+ * Scheduling policy applied to queued `acquire()` waiters.
+ *
+ * - `fifo` (default): first-in, first-out — fair, preserves submission order.
+ * - `lifo`: last-in, first-out — newest waiter is served first, useful for
+ *   latency-sensitive interactive work that should preempt older batch jobs.
+ */
+export type QueuePolicy = 'fifo' | 'lifo'
+
 export interface WorkerPoolOptions {
   /**
    * Number of workers to spawn. When omitted, sized adaptively (#506) from
@@ -37,6 +46,11 @@ export interface WorkerPoolOptions {
   minSize?: number
   /** Label used to identify this pool in {@link getWorkerPoolDiagnostics}. */
   label?: string
+  /**
+   * Order in which queued `acquire()` waiters are served once a worker frees
+   * up. Defaults to `'fifo'`.
+   */
+  queuePolicy?: QueuePolicy
 }
 
 export interface WorkerPoolDiagnostics {
@@ -118,12 +132,15 @@ export class WorkerPool<T extends object> {
 
   private readonly entries: PoolEntry<T>[] = []
   private readonly queue: ResolveAcquire<T>[] = []
+  private readonly queuePolicy: QueuePolicy
 
   constructor(
     /** Factory that creates a new raw `Worker`. Called `size` times. */
     factory: () => Worker,
     options: WorkerPoolOptions = {},
   ) {
+    this.queuePolicy = options.queuePolicy ?? 'fifo'
+
     if (!WorkerPool.supported) return
 
     const size = getAdaptivePoolSize(options)
@@ -162,12 +179,13 @@ export class WorkerPool<T extends object> {
 
   /**
    * Marks the proxy as idle and dispatches the next queued task if any.
+   * The next waiter is chosen according to {@link queuePolicy}.
    */
   release(proxy: Remote<T>): void {
     const entry = this.entries.find((e) => e.proxy === proxy)
     if (!entry) return
 
-    const next = this.queue.shift()
+    const next = this.queuePolicy === 'lifo' ? this.queue.pop() : this.queue.shift()
     if (next) {
       // Keep busy and hand the same proxy to the next waiter
       next(entry.proxy)
