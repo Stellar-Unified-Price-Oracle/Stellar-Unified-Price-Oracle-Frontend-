@@ -42,6 +42,13 @@ updates:
     versioning-strategy: increase-if-necessary
     ignore:
       # Ignore major version bumps — handle them manually.
+      #
+      # Majors are NOT left to rot: they are swept on a quarterly cadence by
+      # the process documented in docs/dependency-upgrade-sweep.md (#1026).
+      # Each quarter a tracking issue lists the majors that are behind (React,
+      # Vite, Recharts, Zod, i18next, Storybook, …) with an upgrade owner.
+      # The first sweep is recorded in that doc. Keep this ignore in place so
+      # Dependabot never opens unplanned major PRs outside the sweep.
       - dependency-name: '*'
         update-types:
           - version-update:semver-major
