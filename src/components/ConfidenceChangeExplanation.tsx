@@ -103,7 +103,7 @@ export const ConfidenceChangeExplanation = memo(function ConfidenceChangeExplana
             {(latest.confidence * 100).toFixed(1)}%.
           </p>
           <p className="text-xs text-gray-400 mb-2">Inputs that changed at the same time (not causal attribution):</p>
-          <ul className="list-disc pl-5 space-y-1 text-sm text-gray-300" aria-label="Concurrent input changes">
+          <ul className="list-disc ps-5 space-y-1 text-sm text-gray-300" aria-label="Concurrent input changes">
             {concurrentChanges.map((change) => (
               <li key={change}>{change}</li>
             ))}

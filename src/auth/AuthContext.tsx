@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hadSessionRef = useRef(false)
 
   const refresh = useCallback(async () => {
-    const check = await checkSession()
+    const session = await fetchSession()
     if (!mountedRef.current) return
     const next: AuthStatus = session ? 'authenticated' : 'unauthenticated'
     // fetchSession also maps network failures to null, so a brief outage can
@@ -196,37 +196,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     statusRef.current = 'unauthenticated'
   }, [])
 
-  const dismissSessionExpired = useCallback(() => setSessionExpired(false), [])
+  const isAuthorizedFor = useCallback((route: string) => isAuthorized(user, route), [user])
 
-  const checkAuthorized = useCallback((route: string) => isAuthorized(user, route), [user])
+  const value: AuthContextValue = {
+    status,
+    user,
+    error,
+    sessionExpired,
+    dismissSessionExpired,
+    signIn,
+    completeSignIn,
+    signOut,
+    signOutEverywhere,
+    isAuthorized: isAuthorizedFor,
+  }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        status,
-        user,
-        error,
-        sessionExpired,
-        dismissSessionExpired,
-        signIn,
-        completeSignIn,
-        signOut,
-        signOutEverywhere,
-        isAuthorized: checkAuthorized,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
   return ctx
-}
-
-/** Like {@link useAuth}, but returns `null` outside an AuthProvider instead of throwing. */
-export function useOptionalAuth(): AuthContextValue | null {
-  return useContext(AuthContext)
 }
