@@ -16,7 +16,7 @@
  * - Recently-changed parameters (within 24 h) get a highlight badge.
  */
 import { memo, useState, type ReactElement } from 'react'
-import type { ParameterRecord, ParameterChangeEntry } from '../types'
+import type { ParameterEntry, ParameterChangeEntry } from '../types'
 import {
   groupByCategory,
   latestChange,
@@ -24,6 +24,7 @@ import {
   formatParameterValue,
   searchParameters,
 } from '../utils/parameterRegistry'
+import { useWatchedParameters } from '../hooks/useWatchedParameters'
 import { VerifiableLedgerLink } from './VerifiableLedgerLink'
 
 const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000 // 24 hours
@@ -69,10 +70,10 @@ const ChangeEntryRow = memo(function ChangeEntryRow({ entry }: ChangeEntryRowPro
 })
 
 interface ParameterRowProps {
-  record: ParameterRecord
+  record: ParameterEntry
   now: number
   isWatched: boolean
-  onToggleWatch: (record: ParameterRecord) => void
+  onToggleWatch: (record: ParameterEntry) => void
 }
 
 const ParameterRow = memo(function ParameterRow({
@@ -202,185 +203,70 @@ const ParameterRow = memo(function ParameterRow({
 })
 
 export interface ParameterRegistryPanelProps {
-  records: readonly ParameterRecord[]
-  /** Injected clock for deterministic rendering in tests. */
+  records: readonly ParameterEntry[]
+  /** Injected clock (ms since epoch) for deterministic "recently changed" checks. */
   now?: number
-  /** Initial filter tab (defaults to 'all'). */
-  initialFilter?: 'all' | 'watched'
 }
 
-export const ParameterRegistryPanel = memo(function ParameterRegistryPanel({
+export function ParameterRegistryPanel({
   records,
   now = Date.now(),
-  initialFilter = 'all',
 }: ParameterRegistryPanelProps): ReactElement {
   const [query, setQuery] = useState('')
-  const [filterTab, setFilterTab] = useState<'all' | 'watched'>(initialFilter)
+  const [watchedOnly, setWatchedOnly] = useState(false)
+  const { watchedKeys, toggleWatch, isWatched } = useWatchedParameters()
 
-  const {
-    isWatched,
-    toggleWatch,
-    unacknowledgedChanges,
-    dismissChange,
-    dismissAllChanges,
-    watchedCount,
-  } = useWatchedParameters(records)
-
-  const visibleRecords = filterTab === 'watched' ? records.filter((r) => isWatched(r.key)) : records
-  const filtered = searchParameters(visibleRecords, query)
-  const grouped = groupByCategory(filtered)
+  const filtered = searchParameters(records, query)
+  const visible = watchedOnly ? filtered.filter((r) => isWatched(r.key)) : filtered
+  const grouped = groupByCategory(visible)
 
   return (
-    <section aria-labelledby="param-registry-heading" className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <h2 id="param-registry-heading" className="text-lg font-semibold text-gray-100">
-          Parameter registry
-        </h2>
-        <p className="text-xs text-gray-400">
-          All registered system parameters — who owns each one, its current value, and every change that has been made.
-        </p>
-      </div>
-
-      {/* Watched parameters change notification banner (#852) */}
-      {unacknowledgedChanges.length > 0 && (
-        <aside
-          role="status"
-          aria-label="Watched parameter updates"
-          className="bg-cyan-950/40 border border-cyan-800/80 rounded-xl p-4 flex flex-col gap-3"
+    <section className="flex flex-col gap-4" aria-label="Parameter registry">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search parameters…"
+          aria-label="Search parameters"
+          className="flex-1 min-w-[12rem] bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:border-cyan-600"
+        />
+        <button
+          type="button"
+          onClick={() => setWatchedOnly((v) => !v)}
+          aria-pressed={watchedOnly}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            watchedOnly
+              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+              : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200'
+          }`}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-cyan-300 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              {unacknowledgedChanges.length} watched parameter
-              {unacknowledgedChanges.length > 1 ? 's have' : ' has'} changed
-            </span>
-            <button
-              type="button"
-              onClick={dismissAllChanges}
-              className="text-xs text-cyan-400 hover:text-cyan-300 underline underline-offset-2"
-            >
-              Dismiss all
-            </button>
-          </div>
-          <ul className="flex flex-col gap-2 list-none p-0 text-xs">
-            {unacknowledgedChanges.map((change) => (
-              <li
-                key={change.key}
-                className="flex items-center justify-between gap-2 bg-gray-900/80 p-2.5 rounded-lg border border-cyan-900/50"
-              >
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-semibold text-gray-200">{change.label}</span>
-                  <div className="flex items-center gap-2 text-gray-400 flex-wrap">
-                    <span className="line-through text-gray-500">
-                      {formatParameterValue(change.previousValue)}
-                    </span>
-                    <span aria-hidden="true">→</span>
-                    <span className="text-cyan-300 font-mono font-medium">
-                      {formatParameterValue(change.newValue)}
-                    </span>
-                    {change.changedAt && (
-                      <span className="text-gray-500">at {formatTimestamp(change.changedAt)}</span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => dismissChange(change.key)}
-                  className="text-gray-400 hover:text-gray-200 text-xs px-2 py-1"
-                  aria-label={`Dismiss update for ${change.label}`}
-                >
-                  Dismiss
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
-
-      {/* Filter tabs and search */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        <div className="flex items-center gap-2" role="tablist" aria-label="Parameter view filters">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={filterTab === 'all'}
-            onClick={() => setFilterTab('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filterTab === 'all'
-                ? 'bg-cyan-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            All parameters ({records.length})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={filterTab === 'watched'}
-            onClick={() => setFilterTab('watched')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              filterTab === 'watched'
-                ? 'bg-cyan-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <svg
-              className="w-3.5 h-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
-            >
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            Watched ({watchedCount})
-          </button>
-        </div>
-
-        <div className="relative flex-1 sm:max-w-xs">
-          <label htmlFor="param-search" className="sr-only">
-            Search parameters
-          </label>
-          <input
-            id="param-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by key or label…"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50"
-          />
-        </div>
+          {watchedOnly ? 'Showing watched' : 'All parameters'}
+        </button>
       </div>
 
-      {grouped.size === 0 && (
-        <p className="text-sm text-gray-500 text-center py-8">
-          {filterTab === 'watched' && watchedCount === 0
-            ? 'You are not watching any parameters yet. Click the "Watch" button on any parameter to receive alerts when it is updated.'
-            : records.length === 0
-              ? 'No parameters have been registered yet.'
-              : 'No parameters match your search.'}
-        </p>
-      )}
-
-      {[...grouped.entries()].map(([category, categoryRecords]) => (
-        <div key={category} className="flex flex-col gap-3">
-          <h3 className="text-sm font-medium text-gray-400 capitalize">{category}</h3>
-          <ul className="flex flex-col gap-3 list-none p-0">
-            {categoryRecords.map((record) => (
-              <li key={record.key}>
+      {grouped.length === 0 ? (
+        <p className="text-sm text-gray-500">No parameters match your filters.</p>
+      ) : (
+        grouped.map(([category, items]) => (
+          <div key={category} className="flex flex-col gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {category}
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {items.map((record) => (
                 <ParameterRow
+                  key={record.key}
                   record={record}
                   now={now}
                   isWatched={isWatched(record.key)}
-                  onToggleWatch={toggleWatch}
+                  onToggleWatch={(r) => toggleWatch(r.key)}
                 />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+              ))}
+            </div>
+          </div>
+        ))
+      )}
     </section>
   )
-})
+}
