@@ -164,7 +164,10 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   }
 
   // #471 – visible indicator when the client has fallen back from WebSocket to SSE.
-  const isSseFallback = diagnostics?.transport === 'sse'
+  const activeTransport = diagnostics?.transport ?? 'ws'
+  const isSseFallback = activeTransport === 'sse'
+  const readablePath = diagnostics?.transportPath?.map(transport => transport.toUpperCase()).join(' → ')
+  const fallbackLabel = diagnostics?.fallbackReason === 'websocket-retries-exhausted' ? 'WebSocket retries exhausted' : ''
 
   let tooltipText = isRateLimited
     ? 'The API is temporarily rate limited. Requests will resume after the retry window expires.'
@@ -199,7 +202,9 @@ export const ConnectionBadge = memo(function ConnectionBadge({
   const ariaLabel = isRateLimited
     ? 'API rate limited'
     : [
-        `WebSocket ${s.label}`,
+        `${isSseFallback ? 'SSE' : 'WebSocket'} ${s.label}`,
+        fallbackLabel,
+        hasProtocolMismatch ? `Server v${diagnostics?.protocolVersion ?? 'unknown'}, client v${WS_PROTOCOL_VERSION}` : '',
         causeDetail.replace(/\.$/, ''),
         causeCountsLabel.replace(/\.$/, ''),
       ]
@@ -232,6 +237,7 @@ export const ConnectionBadge = memo(function ConnectionBadge({
             SSE
           </span>
         )}
+        {fallbackLabel && <span>{fallbackLabel}</span>}
         {readablePath && (
           <span
             className="border-l border-gray-600 pl-1.5 text-[10px] text-gray-400"

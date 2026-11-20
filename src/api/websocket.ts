@@ -53,6 +53,8 @@ export interface ConnectionDiagnostics {
   isPaused?: boolean
   /** Which realtime transport is currently active (#471). Only set by {@link RealtimeClient}. */
   transport?: 'ws' | 'sse'
+  transportPath?: ReadonlyArray<'ws' | 'sse'>
+  fallbackReason?: 'websocket-retries-exhausted'
   /** Last disconnect cause inferred from browser events and server close frames. */
   lastReconnectCause?: ReconnectCause | null
   /** Disconnect totals by inferred cause, retained for this client session. */
