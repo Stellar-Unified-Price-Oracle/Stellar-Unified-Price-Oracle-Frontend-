@@ -5,6 +5,8 @@ export interface UseLocalStorageOptions<T> {
   serialize?: (value: T) => string
   /** Deserializer for reading from localStorage. Defaults to JSON.parse. */
   deserialize?: (value: string) => T
+  /** Called when a read/write/remove operation fails (e.g. quota exceeded). */
+  onError?: (error: Error) => void
 }
 
 export interface UseLocalStorageResult<T> {
@@ -19,6 +21,19 @@ export interface UseLocalStorageResult<T> {
 }
 
 /**
+ * Returns true when the given error is a storage quota-exceeded error.
+ */
+export function isQuotaExceededError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false
+  return (
+    e.name === 'QuotaExceededError' ||
+    e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    (e as { code?: number }).code === 22 ||
+    (e as { code?: number }).code === 1014
+  )
+}
+
+/**
  * Syncs a state value with localStorage under the given key.
  *
  * Handles read errors (e.g. corrupt data), write errors (e.g. quota exceeded),
@@ -26,15 +41,27 @@ export interface UseLocalStorageResult<T> {
  *
  * @param key - localStorage key to read/write
  * @param initialValue - Fallback value when no stored value exists or on read error
- * @param options - Optional serialize/deserialize overrides
+ * @param options - Optional serialize/deserialize overrides and error callback
  */
 export function useLocalStorage<T>(
   key: string,
   initialValue: T,
   options: UseLocalStorageOptions<T> = {},
 ): UseLocalStorageResult<T> {
-  const { serialize = JSON.stringify, deserialize = JSON.parse } = options
+  const { serialize = JSON.stringify, deserialize = JSON.parse, onError } = options
   const [error, setError] = useState<string | null>(null)
+
+  const reportError = useCallback(
+    (e: unknown, fallback: string) => {
+      const err = e instanceof Error ? e : new Error(fallback)
+      const msg = isQuotaExceededError(e)
+        ? 'Storage quota exceeded. Your changes were not saved.'
+        : err.message || fallback
+      setError(msg)
+      onError?.(err)
+    },
+    [onError],
+  )
 
   const read = useCallback((): T => {
     try {
@@ -42,11 +69,10 @@ export function useLocalStorage<T>(
       if (item === null) return initialValue
       return deserialize(item) as T
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to read from localStorage'
-      setError(msg)
+      reportError(e, 'Failed to read from localStorage')
       return initialValue
     }
-  }, [key, initialValue, deserialize])
+  }, [key, initialValue, deserialize, reportError])
 
   const [value, setValueInternal] = useState<T>(read)
 
@@ -74,13 +100,12 @@ export function useLocalStorage<T>(
         try {
           localStorage.setItem(key, serialize(resolved))
         } catch (e) {
-          const msg = e instanceof Error ? e.message : 'Failed to write to localStorage'
-          setError(msg)
+          reportError(e, 'Failed to write to localStorage')
         }
         return resolved
       })
     },
-    [key, serialize],
+    [key, serialize, reportError],
   )
 
   const remove = useCallback(() => {
@@ -88,10 +113,9 @@ export function useLocalStorage<T>(
       localStorage.removeItem(key)
       setValueInternal(initialValue)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to remove from localStorage'
-      setError(msg)
+      reportError(e, 'Failed to remove from localStorage')
     }
-  }, [key, initialValue])
+  }, [key, initialValue, reportError])
 
   return { value, setValue, remove, error }
 }
