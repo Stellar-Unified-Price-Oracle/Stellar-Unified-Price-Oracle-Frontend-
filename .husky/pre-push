@@ -1,3 +1,19 @@
+echo "--- pre-push: typecheck ---"
+npm run typecheck
+TYPECHECK_EXIT=$?
+if [ $TYPECHECK_EXIT -ne 0 ]; then
+  echo "FAILED: typecheck failed, push aborted"
+  exit $TYPECHECK_EXIT
+fi
+
+echo "--- pre-push: lint ---"
+npm run lint
+LINT_EXIT=$?
+if [ $LINT_EXIT -ne 0 ]; then
+  echo "FAILED: lint failed, push aborted"
+  exit $LINT_EXIT
+fi
+
 echo "--- pre-push: frontend build ---"
 npm run build
 BUILD_EXIT=$?
