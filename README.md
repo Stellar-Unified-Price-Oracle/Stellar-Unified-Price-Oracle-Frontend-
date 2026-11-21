@@ -56,5 +56,8 @@ roll forward again.
 <!-- handsoff-issue-957 -->
 - #957: [Stabilize] WebSocketClient no longer calls message handlers and drops sequence-ordering
 
-<!-- handsoff-issue-962 -->
-- #962: [Stabilize] utils/storage `readRaw` throws instead of returning null when storage is unavailable
+<!-- handsoff-issue-1029 -->
+- #1029: [Next phase] Share alert rules with teammates through a signed link
+
+<!-- handsoff-issue-1030 -->
+- #1030: [Epic] Stabilize main and kick off the next phase
