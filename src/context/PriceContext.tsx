@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { resynchronizePrices as resynchronizeTrackedPrices } from '../realtime/priceResync'
 import { recordSubscriptionUpdate } from '../realtime/subscriptionHealth'
+import type { PriceResyncProgress } from '../types/realtime'
 import type { ConnectionStatus, ConnectionDiagnostics } from '../api/websocket'
 import { RealtimeClient } from '../api/realtimeClient'
 import { WsLeaderElection } from '../api/wsLeaderElection'

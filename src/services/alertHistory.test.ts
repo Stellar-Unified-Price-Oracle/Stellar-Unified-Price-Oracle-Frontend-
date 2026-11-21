@@ -94,7 +94,7 @@ describe('loadAlertHistory / saveAlertHistory', () => {
   })
 
   it('reports unavailable browser storage instead of presenting it as an empty history', () => {
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new Error('SecurityError')
     })
     expect(loadAlertHistorySnapshot()).toEqual({ entries: [], status: 'unavailable' })

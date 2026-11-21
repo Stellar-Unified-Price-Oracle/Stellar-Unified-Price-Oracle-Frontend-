@@ -20,6 +20,7 @@ export interface PriceData {
   sources: string[]
   /** Canonical units and output scale, when supplied by the API. */
   pairMetadata?: PairMetadata
+  qualityFlags?: PriceQualityFlags
   /** Individual provider values, when included in the aggregate response. */
   sourcePrices?: Record<string, number>
   /** Decimal places used by each provider for the corresponding source price. */

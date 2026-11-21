@@ -110,13 +110,15 @@ function makeQueryClient() {
 
 function AlertsWrapper({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={makeQueryClient()}>
-      <ToastProvider>
-        <PriceProvider>
-          <AlertsProvider>{children}</AlertsProvider>
-        </PriceProvider>
-      </ToastProvider>
-    </QueryClientProvider>
+    <PreferencesWrapper>
+      <QueryClientProvider client={makeQueryClient()}>
+        <ToastProvider>
+          <PriceProvider>
+            <AlertsProvider>{children}</AlertsProvider>
+          </PriceProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    </PreferencesWrapper>
   )
 }
 
