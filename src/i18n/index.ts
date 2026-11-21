@@ -22,6 +22,8 @@ import fr from './locales/fr'
 import ja from './locales/ja'
 import ar from './locales/ar'
 import he from './locales/he'
+import ptBR from './locales/pt-BR'
+import zhCN from './locales/zh-CN'
 import { createPseudoLocale } from './pseudoLocale'
 
 const expandedEnglish = createPseudoLocale(en as Record<string, unknown>, {
@@ -33,7 +35,7 @@ const expandedEnglish = createPseudoLocale(en as Record<string, unknown>, {
 import './types'
 
 /** Supported language codes */
-export const SUPPORTED_LANGUAGES = ['en', 'es', 'fr', 'ja', 'ar', 'he'] as const
+export const SUPPORTED_LANGUAGES = ['en', 'es', 'fr', 'ja', 'ar', 'he', 'pt-BR', 'zh-CN'] as const
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
 
 /** Human-readable label for each language */
@@ -44,6 +46,8 @@ export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   ja: '日本語',
   ar: 'العربية',
   he: 'עברית',
+  'pt-BR': 'Português (Brasil)',
+  'zh-CN': '简体中文',
 }
 
 /** RTL language codes */
@@ -114,6 +118,8 @@ i18n
       ja: { translation: ja },
       ar: { translation: ar },
       he: { translation: he },
+      'pt-BR': { translation: ptBR },
+      'zh-CN': { translation: zhCN },
       'en-XA': { translation: expandedEnglish },
     },
     fallbackLng: 'en',
