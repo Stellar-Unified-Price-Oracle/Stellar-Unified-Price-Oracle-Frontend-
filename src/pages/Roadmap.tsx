@@ -26,6 +26,8 @@ const STATUS_NAMES: Record<RoadmapStatus, string> = {
   deferred: 'Deferred',
 }
 
+const EMPTY_ITEMS: RoadmapItem[] = []
+
 export function Roadmap(): ReactElement {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<RoadmapCategory | 'all'>('all')
@@ -42,7 +44,7 @@ export function Roadmap(): ReactElement {
     retryCount: 0,
   })
 
-  const allItems = items ?? []
+  const allItems = items ?? EMPTY_ITEMS
 
   // Count items by status for the summary badges
   const statusCounts = useMemo(() => {
