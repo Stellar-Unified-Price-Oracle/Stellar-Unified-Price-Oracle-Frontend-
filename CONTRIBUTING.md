@@ -285,7 +285,8 @@ pushing. The pre-push hook will catch remaining issues.
 - Add a changeset-style note in the PR description for user-visible changes.
 - Keep code comments meaningful — explain *why*, not *what*.
 
----
+6. **Update docs.** Document the new source in the relevant docs under `docs/`
+   (supported sources, endpoints, and any caveats).
 
 ## PR Review Checklist
 
