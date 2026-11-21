@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import type { Alert } from '../types'
 import { checkAccessibility } from '../test/accessibility'
 import { makeAlert } from '../test/fixtures'
 import { AlertBadge } from './AlertBadge'
+
+const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: PreferencesProvider, ...options })
 
 afterEach(cleanup)
 
@@ -32,7 +36,11 @@ describe('AlertBadge', () => {
   })
 
   it('should have no accessibility violations', async () => {
-    await checkAccessibility(<AlertBadge count={2} onClick={vi.fn()} alerts={[baseAlert(), baseAlert({ id: '2' })]} />)
+    await checkAccessibility(
+      <PreferencesProvider>
+        <AlertBadge count={2} onClick={vi.fn()} alerts={[baseAlert(), baseAlert({ id: '2' })]} />
+      </PreferencesProvider>,
+    )
   })
 
   it('calls onClick when clicked', async () => {

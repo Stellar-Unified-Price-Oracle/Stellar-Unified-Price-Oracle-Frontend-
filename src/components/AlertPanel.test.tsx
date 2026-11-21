@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { makeAlert } from '../test/fixtures'
 import { localDateToTimestamp } from '../utils/alertLifecycle'
 import { deliveryTracker } from '../services/deliveryReceipts'
 import { AlertPanel, DeliveryAttempts } from './AlertPanel'
+
+const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: PreferencesProvider, ...options })
 
 const mocks = vi.hoisted(() => ({
   useAlerts: vi.fn(),

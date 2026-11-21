@@ -1,11 +1,15 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { cleanup, render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { makeAlert } from '../test/fixtures'
 import { checkAccessibility } from '../test/accessibility'
 import { saveBotSecrets } from '../services/botNotifications'
 import { STORAGE_KEYS, writeJson } from '../utils/storage'
 import { AlertModal } from './AlertModal'
+
+const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: PreferencesProvider, ...options })
 
 afterEach(() => {
   cleanup()
@@ -29,7 +33,11 @@ describe('AlertModal', () => {
   })
 
   it('should have no accessibility violations when open', async () => {
-    await checkAccessibility(<AlertModal {...defaultProps} />)
+    await checkAccessibility(
+      <PreferencesProvider>
+        <AlertModal {...defaultProps} />
+      </PreferencesProvider>,
+    )
   })
 
   it('renders nothing when closed', () => {

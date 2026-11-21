@@ -1,8 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { PreferencesProvider } from '../preferences/PreferencesContext'
 import { checkAccessibility } from '../test/accessibility'
 import { AlertHistoryLog } from './AlertHistoryLog'
+
+const render = (ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) =>
+  rtlRender(ui, { wrapper: PreferencesProvider, ...options })
 
 vi.mock('../hooks/useAlerts', () => ({
   useAlerts: () => ({
@@ -93,6 +97,10 @@ describe('AlertHistoryLog tick evidence', () => {
     await user.keyboard('{Enter}')
     expect(screen.getByText('No current price tick was available', { exact: false })).toBeInTheDocument()
 
-    await checkAccessibility(<AlertHistoryLog />)
+    await checkAccessibility(
+      <PreferencesProvider>
+        <AlertHistoryLog />
+      </PreferencesProvider>,
+    )
   })
 })
