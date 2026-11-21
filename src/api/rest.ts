@@ -13,6 +13,7 @@ import type {
   RateLimitInfo,
 } from '../types'
 import type { OnChainPriceRecord, OracleNetwork } from '../types/onchain'
+import { RoadmapItemSchema, type RoadmapItem } from '../types/roadmap'
 import { fetchWithRetry } from './retry'
 import {
   PriceDataSchema,
@@ -874,7 +875,7 @@ export const BASELINE_ROADMAP_ITEMS: RoadmapItem[] = [
  */
 export async function fetchRoadmapItems(signal?: AbortSignal): Promise<RoadmapItem[]> {
   try {
-    const raw = await request<unknown>('/api/roadmap', { silentStatuses: [404] }, signal)
+    const raw = await request<unknown>('/api/roadmap', undefined, signal, { silentStatuses: [404] })
 
     if (!Array.isArray(raw)) {
       return BASELINE_ROADMAP_ITEMS
