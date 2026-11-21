@@ -17,6 +17,20 @@ npm run build
 npm run preview
 ```
 
+## Public status page
+
+The oracle aggregator exposes a read-only `/status` route for integrators to
+check feed health during incidents. It requires no authentication and is cached
+at the edge so it loads quickly (target: under 1 s on 3G).
+
+- **Per-source health** — each oracle source is listed with its current health
+  state (healthy / degraded / down).
+- **Per-source latency** — the latest observed latency for each source.
+- **Incidents** — active and recent incidents per source.
+
+Because the page is edge-cached, data may lag the live aggregator by the cache
+TTL. Treat it as a health overview, not a real-time feed.
+
 ## Rollback verification path
 
 Frontend releases are static bundles. A rollback means re-deploying a previously
@@ -55,3 +69,9 @@ roll forward again.
 
 <!-- handsoff-issue-957 -->
 - #957: [Stabilize] WebSocketClient no longer calls message handlers and drops sequence-ordering
+
+<!-- handsoff-issue-1029 -->
+- #1029: [Next phase] Share alert rules with teammates through a signed link
+
+<!-- handsoff-issue-1030 -->
+- #1030: [Epic] Stabilize main and kick off the next phase

@@ -16,8 +16,8 @@ to get set up, the workflow we use for changes, and the standards we hold code t
 7. [Coding Standards](#coding-standards)
 8. [Testing Requirements](#testing-requirements)
 9. [Documentation Requirements](#documentation-requirements)
-10. [Adding a New Oracle Source](#adding-a-new-oracle-source)
-11. [PR Review Checklist](#pr-review-checklist)
+10. [PR Review Checklist](#pr-review-checklist)
+11. [Quarterly Major Dependency Upgrade Sweep](#quarterly-major-dependency-upgrade-sweep)
 
 ---
 
@@ -248,103 +248,95 @@ pushing. The pre-push hook will catch remaining issues.
 ### TypeScript
 
 - Strict mode is enabled — `noImplicitAny`, `strictNullChecks`, and
-  `noUnusedLocals` are all on. Do not use `any`; prefer `unknown` and narrow.
-- Export types from the module that owns them. Shared domain types live in
-  `src/types/`.
-- Prefer discriminated unions over optional-field soup for state machines.
+  `noUnusedLocals` are all on. Do not use `any`; prefer `unknown` plus narrowing.
+- Export explicit types for anything crossing a module boundary.
+- Prefer `type` for unions/aliases and `interface` for object shapes that may be
+  extended.
 
 ### React
 
 - Function components only. No class components.
-- Keep components small and focused; extract hooks for reusable logic.
-- Co-locate tests next to the file under test (`Foo.tsx` → `Foo.test.tsx`).
+- Keep components small and focused; extract hooks for reusable stateful logic.
+- Co-locate tests next to the component (`Component.test.tsx`).
+- Use the existing design tokens and Tailwind utilities — do not introduce ad-hoc
+  colors or spacing values.
 
-### Styling
+### Imports
 
-- Tailwind utility classes, composed with `clsx` / `tailwind-merge` via the `cn`
-  helper. No inline `style` objects except for dynamic values that cannot be
-  expressed as classes.
+- Use the `@/` path alias for `src/` imports.
+- Group imports: external packages, then internal modules, then relative imports.
 
 ---
 
 ## Testing Requirements
 
-- Every bug fix ships with a regression test that fails before the fix.
-- Every new feature ships with unit tests for its logic and, where it renders UI,
-  a component test.
-- Run `npm run test:run` locally before pushing. CI runs the same suite.
-- Do not lower coverage thresholds to make a PR pass.
+- Every bug fix must include a regression test.
+- New features must include unit tests for logic and, where user-facing, a component
+  test.
+- E2E tests are required for critical flows (price display, alerts, wallet connect).
+- Tests must pass locally before pushing — the pre-push hook enforces this.
 
 ---
 
 ## Documentation Requirements
 
-- User-facing behaviour changes update the relevant docs under `docs/`.
-- New environment variables are added to `.env.example` and documented.
-- Public API or type changes are reflected in the type definitions and any
-  consuming docs.
-
----
-
-## Adding a New Oracle Source
-
-Adding a source (e.g. a fifth price feed) touches several registries. Follow the
-steps below in order; the registry-completeness test will fail until every registry
-knows about the new source.
-
-### Step-by-step
-
-1. **Add the source identifier to the type union.** Extend the `OracleSource`
-   union in `src/types/` with the new source key. This is the single source of
-truth other modules derive from.
-
-2. **Register the source in the source registry.** Add an entry to the source
-   registry (id, display name, upstream endpoint, and any per-source metadata).
-   Every consumer reads from this registry — do not hard-code the source elsewhere.
-
-3. **Update the response schema.** Add the new source to the price-response schema
-   (Zod / validator) so incoming payloads are validated and typed.
-
-4. **Wire up aggregation.** Include the new source in the aggregation logic so its
-   price contributes to the unified price and its weight/median is computed.
-
-5. **Add a colour token.** Add a distinct colour for the source in the colour map
-   used by charts and badges, so it renders consistently across the UI.
+- Update the README or relevant `docs/` file when behavior, configuration, or
+  public APIs change.
+- Add a changeset-style note in the PR description for user-visible changes.
+- Keep code comments meaningful — explain *why*, not *what*.
 
 6. **Update docs.** Document the new source in the relevant docs under `docs/`
    (supported sources, endpoints, and any caveats).
 
-7. **Add tests.** Add unit tests for the new source's aggregation contribution and
-   a component test if it renders in the UI. The registry-completeness test
-   (`src/**/registry-completeness.test.ts`) must pass — it asserts every source in
-   the type union appears in every registry (source registry, schema, aggregation,
-   colour map).
-
-### Checklist
-
-- [ ] Source added to the `OracleSource` type union
-- [ ] Source added to the source registry
-- [ ] Source added to the response schema / validator
-- [ ] Source included in aggregation logic
-- [ ] Colour token added to the colour map
-- [ ] Docs updated under `docs/`
-- [ ] Unit tests added for aggregation contribution
-- [ ] Registry-completeness test passes (`npm run test:run`)
-- [ ] `npm run typecheck && npm run lint && npm run build` all pass
-
----
-
 ## PR Review Checklist
 
-Before marking a PR ready for review, confirm:
+Before requesting review, confirm:
 
 - [ ] Branch is up to date with `main`
-- [ ] `npm run typecheck` passes with zero errors
+- [ ] `npm run typecheck` passes
 - [ ] `npm run lint` passes with zero warnings
 - [ ] `npm run build` succeeds
 - [ ] `npm run test:run` passes
-- [ ] New/changed behaviour is covered by tests
-- [ ] Docs updated where behaviour changed
+- [ ] New/changed behavior is covered by tests
+- [ ] Docs updated where needed
 - [ ] PR description explains the change and how it was tested
-- [ ] Screenshots/recordings attached for UI changes
 - [ ] No unrelated changes bundled in
+
+---
+
+## Quarterly Major Dependency Upgrade Sweep
+
+Dependabot groups minor and patch bumps automatically, but **major** upgrades for
+React, Vite, Recharts, Zod, i18next, and Storybook need planned work because they
+carry breaking changes and migration guides. We run a sweep once per quarter.
+
+### Process
+
+1. **Open one tracking issue per quarter** titled
+   `chore(deps): Q<N> <YYYY> major dependency upgrade sweep`. The issue lists every
+   major that is behind, with an **upgrade owner** assigned to each.
+2. **Inventory the majors** — compare `package.json` against the latest majors for
+   the tracked packages (React, Vite, Recharts, Zod, i18next, Storybook). Record the
+   current version, target major, and any known breaking changes.
+3. **Assign an owner** per major. The owner drives the upgrade PR, reads the upstream
+   migration guide, and updates tests/docs.
+4. **Land upgrades incrementally** — one PR per major, following the normal PR
+   workflow. Do not bundle multiple majors in a single PR.
+5. **Close the tracking issue** once every listed major is upgraded or explicitly
+   deferred with a rationale and a follow-up issue.
+
+### First sweep — Q1 2025
+
+Tracking issue: `chore(deps): Q1 2025 major dependency upgrade sweep`.
+
+| Package   | Current major | Target major | Owner            | Notes |
+| --------- | ------------- | ------------ | ---------------- | ----- |
+| React     | 18            | 19           | @frontend-lead   | React 19 removes legacy APIs; verify `react-dom` and testing-library compatibility. |
+| Vite      | 5             | 6            | @build-owner     | Vite 6 changes the environment API; check plugins and `vite.config.ts`. |
+| Recharts  | 2             | 3            | @charts-owner    | Recharts 3 reworks chart internals; audit price chart components. |
+| Zod       | 3             | 4            | @validation-owner| Zod 4 changes error formatting; update schema error handling. |
+| i18next   | 23            | 24           | @i18n-owner      | i18next 24 updates plugin APIs; verify locale loading. |
+| Storybook | 8             | 9            | @dx-owner        | Storybook 9 consolidates addons; update `.storybook/` config. |
+
+Owners are responsible for opening the upgrade PR for their package and linking it
+back to the quarterly tracking issue.
