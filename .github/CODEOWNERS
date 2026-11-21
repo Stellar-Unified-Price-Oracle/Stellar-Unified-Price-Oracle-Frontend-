@@ -1,0 +1,13 @@
+# Global default owners
+* @smokeylenz1-commits
+
+# Core application state & context
+/src/context/PriceContext.tsx @smokeylenz1-commits
+/src/hooks/useAlerts.tsx @smokeylenz1-commits
+
+# API & network transport layers
+/src/api/rest.ts @smokeylenz1-commits
+/src/api/websocket.ts @smokeylenz1-commits
+
+# Storage & persistence utilities
+/src/utils/storage.ts @smokeylenz1-commits
