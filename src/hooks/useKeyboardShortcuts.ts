@@ -1,6 +1,8 @@
 import { useEffect, useCallback, useRef } from 'react'
 
 export interface ShortcutDefinition {
+  /** Stable identifier used to persist a custom binding for this action */
+  id?: string
   /** Key combination string, e.g. 'g d', 'ctrl+k', '/', 'Escape' */
   keys: string
   /** Human-readable description shown in the help overlay */
@@ -59,8 +61,14 @@ function isInputFocused(): boolean {
  * Pass `ignoreInputs: true` for shortcuts that should fire even while typing.
  *
  * Sequences (space-separated keys): 'g d' means press G then D within 1 s.
+ *
+ * Custom bindings: when a shortcut has an `id`, its `keys` may be overridden by
+ * a persisted binding supplied via `bindings` (e.g. from user preferences).
  */
-export function useKeyboardShortcuts(shortcuts: ShortcutDefinition[]): void {
+export function useKeyboardShortcuts(
+  shortcuts: ShortcutDefinition[],
+  bindings?: Record<string, string>,
+): void {
   // Track sequence state: last key pressed and when
   const sequenceRef = useRef<{ key: string; time: number } | null>(null)
 
@@ -69,7 +77,8 @@ export function useKeyboardShortcuts(shortcuts: ShortcutDefinition[]): void {
       for (const shortcut of shortcuts) {
         if (isInputFocused() && !shortcut.ignoreInputs) continue
 
-        const parts = shortcut.keys.trim().split(' ')
+        const keys = (shortcut.id && bindings?.[shortcut.id]) || shortcut.keys
+        const parts = keys.trim().split(' ')
 
         if (parts.length === 2) {
           // Two-key sequence (e.g. 'g d')
@@ -95,7 +104,7 @@ export function useKeyboardShortcuts(shortcuts: ShortcutDefinition[]): void {
           }
         } else {
           // Single key
-          const parsed = parseShortcut(shortcut.keys.trim())
+          const parsed = parseShortcut(keys.trim())
           if (matchesShortcut(e, parsed)) {
             e.preventDefault()
             shortcut.handler()
@@ -104,7 +113,7 @@ export function useKeyboardShortcuts(shortcuts: ShortcutDefinition[]): void {
         }
       }
     },
-    [shortcuts],
+    [shortcuts, bindings],
   )
 
   useEffect(() => {
