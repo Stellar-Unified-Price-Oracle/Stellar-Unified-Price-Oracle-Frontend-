@@ -17,7 +17,6 @@ import type { TooltipPayload } from 'recharts'
 import type { PriceHistoryEntry, PriceQualityFlags } from '../types'
 import { formatChartTimeWithTz, formatPriceShort, formatTimestamp, getTimezoneAbbr } from '../utils/format'
 import { rasterizeChartToDataUrl } from '../utils/chartExport'
-import { exportPriceHistoryPdf } from '../utils/pdfExport'
 import { loadChartExport } from '../utils/deferredExports'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { calculateRollingStatistics } from '../utils/rollingStatistics'
@@ -573,6 +572,7 @@ function ChartContent({
           exportChartAsSvg(container, filename, bgColor)
         } else if (format === 'pdf') {
           const chart = await rasterizeChartToDataUrl(container, bgColor)
+          const { exportPriceHistoryPdf } = await import('../utils/pdfExport')
           exportPriceHistoryPdf({ pair, history: data, chart, filename, palette })
         } else {
           await exportChartAsPng(container, filename, bgColor)
