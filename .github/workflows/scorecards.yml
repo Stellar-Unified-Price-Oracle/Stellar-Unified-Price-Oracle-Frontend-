@@ -36,7 +36,7 @@ jobs:
       - name: Run analysis
         # Pinned to an explicit tag — the floating `v2` ref is no longer
         # resolvable by Actions ("unable to find version v2").
-        uses: ossf/scorecard-action@v2.4.4
+        uses: ossf/scorecard-action@v2.6.0
         with:
           results_file: results.sarif
           results_format: sarif
