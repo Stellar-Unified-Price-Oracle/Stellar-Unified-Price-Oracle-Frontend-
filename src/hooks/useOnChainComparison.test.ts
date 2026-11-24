@@ -7,6 +7,9 @@ vi.mock('../lib/onChainClient', () => ({
   fetchOnChainPrice: vi.fn(),
   getActiveRegistryEntry: vi.fn(),
 }))
+vi.mock('./useOnChainEvents', () => ({
+  useOnChainEvents: vi.fn(() => ({ latestEvent: null, lagMs: null, loading: false, error: null })),
+}))
 
 describe('useOnChainComparison', () => {
   beforeEach(() => {
@@ -34,6 +37,7 @@ describe('useOnChainComparison', () => {
     expect(result.current.supported).toBe(false)
     expect(result.current.registryEntry).toBeNull()
     expect(result.current.divergence).toBeNull()
+    expect(result.current.lagMs).toBeNull()
   })
 
   it('computes divergence once the on-chain price is loaded', async () => {
@@ -66,6 +70,7 @@ describe('useOnChainComparison', () => {
     expect(result.current.divergence).not.toBeNull()
     expect(result.current.divergence?.status).toBe('breached')
     expect(result.current.onChainLedger).toBe(52_000_100)
+    expect(result.current.lagMs).toBeNull()
   })
 
   it('does not fetch on-chain data (enabled: false) when the asset is unsupported', async () => {

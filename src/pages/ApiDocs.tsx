@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { config } from '../config'
 import { getAcceptVersionHeader } from '../api/version'
 import { useApiVersion } from '../hooks/useApiVersion'
 import { METRIC_HELP_TOPICS, type MetricHelpTopic } from '../data/metricHelp'
-import { isOracleNetwork, type OracleNetwork } from '../lib/contractRegistry'
+import {
+  getContractAddress,
+  isOracleNetwork,
+  listRegisteredAssets,
+  ORACLE_NETWORKS,
+  type OracleNetwork,
+} from '../lib/contractRegistry'
 import { getSelectedNetwork, onNetworkChange } from '../lib/networkRegistry'
 import { SdkIntegrationChecklist } from '../components/SdkIntegrationChecklist'
 import { SdkMigrationGuide } from '../components/SdkMigrationGuide'
@@ -554,6 +560,208 @@ function EndpointCard({ endpoint, context }: { endpoint: Endpoint; context: Snip
   )
 }
 
+function sorobanRpcUrl(network: OracleNetwork): string {
+  if (network === 'mainnet') return 'https://mainnet.sorobanrpc.com'
+  if (network === 'futurenet') return 'https://rpc-futurenet.stellar.org'
+  return 'https://soroban-testnet.stellar.org'
+}
+
+function sorobanNetworkPassphrase(network: OracleNetwork): string {
+  if (network === 'mainnet') return 'Public Global Stellar Network ; September 2015'
+  if (network === 'futurenet') return 'Test SDF Future Network ; October 2022'
+  return 'Test SDF Network ; September 2015'
+}
+
+function buildSorobanRustSnippet(network: OracleNetwork, pair: string, contractId: string): string {
+  const baseAsset = pair.split(/[/-]/)[0]?.trim().toUpperCase() ?? pair
+  return `// Soroban consumer snippet for ${pair} on ${network}
+// Contract ID: ${contractId}
+// Reads the oracle contract's \`lastprice\` entry and performs a staleness check.
+#![no_std]
+
+use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol};
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PriceData {
+    pub price: i128,
+    pub timestamp: u64,
+    pub decimals: u32,
+}
+
+#[soroban_sdk::contractclient(name = "PriceOracleClient")]
+pub trait PriceOracle {
+    fn lastprice(env: Env) -> Option<PriceData>;
+}
+
+#[contract]
+pub struct OracleConsumer;
+
+#[contractimpl]
+impl OracleConsumer {
+    /// Returns the latest on-chain price for ${baseAsset} if it is fresh enough.
+    /// \`max_age_secs\` is the maximum allowed staleness for the published timestamp.
+    pub fn read_price(env: Env, oracle_contract_id: Address, max_age_secs: u64) -> Option<PriceData> {
+        let client = PriceOracleClient::new(&env, &oracle_contract_id);
+        let data = client.lastprice()?;
+
+        // Staleness check: reject prices older than max_age_secs relative to ledger time.
+        let now = env.ledger().timestamp();
+        if now.saturating_sub(data.timestamp) > max_age_secs {
+            panic!("stale oracle price");
+        }
+
+        // Example: scale integer price to human units as needed by your app.
+        // let scaled = data.price as i128; // price / 10^data.decimals
+        Some(data)
+    }
+}
+
+// Suggested integration values:
+// Network: ${network}
+// Pair: ${pair}
+// Contract ID: ${contractId}
+// RPC: ${sorobanRpcUrl(network)}
+// Passphrase: ${sorobanNetworkPassphrase(network)}
+`
+}
+
+function buildSorobanTestTemplate(network: OracleNetwork, pair: string, contractId: string): string {
+  const baseAsset = pair.split(/[/-]/)[0]?.trim().toUpperCase() ?? pair
+  return `#![cfg(test)]
+
+use super::*;
+use soroban_sdk::{testutils::Ledger, Address, Env};
+
+#[test]
+fn reads_fresh_${baseAsset.toLowerCase()}_price_from_oracle() {
+    let env = Env::default();
+    env.ledger().with_mut(|l| l.timestamp = 1_700_000_000);
+
+    // Register the published oracle contract in tests or use a mock implementing \`lastprice\`.
+    let oracle_id = Address::from_string(&soroban_sdk::String::from_str(
+        &env,
+        "${contractId}",
+    ));
+
+    let consumer_id = env.register(OracleConsumer, ());
+    let client = OracleConsumerClient::new(&env, &consumer_id);
+
+    // Example assertion shape (replace with your mock/setup):
+    // let price = client.read_price(&oracle_id, &300).unwrap();
+    // assert!(price.decimals > 0);
+    // assert!(price.timestamp <= env.ledger().timestamp());
+    let _ = (env, oracle_id, client); // keep template compiling when filled in
+}
+
+#[test]
+#[should_panic(expected = "stale oracle price")]
+fn rejects_stale_price() {
+    let env = Env::default();
+    env.ledger().with_mut(|l| l.timestamp = 1_700_000_300);
+
+    // Configure a mock oracle that returns a timestamp older than max_age_secs.
+    // Then calling read_price(..., 60) should panic with "stale oracle price".
+    let _ = env;
+}
+`
+}
+
+function SorobanConsumerSnippets({ defaultNetwork }: { defaultNetwork: OracleNetwork }) {
+  const [network, setNetwork] = useState<OracleNetwork>(defaultNetwork)
+  const assets = useMemo(() => listRegisteredAssets(network), [network])
+  const [asset, setAsset] = useState<string>(assets[0] ?? 'XLM')
+
+  useEffect(() => {
+    setNetwork(defaultNetwork)
+  }, [defaultNetwork])
+
+  useEffect(() => {
+    if (!assets.includes(asset)) {
+      setAsset(assets[0] ?? 'XLM')
+    }
+  }, [assets, asset])
+
+  const pair = `${asset}/USD`
+  const contractId = assets.includes(asset) ? getContractAddress(network, asset) : ''
+  const rustSnippet = contractId ? buildSorobanRustSnippet(network, pair, contractId) : '// No contract registered for this selection.'
+  const testTemplate = contractId ? buildSorobanTestTemplate(network, pair, contractId) : '// No contract registered for this selection.'
+
+  return (
+    <section aria-labelledby="soroban-snippets-heading" className="mt-10 border-t border-gray-800 pt-6">
+      <h2 id="soroban-snippets-heading" className="text-lg font-semibold text-gray-900 dark:text-white">
+        Soroban consumer-contract snippets
+      </h2>
+      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        Generate Rust consumer code for reading the oracle contract (<code>lastprice</code>) with a staleness check, plus a
+        test template for the selected pair and network.
+      </p>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <label className="text-sm text-gray-300">
+          Network
+          <select
+            value={network}
+            onChange={(e) => setNetwork(e.target.value as OracleNetwork)}
+            className="ml-2 rounded bg-gray-800 border border-gray-700 px-2 py-1 text-sm text-gray-200"
+            aria-label="Soroban snippet network"
+          >
+            {ORACLE_NETWORKS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm text-gray-300">
+          Pair
+          <select
+            value={asset}
+            onChange={(e) => setAsset(e.target.value)}
+            className="ml-2 rounded bg-gray-800 border border-gray-700 px-2 py-1 text-sm text-gray-200"
+            aria-label="Soroban snippet pair"
+          >
+            {assets.map((a) => (
+              <option key={a} value={a}>
+                {a}/USD
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {contractId && (
+        <p className="mt-3 text-xs text-gray-400">
+          Contract ID: <code className="font-mono text-gray-200">{contractId}</code>
+        </p>
+      )}
+
+      <div className="mt-4 space-y-4">
+        <div>
+          <h3 className="text-sm font-medium text-gray-200 mb-2">Rust consumer snippet</h3>
+          <pre
+            tabIndex={0}
+            aria-label={`Soroban Rust snippet for ${pair} on ${network}`}
+            className="p-3 rounded-lg bg-gray-950 text-gray-300 text-xs overflow-x-auto leading-relaxed"
+          >
+            {rustSnippet}
+          </pre>
+        </div>
+        <div>
+          <h3 className="text-sm font-medium text-gray-200 mb-2">Test template</h3>
+          <pre
+            tabIndex={0}
+            aria-label={`Soroban test template for ${pair} on ${network}`}
+            className="p-3 rounded-lg bg-gray-950 text-gray-300 text-xs overflow-x-auto leading-relaxed"
+          >
+            {testTemplate}
+          </pre>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function ApiDocs() {
   const { t } = useTranslation()
   const apiInfo = useApiVersion()
@@ -635,6 +843,8 @@ export function ApiDocs() {
           <EndpointCard key={`${ep.method}-${ep.path}`} endpoint={ep} context={context} />
         ))}
       </div>
+
+      <SorobanConsumerSnippets defaultNetwork={network} />
 
       <SdkMigrationGuide />
 
