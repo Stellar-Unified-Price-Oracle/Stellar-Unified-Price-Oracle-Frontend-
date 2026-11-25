@@ -320,6 +320,13 @@ const en = {
       save: 'Save Preset',
       saveCurrentAsPreset: '+ Save current settings as a preset',
     },
+    // ── Rule lifecycle (#950) ──────────────────────────────────────────────
+    lifecycle: {
+      title: 'Rule lifecycle',
+      expiryLabel: 'Expiration date (optional)',
+      reviewLabel: 'Review reminder (optional)',
+      description: 'Expiration deactivates the rule at the end of that local day. Review date is for reminders only.',
+    },
   },
 
   // ── AlertPanel ────────────────────────────────────────────────────────────
