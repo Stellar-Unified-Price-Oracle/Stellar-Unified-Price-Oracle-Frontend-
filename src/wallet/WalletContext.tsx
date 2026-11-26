@@ -8,7 +8,13 @@ import {
 } from './freighterClient'
 import { assertWalletOnAppNetwork } from './networkGuard'
 import { TxReviewDialog } from './TxReviewDialog'
-import { reviewTransaction, TxReviewError, type ReviewOptions, type TxSummary } from './txReview'
+import {
+  attachSorobanSimulation,
+  reviewTransaction,
+  TxReviewError,
+  type ReviewOptions,
+  type TxSummary,
+} from './txReview'
 import { fetchNativeBalance } from './horizon'
 import type { WalletContextValue, WalletErrorCode, WalletState } from './types'
 
@@ -106,6 +112,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (e instanceof TxReviewError) throw new WalletError('unknown', e.message)
         throw e
       }
+      // Simulate Soroban transactions so CPU, memory and fee estimates are shown before signing (issue #1013).
+      summary = await attachSorobanSimulation(summary, transactionXdr)
       const approved = await new Promise<boolean>((resolve) => setPendingReview({ summary, resolve }))
       setPendingReview(null)
       if (!approved) throw new WalletError('review-rejected', 'Signing cancelled at the review step.')

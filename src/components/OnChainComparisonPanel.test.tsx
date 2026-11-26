@@ -1,11 +1,26 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { useOnChainComparison } from '../hooks/useOnChainComparison'
+import { useSdexPrice } from '../hooks/useSdexPrice'
 import { OnChainComparisonPanel } from './OnChainComparisonPanel'
 
 vi.mock('../hooks/useOnChainComparison', () => ({ useOnChainComparison: vi.fn() }))
+vi.mock('../hooks/useSdexPrice', () => ({ useSdexPrice: vi.fn() }))
 
-afterEach(cleanup)
+const baseSdex = {
+  sdexMid: null,
+  sdexVwap: null,
+  tradeCount: null,
+  thinLiquidity: false,
+  deviationPct: null,
+  loading: false,
+  error: null,
+} as const
+
+afterEach(() => {
+  cleanup()
+  vi.mocked(useSdexPrice).mockReturnValue(baseSdex)
+})
 
 const registryEntry = {
   network: 'testnet' as const,
@@ -23,6 +38,7 @@ describe('OnChainComparisonPanel', () => {
       divergence: null,
       onChainPublishedAt: null,
       onChainLedger: null,
+      lagMs: null,
     })
 
     render(<OnChainComparisonPanel pair="BTC/USD" offChainPrice={65000} thresholdPercent={1} />)
@@ -38,6 +54,7 @@ describe('OnChainComparisonPanel', () => {
       divergence: null,
       onChainPublishedAt: null,
       onChainLedger: null,
+      lagMs: null,
     })
 
     render(<OnChainComparisonPanel pair="XLM/USD" offChainPrice={0.12} thresholdPercent={1} />)
@@ -53,6 +70,7 @@ describe('OnChainComparisonPanel', () => {
       divergence: null,
       onChainPublishedAt: null,
       onChainLedger: null,
+      lagMs: null,
     })
 
     render(<OnChainComparisonPanel pair="XLM/USD" offChainPrice={0.12} thresholdPercent={1} />)
@@ -74,6 +92,7 @@ describe('OnChainComparisonPanel', () => {
       },
       onChainPublishedAt: Date.now() - 30_000,
       onChainLedger: 52_000_100,
+      lagMs: 30_000,
     })
 
     render(<OnChainComparisonPanel pair="XLM/USD" offChainPrice={0.12} thresholdPercent={1} />)
@@ -96,6 +115,7 @@ describe('OnChainComparisonPanel', () => {
       },
       onChainPublishedAt: Date.now() - 30_000,
       onChainLedger: 52_000_100,
+      lagMs: 30_000,
     })
 
     render(<OnChainComparisonPanel pair="XLM/USD" offChainPrice={0.13} thresholdPercent={1} />)
@@ -121,6 +141,7 @@ describe('OnChainComparisonPanel', () => {
       },
       onChainPublishedAt: Date.now() - 30_000,
       onChainLedger: 52_000_100,
+      lagMs: 30_000,
     })
 
     render(<OnChainComparisonPanel pair="XLM/USD" offChainPrice={0.12} thresholdPercent={1} />)

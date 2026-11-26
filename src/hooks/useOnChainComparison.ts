@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import { fetchOnChainPrice, getActiveRegistryEntry } from '../lib/onChainClient'
 import { UnknownAssetError, UnknownNetworkError, type ContractRegistryEntry } from '../lib/contractRegistry'
 import { computeDivergence } from '../utils/divergence'
 import type { PriceDivergence } from '../types/onchain'
 import { useSwr } from './useSwr'
+import { useOnChainEvents } from './useOnChainEvents'
 
 /** Feed pairs use `XLM/USD` or `XLM-USD`; both separators are accepted. */
 const PAIR_SEPARATOR = /[/-]/
@@ -23,11 +24,20 @@ export interface OnChainComparisonResult {
   divergence: PriceDivergence | null
   onChainPublishedAt: number | null
   onChainLedger: number | null
+  /**
+   * Lag between the latest on-chain publish and now, in milliseconds.
+   * Derived from live `getEvents` polling (issue #1012).
+   * Null until the first event arrives or when the asset has no contract.
+   */
+  lagMs: number | null
 }
 
 /**
  * Resolves the on-chain contract for a feed pair (via {@link onChainClient}), fetches
  * its latest published price, and compares it against the live off-chain price.
+ *
+ * Also polls Soroban RPC `getEvents` so on-chain values update without a reload
+ * and the UI can show how far behind the on-chain feed is (issue #1012).
  *
  * Returns `supported: false` — rather than throwing — when the asset has no
  * registered contract, so the comparison panel can render an explanatory state
@@ -53,11 +63,25 @@ export function useOnChainComparison(
 
   const swrKey = registryEntry ? `onchain:${registryEntry.network}:${registryEntry.asset}` : ''
 
-  const { data, loading, error } = useSwr(
+  const { data, loading, error, refetch } = useSwr(
     swrKey,
     (signal) => fetchOnChainPrice(asset, registryEntry?.network, signal),
     { enabled: registryEntry !== null, refreshInterval: ON_CHAIN_REFRESH_MS, staleTime: 5000, retryCount: 2 },
   )
+
+  // Live event stream — triggers a re-fetch whenever a new publish event arrives
+  // so the displayed on-chain price updates without waiting for the REST poll
+  // interval (issue #1012).
+  const { latestEvent, lagMs } = useOnChainEvents(pair)
+  const lastEventLedgerRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!latestEvent) return
+    if (latestEvent.ledger === lastEventLedgerRef.current) return
+    lastEventLedgerRef.current = latestEvent.ledger
+    // Trigger an immediate re-fetch of the on-chain price from the REST layer
+    // now that we know a new event has been emitted.
+    void refetch()
+  }, [latestEvent, refetch])
 
   const divergence =
     data && offChainPrice !== undefined ? computeDivergence(offChainPrice, data.price, thresholdPercent) : null
@@ -70,5 +94,6 @@ export function useOnChainComparison(
     divergence,
     onChainPublishedAt: data?.publishedAt ?? null,
     onChainLedger: data?.ledger ?? null,
+    lagMs: registryEntry !== null ? lagMs : null,
   }
 }
